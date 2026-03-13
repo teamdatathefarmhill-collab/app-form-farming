@@ -35,10 +35,12 @@ const todayISO = new Date().toLocaleDateString("id-ID", {
 });
 
 function hitungHST(tgl) {
+  // Parse manual agar tidak kena masalah UTC
+  const [y, m, d] = tgl.split("-").map(Number);
+  const tanam = new Date(y, m - 1, d); // local time, bukan UTC
   const now = new Date();
-  const nowWIB = new Date(now.toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }));
-  const tanam = new Date(tgl);
-  return Math.floor((nowWIB - tanam) / 86400000);
+  const nowLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.floor((nowLocal - tanam) / 86400000);
 }
 
 function totalPerVarian(d = {}) {
