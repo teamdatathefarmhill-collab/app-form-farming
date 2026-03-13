@@ -3,7 +3,7 @@ import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch } from "../utils/idb";
 
 const DB_NAME = "HPTOfflineDB";
 
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxOualqyMiSlynwZ_v1jhJu0OJJuTwgsIPk7IqN6Xji3I2BIJL9jlbeneKjsuARi_ekkw/exec";
+const SCRIPT_URL = import.meta.env.VITE_GAS_HPT_URL;
 
 const buatBaris = (jumlah, varianMap) => {
   const abjad = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";

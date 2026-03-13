@@ -3,7 +3,7 @@ import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch } from "../utils/idb";
 
 const DB_NAME = "GramasiOfflineDB";
 
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwPkGiwxUxsJkuLGN0VUZWfTI2iz3HGOTYiRmND2JHl8QhH4ggMGuVRj_YR4hKXhUUq/exec";
+const SCRIPT_URL = import.meta.env.VITE_GAS_GRAMASI_URL;
 const HST_MIN = 30;
 const HST_MAX = 55;
 

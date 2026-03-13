@@ -3,7 +3,7 @@ import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch } from "../utils/idb";
 
 const DB_NAME = "SanitasiOfflineDB";
 
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx3BDU0FxdWt4ASU5UWbH37B5WFnZD7BY5RjAx4kavtWrhhn-WLVNMvK6Fg1DxSrFml/exec";
+const SCRIPT_URL = import.meta.env.VITE_GAS_SANITASI_URL;
 const HST_MAKS = 65;
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
