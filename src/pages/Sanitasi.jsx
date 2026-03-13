@@ -515,7 +515,7 @@ const fetchGHData = async () => {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #0a2e1a 0%, #1a4a2a 60%, #0d3320 100%)", fontFamily: "'DM Sans', 'Segoe UI', sans-serif", color: "#e8f5e9", display: "flex", flexDirection: "column", maxWidth: 480, margin: "0 auto" }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #0a2e1a 0%, #1a4a2a 60%, #0d3320 100%)", fontFamily: "'DM Sans', 'Segoe UI', sans-serif", color: "#e8f5e9", display: "flex", flexDirection: "column", margin: "0 auto" }}>
 
       {/* ── Header ── */}
       <div style={{ padding: "16px 20px 12px", borderBottom: "1px solid rgba(255,255,255,0.08)", background: "rgba(0,0,0,0.25)", position: "sticky", top: 0, zIndex: 10 }}>

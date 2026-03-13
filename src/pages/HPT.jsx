@@ -323,7 +323,7 @@ export default function HPT() {
 
   const S = {
     wrap: { minHeight: "100vh", background: "linear-gradient(160deg, #0a0f0a 0%, #0d1a0e 50%, #0a120d 100%)", display: "flex", justifyContent: "center", alignItems: "flex-start", padding: "0 0 40px", fontFamily: "'Segoe UI', system-ui, sans-serif" },
-    card: { width: "100%", maxWidth: 480, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 20, overflow: "hidden", marginTop: 0 },
+    card: { width: "100%",background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 20, overflow: "hidden", marginTop: 0 },
     header: { padding: "16px 16px 12px", background: "rgba(0,0,0,0.3)", borderBottom: "1px solid rgba(255,255,255,0.07)" },
     body: { padding: "16px" },
     sectionTitle: { fontSize: 11, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 10 },

@@ -291,7 +291,7 @@ export default function Gramasi() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f5f5f5", fontFamily: "'DM Sans','Segoe UI',sans-serif", maxWidth: 520, margin: "0 auto" }}>
+    <div style={{ minHeight: "100vh", background: "#f5f5f5", fontFamily: "'DM Sans','Segoe UI',sans-serif", margin: "0 auto" }}>
 
       {/* ── Header ── */}
       <div style={{ background: "#2e7d32", color: "#fff", padding: "14px 16px 10px", position: "sticky", top: 0, zIndex: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
@@ -345,7 +345,7 @@ export default function Gramasi() {
       {/* Modal Warning Double Submit */}
       {showWarning && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "#fff", borderRadius: 16, padding: 24, maxWidth: 340, width: "100%", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 24, maxWidth: "100%", width: "100%", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
             <div style={{ fontSize: 36, textAlign: "center", marginBottom: 12 }}>⚠️</div>
             <div style={{ fontWeight: 700, fontSize: 16, color: "#333", textAlign: "center", marginBottom: 8 }}>GH Sudah Diisi Hari Ini</div>
             <div style={{ fontSize: 13, color: "#666", textAlign: "center", marginBottom: 20, lineHeight: 1.5 }}>
