@@ -219,23 +219,24 @@ export default function Sanitasi() {
 
   useEffect(() => { fetchGHData(); }, []);
 
-  const fetchGHData = async () => {
-    setLoadingGH(true);
-    setIsDemoMode(false);
-    try {
-      const json = await gasFetch(`${SCRIPT_URL}?action=getGH`);
-      if (json.success) {
-        setGhData(json.data);
-      } else {
-        throw new Error("Response tidak sukses");
-      }
-    } catch {
-      setIsDemoMode(true);
-      setGhData(MOCK_GH_DATA);
-    } finally {
-      setLoadingGH(false);
+const fetchGHData = async () => {
+  setLoadingGH(true);
+  setIsDemoMode(false);
+  try {
+    const json = await gasFetch(`${SCRIPT_URL}?action=getGH`);
+    console.log("Data GH Sanitasi:", JSON.stringify(json.data)); // ← tambah ini
+    if (json.success) {
+      setGhData(json.data);
+    } else {
+      throw new Error("Response tidak sukses");
     }
-  };
+  } catch {
+    setIsDemoMode(true);
+    setGhData(MOCK_GH_DATA);
+  } finally {
+    setLoadingGH(false);
+  }
+};
 
   // ── Sync semua data pending ke GAS ──
   const syncPendingData = useCallback(async () => {
