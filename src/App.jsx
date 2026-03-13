@@ -39,7 +39,7 @@ export default function App() {
         minHeight: "100vh",
         display: "flex",
         flexDirection: "column",
-        maxWidth: 480,
+        maxWidth: "100%",
         margin: "0 auto",
         position: "relative",
       }}
@@ -57,7 +57,7 @@ export default function App() {
           left: "50%",
           transform: "translateX(-50%)",
           width: "100%",
-          maxWidth: 480,
+          maxWidth: "100%",
           background: "rgba(10,20,15,0.97)",
           borderTop: "1px solid rgba(255,255,255,0.1)",
           display: "flex",
