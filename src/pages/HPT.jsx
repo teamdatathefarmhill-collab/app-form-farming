@@ -43,9 +43,8 @@ function markSubmitted(gh) {
 }
 
 function hitungHST(tgl) {
-  // Parse manual agar tidak kena masalah UTC
   const [y, m, d] = tgl.split("-").map(Number);
-  const tanam = new Date(y, m - 1, d); // local time, bukan UTC
+  const tanam = new Date(y, m - 1, d);
   const now = new Date();
   const nowLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   return Math.floor((nowLocal - tanam) / 86400000);
@@ -140,22 +139,52 @@ export default function HPT() {
     if (isOnline) syncPendingData();
   }, [isOnline]);
 
-  useEffect(() => { fetchGHData(); }, []);
+  // ── Fix: cancelled flag agar StrictMode tidak trigger demo ──
+  useEffect(() => {
+    let cancelled = false;
 
-  const fetchGHData = async () => {
+    const load = async () => {
+      setLoadingGH(true);
+      try {
+        const data = await gasFetch(`${SCRIPT_URL}?action=getGH`);
+        if (cancelled) return;
+        if (data && typeof data === "object" && !data.error) {
+          setGhData({ produksi: data.produksi || {}, semai: data.semai || {} });
+          setIsDemoMode(false);
+        } else throw new Error("invalid");
+      } catch {
+        if (cancelled) return;
+        setGhData({ produksi: MOCK_GH_DATA, semai: MOCK_SEMAI_DATA });
+        setIsDemoMode(true);
+      } finally {
+        if (!cancelled) setLoadingGH(false);
+      }
+    };
+
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
+  // ── Tombol "Coba Lagi" ──
+  const fetchGHData = () => {
+    let cancelled = false;
     setLoadingGH(true);
-    try {
-      const data = await gasFetch(`${SCRIPT_URL}?action=getGH`);
-      if (data && typeof data === "object" && !data.error) {
-        setGhData({ produksi: data.produksi || {}, semai: data.semai || {} });
-        setIsDemoMode(false);
-      } else throw new Error("invalid");
-    } catch {
-      setGhData({ produksi: MOCK_GH_DATA, semai: MOCK_SEMAI_DATA });
-      setIsDemoMode(true);
-    } finally {
-      setLoadingGH(false);
-    }
+    setIsDemoMode(false);
+    gasFetch(`${SCRIPT_URL}?action=getGH`)
+      .then(data => {
+        if (cancelled) return;
+        if (data && typeof data === "object" && !data.error) {
+          setGhData({ produksi: data.produksi || {}, semai: data.semai || {} });
+          setIsDemoMode(false);
+        } else throw new Error("invalid");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setGhData({ produksi: MOCK_GH_DATA, semai: MOCK_SEMAI_DATA });
+        setIsDemoMode(true);
+      })
+      .finally(() => { if (!cancelled) setLoadingGH(false); });
+    return () => { cancelled = true; };
   };
 
   const syncPendingData = useCallback(async () => {
