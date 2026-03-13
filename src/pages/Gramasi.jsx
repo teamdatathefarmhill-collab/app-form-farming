@@ -41,7 +41,10 @@ function markSubmitted(gh) {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function hitungHST(tgl) {
-  return Math.floor((new Date() - new Date(tgl)) / 86400000);
+  const now = new Date();
+  const nowWIB = new Date(now.toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }));
+  const tanam = new Date(tgl);
+  return Math.floor((nowWIB - tanam) / 86400000);
 }
 
 function calcAvg(s1, s2, s3) {
