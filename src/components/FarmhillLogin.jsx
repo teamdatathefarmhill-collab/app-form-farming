@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 const SHEET_CSV_URL = import.meta.env.VITE_SHEET_URL;
 
 // Nomor WA admin untuk "Lupa Password" (format internasional tanpa +)
-const WA_ADMIN_NUMBER = "62895410418937";
+const WA_ADMIN_NUMBER = import.meta.env.VITE_WA_ADMIN;
 const WA_MESSAGE = encodeURIComponent(
   "Halo Admin Farmhill, saya lupa password akun saya. Mohon bantuan ya 🙏"
 );
@@ -151,7 +151,7 @@ export default function FarmhillLogin({ onLoginSuccess }) {
       const found = users.find(
         (u) =>
           u.nama?.toLowerCase() === nama.trim().toLowerCase() &&
-          u.id?.trim() === password.trim()
+          parseInt(u.id) === parseInt(password.trim())
       );
       if (found) {
         setLoggedUser(found);
