@@ -2,73 +2,139 @@ import { useState } from "react";
 import Sanitasi from "./pages/Sanitasi";
 import HPT from "./pages/HPT";
 import Gramasi from "./pages/Gramasi";
+import FarmhillLogin from "./components/FarmhillLogin";
+import { useAuth } from "./hooks/useAuth";
 
-const TABS = [
-  { key: "sanitasi", label: "Sanitasi", icon: "🌿", color: "#4CAF50",  component: Sanitasi },
-  { key: "hpt",      label: "HPT",      icon: "🐛", color: "#FF7043",  component: HPT      },
-  { key: "gramasi",  label: "Gramasi",  icon: "⚖️", color: "#1E88E5",  component: Gramasi  },
+const ALL_TABS = [
+  { key: "sanitasi", label: "Sanitasi", icon: "🌿", color: "#4CAF50", component: Sanitasi },
+  { key: "hpt",      label: "HPT",      icon: "🐛", color: "#FF7043", component: HPT      },
+  { key: "gramasi",  label: "Gramasi",  icon: "⚖️", color: "#1E88E5", component: Gramasi  },
 ];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState("sanitasi");
+  const { user, login, logout, isLoggedIn } = useAuth();
+  const [activeTab, setActiveTab] = useState(null);
 
-  const ActivePage  = TABS.find((t) => t.key === activeTab)?.component;
-  const activeColor = TABS.find((t) => t.key === activeTab)?.color || "#4CAF50";
+  // ── Belum login → tampil halaman login ──
+  if (!isLoggedIn) {
+    return (
+      <FarmhillLogin
+        onLoginSuccess={(userData, remember) => login(userData, remember)}
+      />
+    );
+  }
+
+  // Filter tab sesuai akses user (YES/NO dari Google Sheet)
+  const TABS = ALL_TABS.filter(
+    (t) => user[t.key]?.toUpperCase() === "YES"
+  );
+
+  // Pastikan activeTab valid setelah filter
+  const currentTab = TABS.find((t) => t.key === activeTab) ?? TABS[0];
+  const ActivePage = currentTab?.component;
+
+  // Kalau user tidak punya akses modul apapun
+  if (TABS.length === 0) {
+    return (
+      <div style={{
+        minHeight: "100vh", background: "#0a1a0f",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        flexDirection: "column", gap: 16, padding: "2rem",
+        fontFamily: "'Segoe UI', system-ui, sans-serif",
+      }}>
+        <span style={{ fontSize: 40 }}>🔒</span>
+        <p style={{ color: "rgba(255,255,255,0.6)", textAlign: "center", fontSize: 14 }}>
+          Akun <strong style={{ color: "#fff" }}>{user.nama}</strong> belum memiliki akses modul apapun.
+          <br />Hubungi admin untuk pengaturan akses.
+        </p>
+        <button
+          onClick={logout}
+          style={{
+            padding: "10px 24px", borderRadius: 10,
+            border: "1px solid rgba(255,255,255,0.2)",
+            background: "transparent", color: "rgba(255,255,255,0.6)",
+            fontSize: 13, cursor: "pointer",
+          }}
+        >
+          Logout
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", position: "relative" }}>
 
+      {/* ── Header: nama user + tombol logout ── */}
+      <div style={{
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 101,
+        background: "rgba(10,20,15,0.97)",
+        borderBottom: "1px solid rgba(255,255,255,0.07)",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "8px 16px",
+        backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{
+            width: 28, height: 28, borderRadius: 8,
+            background: "linear-gradient(135deg, #2d7a4a, #4aaa6e)",
+            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14,
+          }}>🌿</div>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#fff", lineHeight: 1.2 }}>
+              {user.nama}
+            </div>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", lineHeight: 1.2 }}>
+              ID {user.id}
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={logout}
+          style={{
+            padding: "5px 12px", borderRadius: 8,
+            border: "1px solid rgba(255,255,255,0.15)",
+            background: "transparent", color: "rgba(255,255,255,0.45)",
+            fontSize: 11, cursor: "pointer",
+          }}
+        >
+          Logout
+        </button>
+      </div>
+
       {/* ── Halaman aktif ── */}
-      <div style={{ flex: 1, paddingBottom: 64, width: "100%" }}>
+      <div style={{ flex: 1, paddingTop: 48, paddingBottom: 64, width: "100%" }}>
         {ActivePage && <ActivePage />}
       </div>
 
       {/* ── Bottom Tab Navigation ── */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          width: "100%",
-          background: "rgba(10,20,15,0.97)",
-          borderTop: "1px solid rgba(255,255,255,0.1)",
-          display: "flex",
-          zIndex: 100,
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-        }}
-      >
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, width: "100%",
+        background: "rgba(10,20,15,0.97)",
+        borderTop: "1px solid rgba(255,255,255,0.1)",
+        display: "flex", zIndex: 100,
+        backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+      }}>
         {TABS.map((tab) => {
-          const isActive = activeTab === tab.key;
+          const isActive = currentTab?.key === tab.key;
           return (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               style={{
-                flex: 1,
-                padding: "10px 4px 14px",
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 4,
-                transition: "all 0.2s",
+                flex: 1, padding: "10px 4px 14px",
+                background: "transparent", border: "none", cursor: "pointer",
+                display: "flex", flexDirection: "column", alignItems: "center",
+                gap: 4, transition: "all 0.2s",
                 borderTop: isActive ? `2px solid ${tab.color}` : "2px solid transparent",
               }}
             >
               <span style={{ fontSize: 22, lineHeight: 1 }}>{tab.icon}</span>
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: isActive ? 700 : 500,
-                  color: isActive ? tab.color : "rgba(255,255,255,0.35)",
-                  letterSpacing: 0.5,
-                  transition: "color 0.2s",
-                }}
-              >
+              <span style={{
+                fontSize: 11, fontWeight: isActive ? 700 : 500,
+                color: isActive ? tab.color : "rgba(255,255,255,0.35)",
+                letterSpacing: 0.5, transition: "color 0.2s",
+              }}>
                 {tab.label}
               </span>
             </button>
