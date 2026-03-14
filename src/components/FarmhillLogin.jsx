@@ -208,7 +208,7 @@ export default function FarmhillLogin({ onLoginSuccess }) {
       <div style={styles.wrapper}>
         <div style={styles.card}>
           <div style={styles.logoArea}>
-            <img src="/logo-farmhill.png" alt="The Farmhill" style={{ width: 160, height: "auto", marginBottom: 8, borderRadius: 10, background: "#1a3a2a", padding: "6px 14px" }} />
+            <img src="/logo-farmhill.png" alt="The Farmhill" style={{ width: 160, height: "auto", marginBottom: 8, borderRadius: 10 }} />
             <div style={styles.logoName}>Lupa Password?</div>
             <div style={styles.logoSub}>Hubungi Admin via WhatsApp</div>
           </div>
