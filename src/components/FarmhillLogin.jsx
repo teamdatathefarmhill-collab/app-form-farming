@@ -174,10 +174,9 @@ export default function FarmhillLogin({ onLoginSuccess }) {
         <div style={styles.card}>
           <div style={styles.logoArea}>
             <div style={styles.logoIcon}>
-              <LeafIcon />
+              <img src="/logo-farmhill.png" alt="The Farmhill" style={{ width: 160, height: "auto", marginBottom: 8, borderRadius: 10, background: "#1a3a2a", padding: "6px 14px" }} />
             </div>
-            <div style={styles.logoName}>The Farmhill</div>
-            <div style={styles.logoSub}>Data Management System</div>
+            <div style={styles.logoSub}>Form Penginputan Data</div>
           </div>
           <div style={styles.alert("success")}>
             Login berhasil! Selamat datang, <strong>{loggedUser.nama}</strong>.
@@ -209,7 +208,7 @@ export default function FarmhillLogin({ onLoginSuccess }) {
       <div style={styles.wrapper}>
         <div style={styles.card}>
           <div style={styles.logoArea}>
-            <div style={styles.logoIcon}><LeafIcon /></div>
+            <img src="/logo-farmhill.png" alt="The Farmhill" style={{ width: 160, height: "auto", marginBottom: 8, borderRadius: 10, background: "#1a3a2a", padding: "6px 14px" }} />
             <div style={styles.logoName}>Lupa Password?</div>
             <div style={styles.logoSub}>Hubungi Admin via WhatsApp</div>
           </div>
@@ -235,9 +234,8 @@ export default function FarmhillLogin({ onLoginSuccess }) {
     <div style={styles.wrapper}>
       <div style={styles.card}>
         <div style={styles.logoArea}>
-          <div style={styles.logoIcon}><LeafIcon /></div>
-          <div style={styles.logoName}>The Farmhill</div>
-          <div style={styles.logoSub}>Data Management System</div>
+          <img src="/logo-farmhill.png" alt="The Farmhill" style={{ width: 160, height: "auto", marginBottom: 8, borderRadius: 10, background: "#1a3a2a", padding: "6px 14px" }} />
+          <div style={styles.logoSub}>Form Penginputan Data</div>
         </div>
 
         {sheetError && (
