@@ -3,8 +3,7 @@ import { useState, useEffect } from "react";
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 // Ganti dengan URL Google Sheets yang sudah di-publish as CSV
 // File > Share > Publish to web > Sheet1 > CSV > Publish
-const SHEET_CSV_URL =
-  "https://docs.google.com/spreadsheets/d/16DLPD-_Zsl1g4FJ4jFsWUYHVCdZvgonO9qf1b5qS3D4/pub?output=csv";;
+const SHEET_CSV_URL = import.meta.env.VITE_SHEET_URL;
 
 // Nomor WA admin untuk "Lupa Password" (format internasional tanpa +)
 const WA_ADMIN_NUMBER = "62895410418937";
