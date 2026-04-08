@@ -301,7 +301,7 @@ export default function Vigor() {
     setSubmitting(true);
     setSubmitError(null);
     const payloads = buildPayloads();
-    setSyncProgress({ done: 0, total: payloads.length });
+    setSubmitProgress({ done: 0, total: payloads.length });
 
     // Demo mode
     if (isDemoMode) {
@@ -331,9 +331,11 @@ export default function Vigor() {
     let done = 0;
     for (const payload of payloads) {
       try {
-        await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload), redirect: "follow" });
+        const res = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload), redirect: "follow" });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error || "GAS error");
         done++;
-        setSubmitProgress({ done, total: payloads.length });
+        setSubmitProgress({ done, total: payloads.length });;
       } catch {
         setSubmitError(`Gagal kirim baris ${payload.baris}. Periksa koneksi.`);
         setSubmitting(false);
