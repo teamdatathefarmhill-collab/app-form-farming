@@ -27,14 +27,14 @@ function parseCSV(text) {
 // ─── STYLES ──────────────────────────────────────────────────────────────────
 const styles = {
   wrapper: {
-    minHeight: "100vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "linear-gradient(150deg, #1a3a2a 0%, #2d5a3d 60%, #1e4a2e 100%)",
-    padding: "1.5rem",
-    fontFamily: "'Segoe UI', system-ui, sans-serif",
-  },
+  minHeight: "100vh",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.55)), url('/bg-login.jpg') center/cover no-repeat",
+  padding: "1.5rem",
+  fontFamily: "'Segoe UI', system-ui, sans-serif",
+},,
   card: {
     background: "#fff",
     borderRadius: "20px",
