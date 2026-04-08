@@ -2,20 +2,24 @@ import { useState } from "react";
 import Sanitasi from "./pages/Sanitasi";
 import HPT from "./pages/HPT";
 import Gramasi from "./pages/Gramasi";
+import Vigor from "./pages/Vigor";
+import KesiapanGH from "./pages/KesiapanGH";
 import FarmhillLogin from "./components/FarmhillLogin";
 import { useAuth } from "./hooks/useAuth";
 
+// Tambah "vigor" dan "kesiapan" — akses dikontrol lewat kolom di Google Sheet operator
 const ALL_TABS = [
-  { key: "sanitasi", label: "Sanitasi", icon: "🌿", color: "#4CAF50", component: Sanitasi },
-  { key: "hpt",      label: "HPT",      icon: "🐛", color: "#FF7043", component: HPT      },
-  { key: "gramasi",  label: "Gramasi",  icon: "⚖️", color: "#1E88E5", component: Gramasi  },
+  { key: "sanitasi", label: "Sanitasi",  icon: "🌿", color: "#4CAF50", component: Sanitasi   },
+  { key: "hpt",      label: "HPT",       icon: "🐛", color: "#FF7043", component: HPT        },
+  { key: "gramasi",  label: "Gramasi",   icon: "⚖️", color: "#1E88E5", component: Gramasi    },
+  { key: "vigor",    label: "Vigor",     icon: "🌱", color: "#43A047", component: Vigor      },
+  { key: "kesiapan", label: "Kesiapan",  icon: "🏗️", color: "#00897B", component: KesiapanGH },
 ];
 
 export default function App() {
   const { user, login, logout, isLoggedIn } = useAuth();
   const [activeTab, setActiveTab] = useState(null);
 
-  // ── Belum login → tampil halaman login ──
   if (!isLoggedIn) {
     return (
       <FarmhillLogin
@@ -29,11 +33,9 @@ export default function App() {
     (t) => user[t.key]?.toUpperCase() === "YES"
   );
 
-  // Pastikan activeTab valid setelah filter
   const currentTab = TABS.find((t) => t.key === activeTab) ?? TABS[0];
   const ActivePage = currentTab?.component;
 
-  // Kalau user tidak punya akses modul apapun
   if (TABS.length === 0) {
     return (
       <div style={{
@@ -47,15 +49,7 @@ export default function App() {
           Akun <strong style={{ color: "#fff" }}>{user.nama}</strong> belum memiliki akses modul apapun.
           <br />Hubungi admin untuk pengaturan akses.
         </p>
-        <button
-          onClick={logout}
-          style={{
-            padding: "10px 24px", borderRadius: 10,
-            border: "1px solid rgba(255,255,255,0.2)",
-            background: "transparent", color: "rgba(255,255,255,0.6)",
-            fontSize: 13, cursor: "pointer",
-          }}
-        >
+        <button onClick={logout} style={{ padding: "10px 24px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.2)", background: "transparent", color: "rgba(255,255,255,0.6)", fontSize: 13, cursor: "pointer" }}>
           Logout
         </button>
       </div>
@@ -65,7 +59,7 @@ export default function App() {
   return (
     <div style={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", position: "relative" }}>
 
-      {/* ── Header: nama user + tombol logout ── */}
+      {/* Header */}
       <div style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 101,
         background: "rgba(10,20,15,0.97)",
@@ -75,66 +69,44 @@ export default function App() {
         backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{
-            width: 28, height: 28, borderRadius: 8,
-            background: "linear-gradient(135deg, #2d7a4a, #4aaa6e)",
-            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14,
-          }}>🌿</div>
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: "linear-gradient(135deg, #2d7a4a, #4aaa6e)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🌿</div>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#fff", lineHeight: 1.2 }}>
-              {user.nama}
-            </div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", lineHeight: 1.2 }}>
-              ID {user.id}
-            </div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#fff", lineHeight: 1.2 }}>{user.nama}</div>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", lineHeight: 1.2 }}>ID {user.id}</div>
           </div>
         </div>
-        <button
-          onClick={logout}
-          style={{
-            padding: "5px 12px", borderRadius: 8,
-            border: "1px solid rgba(255,255,255,0.15)",
-            background: "transparent", color: "rgba(255,255,255,0.45)",
-            fontSize: 11, cursor: "pointer",
-          }}
-        >
+        <button onClick={logout} style={{ padding: "5px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.15)", background: "transparent", color: "rgba(255,255,255,0.45)", fontSize: 11, cursor: "pointer" }}>
           Logout
         </button>
       </div>
 
-      {/* ── Halaman aktif ── */}
+      {/* Halaman aktif */}
       <div style={{ flex: 1, paddingTop: 48, paddingBottom: 64, width: "100%" }}>
         {ActivePage && <ActivePage />}
       </div>
 
-      {/* ── Bottom Tab Navigation ── */}
+      {/* Bottom Tab Navigation */}
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0, width: "100%",
         background: "rgba(10,20,15,0.97)",
         borderTop: "1px solid rgba(255,255,255,0.1)",
         display: "flex", zIndex: 100,
         backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+        overflowX: "auto",
       }}>
         {TABS.map((tab) => {
           const isActive = currentTab?.key === tab.key;
           return (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
               style={{
-                flex: 1, padding: "10px 4px 14px",
+                flex: 1, minWidth: 60, padding: "10px 4px 14px",
                 background: "transparent", border: "none", cursor: "pointer",
                 display: "flex", flexDirection: "column", alignItems: "center",
                 gap: 4, transition: "all 0.2s",
                 borderTop: isActive ? `2px solid ${tab.color}` : "2px solid transparent",
-              }}
-            >
-              <span style={{ fontSize: 22, lineHeight: 1 }}>{tab.icon}</span>
-              <span style={{
-                fontSize: 11, fontWeight: isActive ? 700 : 500,
-                color: isActive ? tab.color : "rgba(255,255,255,0.35)",
-                letterSpacing: 0.5, transition: "color 0.2s",
               }}>
+              <span style={{ fontSize: 20, lineHeight: 1 }}>{tab.icon}</span>
+              <span style={{ fontSize: 10, fontWeight: isActive ? 700 : 500, color: isActive ? tab.color : "rgba(255,255,255,0.35)", letterSpacing: 0.5, transition: "color 0.2s", whiteSpace: "nowrap" }}>
                 {tab.label}
               </span>
             </button>
