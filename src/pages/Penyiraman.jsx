@@ -24,9 +24,12 @@ const GH_DATA = {
 
 const TIPE_LIST = Object.keys(GH_DATA);
 
+// ─── Data Varian per Tipe (non-Dutch Bucket) ─────────────────
+// Next: ganti sesuai pemetaan GH real
+const VARIAN_LIST = ["Elysia", "Greeniegal"];
+
 const isMultiSuhuRH = (gh) => gh === "SAWAHAN 3" || gh === "SAWAHAN 4";
 const isDutchBucket = (tipe) => tipe === "Dutch Bucket";
-const isDrip = (tipe) => tipe !== "Dutch Bucket";
 
 const todayISO = new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
 const todayLabel = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -72,6 +75,7 @@ export default function Penyiraman() {
   const [step, setStep] = useState(1);
   const [tipe, setTipe] = useState("");
   const [gh, setGh] = useState("");
+  const [varian, setVarian] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [isOnline] = useState(navigator.onLine);
@@ -102,7 +106,7 @@ export default function Penyiraman() {
   const [volNutrisiDB, setVolNutrisiDB] = useState("");
 
   const resetForm = () => {
-    setStep(1); setTipe(""); setGh(""); setSubmitError(null);
+    setStep(1); setTipe(""); setGh(""); setVarian(""); setSubmitError(null);
     setEcIn(""); setEcOut(""); setPhIn(""); setPhOut("");
     setVolume(""); setVolNutrisi(""); setSuhu(""); setRh("");
     setSuhuArr(["","","",""]); setRhArr(["","","",""]);
@@ -115,7 +119,11 @@ export default function Penyiraman() {
 
   // Cek form lengkap
   const canNext = () => {
-    if (step === 1) return tipe !== "" && gh !== "";
+    if (step === 1) {
+      if (!tipe || !gh) return false;
+      if (!isDB && !varian) return false;
+      return true;
+    }
     if (step === 2) {
       if (isDB) {
         return ecTandon && ecBucket && phTandon && phBucket && doTandon && doBucket && suhuDB && rhDB && volNutrisiDB;
@@ -136,6 +144,7 @@ export default function Penyiraman() {
       operator: user?.nama || "",
       tipe,
       gh,
+      varian: isDB ? "" : varian,
       // Drip/Kolam
       ecIn:      isDB ? "" : ecIn,
       ecOut:     isDB ? "" : ecOut,
@@ -203,7 +212,7 @@ export default function Penyiraman() {
 
       <div style={{ padding: 16 }}>
 
-        {/* ══ STEP 1 — Pilih Tipe & GH ══ */}
+        {/* ══ STEP 1 — Pilih Tipe, GH & Varian ══ */}
         {step === 1 && (
           <div>
             <div style={{ fontWeight: 700, fontSize: 18, color: "#0277bd", marginBottom: 4 }}>Pilih Tipe & Greenhouse</div>
@@ -214,7 +223,7 @@ export default function Penyiraman() {
               <div style={{ fontSize: 11, fontWeight: 700, color: "#0277bd", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Tipe GH</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {TIPE_LIST.map(t => (
-                  <button key={t} onClick={() => { setTipe(t); setGh(""); }}
+                  <button key={t} onClick={() => { setTipe(t); setGh(""); setVarian(""); }}
                     style={{
                       padding: "12px 16px", borderRadius: 12, cursor: "pointer", textAlign: "left",
                       border: tipe === t ? "2px solid #0277bd" : "1.5px solid #e0e0e0",
@@ -233,11 +242,11 @@ export default function Penyiraman() {
 
             {/* Pilih GH */}
             {tipe && (
-              <div>
+              <div style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#0277bd", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Nama Greenhouse</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   {GH_DATA[tipe].map(g => (
-                    <button key={g} onClick={() => setGh(g)}
+                    <button key={g} onClick={() => { setGh(g); setVarian(""); }}
                       style={{
                         padding: "10px 8px", borderRadius: 10, cursor: "pointer", textAlign: "center",
                         border: gh === g ? "2px solid #0277bd" : "1px solid #e0e0e0",
@@ -253,6 +262,28 @@ export default function Penyiraman() {
                 </div>
               </div>
             )}
+
+            {/* Pilih Varian — hanya non-Dutch Bucket */}
+            {tipe && gh && !isDB && (
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#0277bd", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Varian</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {VARIAN_LIST.map(v => (
+                    <button key={v} onClick={() => setVarian(v)}
+                      style={{
+                        padding: "10px 20px", borderRadius: 10, cursor: "pointer",
+                        border: varian === v ? "2px solid #0277bd" : "1px solid #e0e0e0",
+                        background: varian === v ? "#e1f5fe" : "#fff",
+                        color: varian === v ? "#0277bd" : "#333",
+                        fontSize: 14, fontWeight: varian === v ? 700 : 500,
+                        transition: "all 0.2s",
+                      }}>
+                      {v} {varian === v && "✓"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -262,6 +293,9 @@ export default function Penyiraman() {
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
               <div style={{ background: "#e1f5fe", border: "1px solid #81d4fa", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#0277bd", fontWeight: 700 }}>{gh}</div>
               <div style={{ background: "#f5f5f5", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#666" }}>{tipe}</div>
+              {!isDB && varian && (
+                <div style={{ background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#2e7d32", fontWeight: 700 }}>🌱 {varian}</div>
+              )}
             </div>
 
             {/* Dutch Bucket */}
@@ -332,6 +366,7 @@ export default function Penyiraman() {
               <RekapRow label="Operator" value={user?.nama} />
               <RekapRow label="Tipe GH"  value={tipe} />
               <RekapRow label="GH"       value={gh} />
+              {!isDB && <RekapRow label="Varian" value={varian} />}
             </div>
 
             <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 12 }}>
@@ -387,6 +422,7 @@ export default function Penyiraman() {
             <div style={{ fontSize: 13, color: "#888", marginBottom: 20 }}>Data penyiraman berhasil dikirim ke Google Sheets</div>
             <div style={{ background: "#e1f5fe", border: "1px solid #81d4fa", borderRadius: 14, padding: 16, textAlign: "left", marginBottom: 20 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "#0277bd" }}>{gh} · {tipe}</div>
+              {!isDB && varian && <div style={{ fontSize: 13, color: "#2e7d32", marginTop: 2 }}>🌱 {varian}</div>}
               <div style={{ fontSize: 13, color: "#666", marginTop: 4 }}>Operator: {user?.nama} · {todayISO}</div>
             </div>
             <button onClick={resetForm} style={{ width: "100%", padding: 15, background: "#e1f5fe", border: "2px solid #81d4fa", borderRadius: 12, color: "#0277bd", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
