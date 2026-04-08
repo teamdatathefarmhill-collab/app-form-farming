@@ -34,7 +34,7 @@ const styles = {
   background: "linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.55)), url('/bg-login.jpg') center/cover no-repeat",
   padding: "1.5rem",
   fontFamily: "'Segoe UI', system-ui, sans-serif",
-},,
+},
   card: {
     background: "#fff",
     borderRadius: "20px",
