@@ -236,7 +236,7 @@ export default function Penyiraman() {
                   {loadingRef && <span style={{ fontSize: 10, fontWeight: 400, color: "#aaa", marginLeft: 8 }}>memuat...</span>}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  {GH_PER_TIPE[tipe].map(g => {
+                  {GH_PER_TIPE[tipe].filter(g => refData[g]).map(g => {
                     const info = refData[g];
                     const hst  = info?.hst ?? null;
                     const c    = hstColor(hst);
