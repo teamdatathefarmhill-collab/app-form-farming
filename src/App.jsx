@@ -4,6 +4,7 @@ import HPT from "./pages/HPT";
 import Gramasi from "./pages/Gramasi";
 import Vigor from "./pages/Vigor";
 import KesiapanGH from "./pages/KesiapanGH";
+import Penyiraman from "./pages/Penyiraman";
 import FarmhillLogin from "./components/FarmhillLogin";
 import { useAuth } from "./hooks/useAuth";
 
@@ -14,6 +15,7 @@ const ALL_TABS = [
   { key: "gramasi",  label: "Gramasi",   icon: "⚖️", color: "#1E88E5", component: Gramasi    },
   { key: "vigor",    label: "Vigor",     icon: "🌱", color: "#43A047", component: Vigor      },
   { key: "kesiapan", label: "Kesiapan",  icon: "🏗️", color: "#00897B", component: KesiapanGH },
+  { key: "penyiraman", label: "Penyiraman",  icon: "💧", color: "#00899B", component: Penyiraman },
 ];
 
 export default function App() {
