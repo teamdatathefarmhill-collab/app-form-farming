@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../hooks/useAuth";
 
 const SCRIPT_URL = import.meta.env.VITE_GAS_PENYIRAMAN_URL;
 
-// ─── Data GH ─────────────────────────────────────────────────
-const GH_DATA = {
+// ─── Tipe GH & mapping nama GH statis ────────────────────────
+const GH_PER_TIPE = {
   "Drip/Kolam (Tohudan)": [
     "TOHUDAN 1","TOHUDAN 2","TOHUDAN 3","TOHUDAN 4","TOHUDAN 5","TOHUDAN 6",
     "TOHUDAN 7","TOHUDAN 8","TOHUDAN 9","TOHUDAN 10","TOHUDAN 11","TOHUDAN 12",
@@ -22,11 +22,14 @@ const GH_DATA = {
   ],
 };
 
-const TIPE_LIST = Object.keys(GH_DATA);
+const TIPE_LIST = Object.keys(GH_PER_TIPE);
 
-// ─── Data Varian per Tipe (non-Dutch Bucket) ─────────────────
-// Next: ganti sesuai pemetaan GH real
-const VARIAN_LIST = ["Elysia", "Greeniegal"];
+function hstColor(hst) {
+  if (hst === null) return { bg: "#f5f5f5", text: "#aaa", border: "#e0e0e0" };
+  if (hst <= 21)   return { bg: "#e8f5e9", text: "#2e7d32", border: "#a5d6a7" };
+  if (hst <= 40)   return { bg: "#fff8e1", text: "#f57f17", border: "#ffe082" };
+  return               { bg: "#fbe9e7", text: "#bf360c", border: "#ffab91" };
+}
 
 const isMultiSuhuRH = (gh) => gh === "SAWAHAN 3" || gh === "SAWAHAN 4";
 const isDutchBucket = (tipe) => tipe === "Dutch Bucket";
@@ -79,6 +82,20 @@ export default function Penyiraman() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [isOnline] = useState(navigator.onLine);
+
+  // REF data dari GAS
+  const [refData, setRefData] = useState({});
+  const [loadingRef, setLoadingRef] = useState(true);
+
+  useEffect(() => {
+    fetch(`${SCRIPT_URL}?action=getREF`)
+      .then(r => r.json())
+      .then(json => {
+        if (json.success) setRefData(json.data);
+      })
+      .catch(() => {}) // fallback ke static jika gagal
+      .finally(() => setLoadingRef(false));
+  }, []);
 
   // Field Drip/Kolam
   const [ecIn, setEcIn] = useState("");
@@ -243,22 +260,40 @@ export default function Penyiraman() {
             {/* Pilih GH */}
             {tipe && (
               <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#0277bd", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Nama Greenhouse</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#0277bd", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
+                  Nama Greenhouse
+                  {loadingRef && <span style={{ fontSize: 10, fontWeight: 400, color: "#aaa", marginLeft: 8 }}>memuat data...</span>}
+                </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  {GH_DATA[tipe].map(g => (
-                    <button key={g} onClick={() => { setGh(g); setVarian(""); }}
-                      style={{
-                        padding: "10px 8px", borderRadius: 10, cursor: "pointer", textAlign: "center",
-                        border: gh === g ? "2px solid #0277bd" : "1px solid #e0e0e0",
-                        background: gh === g ? "#e1f5fe" : "#fff",
-                        color: gh === g ? "#0277bd" : "#333",
-                        fontSize: 13, fontWeight: gh === g ? 700 : 500,
-                        transition: "all 0.2s",
-                      }}>
-                      {g}
-                      {gh === g && <div style={{ fontSize: 11, marginTop: 2 }}>✓</div>}
-                    </button>
-                  ))}
+                  {GH_PER_TIPE[tipe].map(g => {
+                    const info = refData[g];
+                    const hst  = info?.hst ?? null;
+                    const c    = hstColor(hst);
+                    const selected = gh === g;
+                    return (
+                      <button key={g} onClick={() => { setGh(g); setVarian(""); }}
+                        style={{
+                          padding: "10px 8px", borderRadius: 10, cursor: "pointer", textAlign: "center",
+                          border: selected ? "2px solid #0277bd" : "1px solid #e0e0e0",
+                          background: selected ? "#e1f5fe" : "#fff",
+                          color: selected ? "#0277bd" : "#333",
+                          fontSize: 13, fontWeight: selected ? 700 : 500,
+                          transition: "all 0.2s",
+                        }}>
+                        <div>{g}</div>
+                        {info?.periode && (
+                          <div style={{ fontSize: 10, color: "#aaa", marginTop: 2 }}>P{info.periode}</div>
+                        )}
+                        {hst !== null && (
+                          <div style={{ marginTop: 4, background: c.bg, border: `1px solid ${c.border}`, borderRadius: 6, padding: "2px 6px", display: "inline-block" }}>
+                            <span style={{ fontSize: 12, fontWeight: 800, color: c.text }}>{hst}</span>
+                            <span style={{ fontSize: 9, color: c.text, marginLeft: 2 }}>HST</span>
+                          </div>
+                        )}
+                        {selected && <div style={{ fontSize: 11, marginTop: 3 }}>✓</div>}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -267,21 +302,25 @@ export default function Penyiraman() {
             {tipe && gh && !isDB && (
               <div style={{ marginBottom: 8 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#0277bd", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Varian</div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {VARIAN_LIST.map(v => (
-                    <button key={v} onClick={() => setVarian(v)}
-                      style={{
-                        padding: "10px 20px", borderRadius: 10, cursor: "pointer",
-                        border: varian === v ? "2px solid #0277bd" : "1px solid #e0e0e0",
-                        background: varian === v ? "#e1f5fe" : "#fff",
-                        color: varian === v ? "#0277bd" : "#333",
-                        fontSize: 14, fontWeight: varian === v ? 700 : 500,
-                        transition: "all 0.2s",
-                      }}>
-                      {v} {varian === v && "✓"}
-                    </button>
-                  ))}
-                </div>
+                {loadingRef ? (
+                  <div style={{ fontSize: 12, color: "#aaa" }}>Memuat varian...</div>
+                ) : (
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {(refData[gh]?.varian?.length > 0 ? refData[gh].varian : ["Elysia", "Greeniegal"]).map(v => (
+                      <button key={v} onClick={() => setVarian(v)}
+                        style={{
+                          padding: "10px 20px", borderRadius: 10, cursor: "pointer",
+                          border: varian === v ? "2px solid #0277bd" : "1px solid #e0e0e0",
+                          background: varian === v ? "#e1f5fe" : "#fff",
+                          color: varian === v ? "#0277bd" : "#333",
+                          fontSize: 14, fontWeight: varian === v ? 700 : 500,
+                          transition: "all 0.2s",
+                        }}>
+                        {v} {varian === v && "✓"}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
