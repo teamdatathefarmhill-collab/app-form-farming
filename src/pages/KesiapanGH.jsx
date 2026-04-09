@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 
@@ -324,9 +324,11 @@ export default function KesiapanGH() {
   const [scores, setScores]       = useState({});
   const [activeAspek, setActiveAspek] = useState("");
   const [submitting, setSubmitting]   = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [savedOffline, setSavedOffline] = useState(false);
   const [isOnline, setIsOnline]   = useState(navigator.onLine);
+  const rekapRef = useRef(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [isSyncingPending, setIsSyncingPending] = useState(false);
   const [submittedToday, setSubmittedToday] = useState(getSubmittedToday);
@@ -412,7 +414,27 @@ export default function KesiapanGH() {
     return payload;
   };
 
-  const handleSubmit = async () => {
+  const handleDownloadPNG = async () => {
+    if (!rekapRef.current) return;
+    setDownloading(true);
+    try {
+      const html2canvas = (await import("https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.esm.js")).default;
+      const canvas = await html2canvas(rekapRef.current, {
+        backgroundColor: "#f5f5f5",
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+      const link = document.createElement("a");
+      link.download = `Kesiapan_${tipe.replace(/\s/g,"_")}_${gh.replace(/\s/g,"_")}_${todayISO.replace(/\//g,"-")}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch (err) {
+      console.error("Download error:", err);
+    } finally {
+      setDownloading(false);
+    }
+  };
     setSubmitting(true);
     setSubmitError(null);
     const payload = buildPayload();
@@ -636,7 +658,19 @@ export default function KesiapanGH() {
             <div style={{ fontWeight: 700, fontSize: 18, color: "#004D40", marginBottom: 4 }}>Rekap Sebelum Submit</div>
             <div style={{ fontSize: 12, color: "#888", marginBottom: 16 }}>Pastikan semua data sudah benar</div>
 
-            <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 12 }}>
+            {/* Konten yang akan di-screenshot */}
+            <div ref={rekapRef} style={{ background: "#f5f5f5", padding: 8, borderRadius: 14 }}>
+
+              {/* Header laporan */}
+              <div style={{ background: "#004D40", borderRadius: 10, padding: "12px 16px", marginBottom: 10, display: "flex", alignItems: "center", gap: 12 }}>
+                <img src="/logo-farmhill.png" alt="Farmhill" style={{ height: 36, borderRadius: 6, background: "#fff", padding: "2px 6px" }} />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>Laporan Kesiapan Greenhouse</div>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.65)" }}>PT. Kebun Bumi Lestari · {todayLabel}</div>
+                </div>
+              </div>
+
+            <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 10 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>📋 Informasi Umum</div>
               {[["Tanggal", todayISO], ["Operator", user?.nama], ["Tipe GH", tipe], ["Greenhouse", gh]].map(([l, v]) => (
                 <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #f0f0f0" }}>
@@ -646,7 +680,7 @@ export default function KesiapanGH() {
               ))}
             </div>
 
-            <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 12 }}>
+            <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 10 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>📊 Rekap Per Aspek</div>
               {aspekList.map(a => {
                 const { bobot, max, pct, warna } = statusAspek(a, scores);
@@ -663,7 +697,7 @@ export default function KesiapanGH() {
                       </span>
                     </div>
                     <div style={{ background: "#e0e0e0", borderRadius: 3, height: 4, overflow: "hidden" }}>
-                      <div style={{ height: "100%", borderRadius: 3, background: warna, width: `${pct}%`, transition: "width 0.3s" }} />
+                      <div style={{ height: "100%", borderRadius: 3, background: warna, width: `${pct}%` }} />
                     </div>
                   </div>
                 );
@@ -676,6 +710,14 @@ export default function KesiapanGH() {
                 </div>
               </div>
             </div>
+
+            </div>{/* end rekapRef */}
+
+            {/* Tombol download PNG */}
+            <button onClick={handleDownloadPNG} disabled={downloading}
+              style={{ width: "100%", padding: 12, marginBottom: 10, border: "1.5px solid #00897B", borderRadius: 12, background: downloading ? "#e0e0e0" : "#e0f2f1", color: downloading ? "#aaa" : "#004D40", fontSize: 14, fontWeight: 700, cursor: downloading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              {downloading ? "⏳ Menyimpan..." : "📥 Download Laporan PNG"}
+            </button>
 
             {submitError && (
               <div style={{ fontSize: 12, color: "#c62828", background: "#ffebee", border: "1px solid #ef9a9a", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>⚠️ {submitError}</div>
