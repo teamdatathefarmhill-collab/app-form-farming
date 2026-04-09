@@ -102,15 +102,16 @@ const MATRIKS = {
     {
       key: "inst_input", label: "Instalasi Input", bobotAspek: 40,
       items: [
-        { code: "DR_II1", label: "Tekanan air yang mengalir sesuai standar (1.2 bar)", bobotVariabel: 5  },
-        { code: "DR_II2", label: "Stop kran PE 16 mm berfungsi normal",                bobotVariabel: 5  },
-        { code: "DR_II3", label: "Tidak ada kebocoran stop kran PE 16 mm",             bobotVariabel: 5  },
-        { code: "DR_II4", label: "Tidak ada kebocoran selang PE 16 mm",                bobotVariabel: 10 },
-        { code: "DR_II5", label: "Tekanan air pada pipa PE 16 mm sesuai (≥ 0.3 bar)", bobotVariabel: 10 },
-        { code: "DR_II6", label: "Seluruh PCJ berfungsi normal (4 L/H)",               bobotVariabel: 15 },
-        { code: "DR_II7", label: "Selang PE 5 mm berfungsi normal",                    bobotVariabel: 10 },
-        { code: "DR_II8", label: "Dripper berfungsi normal",                            bobotVariabel: 15 },
-        { code: "DR_II9", label: "Debit air dripper rata (toleransi 10 ml)",            bobotVariabel: 15 },
+        { code: "DR_II0",  label: "Tidak ada sumbatan dan kebocoran pipa input",        bobotVariabel: 10 },
+        { code: "DR_II1",  label: "Tekanan air yang mengalir sesuai standar (1.2 bar)", bobotVariabel: 5  },
+        { code: "DR_II2",  label: "Stop kran PE 16 mm berfungsi normal",                bobotVariabel: 5  },
+        { code: "DR_II3",  label: "Tidak ada kebocoran stop kran PE 16 mm",             bobotVariabel: 5  },
+        { code: "DR_II4",  label: "Tidak ada kebocoran selang PE 16 mm",                bobotVariabel: 10 },
+        { code: "DR_II5",  label: "Tekanan air pada pipa PE 16 mm sesuai (≥ 0.3 bar)", bobotVariabel: 10 },
+        { code: "DR_II6",  label: "Seluruh PCJ berfungsi normal (4 L/H)",               bobotVariabel: 15 },
+        { code: "DR_II7",  label: "Selang PE 5 mm berfungsi normal",                    bobotVariabel: 10 },
+        { code: "DR_II8",  label: "Dripper berfungsi normal",                            bobotVariabel: 15 },
+        { code: "DR_II9",  label: "Debit air dripper rata (toleransi 10 ml)",            bobotVariabel: 15 },
       ],
     },
     {
@@ -179,15 +180,16 @@ const MATRIKS = {
     {
       key: "inst_gh", label: "Instalasi Greenhouse", bobotAspek: 25,
       items: [
-        { code: "P1_IG1", label: "Weedmat dalam kondisi baik",             bobotVariabel: 10 },
-        { code: "P1_IG2", label: "Jumlah tali rambat sesuai kebutuhan",    bobotVariabel: 10 },
-        { code: "P1_IG3", label: "Kawat seling dalam kondisi baik",        bobotVariabel: 15 },
-        { code: "P1_IG4", label: "Termohigrometer berfungsi normal",       bobotVariabel: 10 },
+        { code: "P1_IG0", label: "Bangunan GH dalam kondisi baik",            bobotVariabel: 15 },
+        { code: "P1_IG01", label: "Plastik UV & insectnet dalam kondisi baik", bobotVariabel: 20 },
+        { code: "P1_IG02", label: "Tidak ada kebocoran talang",                bobotVariabel: 20 },
+        { code: "P1_IG1", label: "Weedmat dalam kondisi baik",                bobotVariabel: 10 },
+        { code: "P1_IG2", label: "Jumlah tali rambat sesuai kebutuhan",       bobotVariabel: 10 },
+        { code: "P1_IG3", label: "Kawat seling dalam kondisi baik",           bobotVariabel: 15 },
+        { code: "P1_IG4", label: "Termohigrometer berfungsi normal",          bobotVariabel: 10 },
       ],
     },
   ],
-
-  "Kolam P2": [
     {
       key: "tandon_air_baku", label: "Tandon Air Baku", bobotAspek: 10,
       items: [
@@ -596,58 +598,28 @@ export default function KesiapanGH() {
             {/* Item penilaian */}
             {activeAspekData && (
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
-                  {activeAspekData.label} · bobot aspek {activeAspekData.bobotAspek}
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
+                  {activeAspekData.label}
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   {activeAspekData.items.map(item => {
                     const val = scores[item.code];
                     return (
-                      <div key={item.code} style={{ background: "#fff", border: `1.5px solid ${val === "notgood" ? "#ef9a9a" : val === "good" ? "#a5d6a7" : "#e0e0e0"}`, borderRadius: 12, padding: "12px 14px" }}>
-                        <div style={{ fontSize: 13, color: "#333", fontWeight: 500, marginBottom: 8 }}>{item.label}</div>
-                        <div style={{ display: "flex", gap: 8 }}>
+                      <div key={item.code} style={{ background: "#fff", border: `1.5px solid ${val === "notgood" ? "#ef9a9a" : val === "good" ? "#a5d6a7" : "#e0e0e0"}`, borderRadius: 12, padding: "10px 12px" }}>
+                        <div style={{ fontSize: 12, color: "#333", fontWeight: 500, marginBottom: 8, minHeight: 32, display: "flex", alignItems: "center" }}>{item.label}</div>
+                        <div style={{ display: "flex", gap: 6 }}>
                           <button onClick={() => setScore(item.code, "good")}
-                            style={{ flex: 1, padding: "9px 8px", borderRadius: 9, border: `1.5px solid ${val === "good" ? "#a5d6a7" : "#e0e0e0"}`, background: val === "good" ? "#e8f5e9" : "#fafafa", color: val === "good" ? "#2e7d32" : "#aaa", fontSize: 13, fontWeight: 700, cursor: "pointer", transition: "all .15s" }}>
-                            Good · 0
+                            style={{ flex: 1, padding: "8px 4px", borderRadius: 8, border: `1.5px solid ${val === "good" ? "#a5d6a7" : "#e0e0e0"}`, background: val === "good" ? "#e8f5e9" : "#fafafa", color: val === "good" ? "#2e7d32" : "#aaa", fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all .15s" }}>
+                            Good
                           </button>
                           <button onClick={() => setScore(item.code, "notgood")}
-                            style={{ flex: 1, padding: "9px 8px", borderRadius: 9, border: `1.5px solid ${val === "notgood" ? "#ef9a9a" : "#e0e0e0"}`, background: val === "notgood" ? "#ffebee" : "#fafafa", color: val === "notgood" ? "#c62828" : "#aaa", fontSize: 13, fontWeight: 700, cursor: "pointer", transition: "all .15s" }}>
-                            Not Good · 4
+                            style={{ flex: 1, padding: "8px 4px", borderRadius: 8, border: `1.5px solid ${val === "notgood" ? "#ef9a9a" : "#e0e0e0"}`, background: val === "notgood" ? "#ffebee" : "#fafafa", color: val === "notgood" ? "#c62828" : "#aaa", fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all .15s" }}>
+                            Not Good
                           </button>
                         </div>
-                        <div style={{ fontSize: 10, color: "#aaa", marginTop: 6 }}>bobot variabel: {item.bobotVariabel}</div>
                       </div>
                     );
                   })}
-                </div>
-
-                {/* Ringkasan skor aspek aktif */}
-                <div style={{ marginTop: 14, background: "#fff", border: "1.5px solid #e0e0e0", borderRadius: 12, padding: 14 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Ringkasan</div>
-                  {aspekList.map(a => {
-                    const { bobot, max, pct, warna } = statusAspek(a, scores);
-                    return (
-                      <div key={a.key} style={{ padding: "7px 0", borderBottom: "1px solid #f0f0f0" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-                          <span style={{ fontSize: 12, color: "#555" }}>{a.label}</span>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: warna, fontFamily: "monospace" }}>
-                            {bobot.toFixed(2)} / {max.toFixed(2)}
-                            <span style={{ fontSize: 10, marginLeft: 4, color: warna }}>({pct}%)</span>
-                          </span>
-                        </div>
-                        <div style={{ background: "#e0e0e0", borderRadius: 3, height: 4, overflow: "hidden" }}>
-                          <div style={{ height: "100%", borderRadius: 3, background: warna, width: `${pct}%`, transition: "width 0.3s" }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 10, marginTop: 4 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#333" }}>Total bobot terpenuhi</span>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 16, fontWeight: 800, color: status.warna, fontFamily: "monospace" }}>{totalBobot.toFixed(2)} / {maxTotal.toFixed(2)} <span style={{ fontSize: 12 }}>({totalPct}%)</span></span>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: status.warna, background: status.bg, border: `1px solid ${status.border}`, borderRadius: 20, padding: "2px 8px" }}>{status.label}</span>
-                    </div>
-                  </div>
                 </div>
               </div>
             )}
@@ -672,46 +644,50 @@ export default function KesiapanGH() {
                 </div>
               </div>
 
-            <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 10 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>📋 Informasi Umum</div>
-              {[["Tanggal", todayISO], ["Operator", user?.nama], ["Tipe GH", tipe], ["Greenhouse", gh]].map(([l, v]) => (
-                <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #f0f0f0" }}>
-                  <span style={{ fontSize: 12, color: "#666" }}>{l}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "#333" }}>{v}</span>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 10 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>📊 Rekap Per Aspek</div>
-              {aspekList.map(a => {
-                const { bobot, max, pct, warna } = statusAspek(a, scores);
-                return (
-                  <div key={a.key} style={{ padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                      <div>
-                        <div style={{ fontSize: 12, color: "#333", fontWeight: 500 }}>{a.label}</div>
-                        <div style={{ fontSize: 10, color: "#aaa" }}>bobot aspek {a.bobotAspek}</div>
-                      </div>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: warna, fontFamily: "monospace" }}>
-                        {bobot.toFixed(2)} / {max.toFixed(2)}
-                        <span style={{ fontSize: 10, marginLeft: 4 }}>({pct}%)</span>
-                      </span>
-                    </div>
-                    <div style={{ background: "#e0e0e0", borderRadius: 3, height: 4, overflow: "hidden" }}>
-                      <div style={{ height: "100%", borderRadius: 3, background: warna, width: `${pct}%` }} />
-                    </div>
+              {/* Info umum */}
+              <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>📋 Informasi Umum</div>
+                {[["Tanggal", todayISO], ["Operator", user?.nama], ["Tipe GH", tipe], ["Greenhouse", gh]].map(([l, v]) => (
+                  <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #f0f0f0" }}>
+                    <span style={{ fontSize: 12, color: "#666" }}>{l}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#333" }}>{v}</span>
                   </div>
-                );
-              })}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 12, marginTop: 4 }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: "#333" }}>Total bobot terpenuhi</span>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 18, fontWeight: 800, color: status.warna, fontFamily: "monospace" }}>{totalBobot.toFixed(2)} / {maxTotal.toFixed(2)} <span style={{ fontSize: 12 }}>({totalPct}%)</span></span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: status.warna, background: status.bg, border: `1px solid ${status.border}`, borderRadius: 20, padding: "3px 10px" }}>{status.label}</span>
+                ))}
+              </div>
+
+              {/* Rekap per aspek — hanya Good/Not Good count, tanpa bobot */}
+              <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>📋 Rekap Per Aspek</div>
+                {aspekList.map(a => {
+                  const goodCount    = a.items.filter(i => scores[i.code] === "good").length;
+                  const notGoodCount = a.items.filter(i => scores[i.code] === "notgood").length;
+                  return (
+                    <div key={a.key} style={{ padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 12, color: "#333", fontWeight: 500 }}>{a.label}</span>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, background: "#e8f5e9", color: "#2e7d32", border: "1px solid #a5d6a7", borderRadius: 20, padding: "2px 10px" }}>✓ {goodCount} Good</span>
+                          {notGoodCount > 0 && (
+                            <span style={{ fontSize: 11, fontWeight: 700, background: "#ffebee", color: "#c62828", border: "1px solid #ef9a9a", borderRadius: 20, padding: "2px 10px" }}>✗ {notGoodCount} Not Good</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {/* Total simpel */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 10, marginTop: 4 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#333" }}>Total</span>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, background: "#e8f5e9", color: "#2e7d32", border: "1px solid #a5d6a7", borderRadius: 20, padding: "3px 12px" }}>
+                      ✓ {allItems.filter(i => scores[i.code] === "good").length} Good
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 700, background: "#ffebee", color: "#c62828", border: "1px solid #ef9a9a", borderRadius: 20, padding: "3px 12px" }}>
+                      ✗ {allItems.filter(i => scores[i.code] === "notgood").length} Not Good
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
 
             </div>{/* end rekapRef */}
 
@@ -740,20 +716,13 @@ export default function KesiapanGH() {
             <div style={{ background: savedOffline ? "#e3f2fd" : "#e0f2f1", border: `1px solid ${savedOffline ? "#90CAF9" : "#80CBC4"}`, borderRadius: 14, padding: 16, textAlign: "left", marginBottom: 20 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "#004D40" }}>{tipe} · {gh}</div>
               <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>Operator: {user?.nama} · {todayISO}</div>
-              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(0,0,0,0.06)" }}>
-                {aspekList.map(a => {
-                  const { bobot, max, pct, warna } = statusAspek(a, scores);
-                  return (
-                    <div key={a.key} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "3px 0" }}>
-                      <span style={{ color: "#666" }}>{a.label}</span>
-                      <span style={{ fontWeight: 700, color: warna, fontFamily: "monospace" }}>{bobot.toFixed(2)} / {max.toFixed(2)} ({pct}%)</span>
-                    </div>
-                  );
-                })}
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700, paddingTop: 8, marginTop: 4, borderTop: "1px solid rgba(0,0,0,0.06)" }}>
-                  <span>Total</span>
-                  <span style={{ color: status.warna }}>{totalBobot.toFixed(2)} / {maxTotal.toFixed(2)} ({totalPct}%) — {status.label}</span>
-                </div>
+              <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(0,0,0,0.06)", display: "flex", gap: 10, justifyContent: "center" }}>
+                <span style={{ fontSize: 13, fontWeight: 700, background: "#e8f5e9", color: "#2e7d32", border: "1px solid #a5d6a7", borderRadius: 20, padding: "4px 14px" }}>
+                  ✓ {allItems.filter(i => scores[i.code] === "good").length} Good
+                </span>
+                <span style={{ fontSize: 13, fontWeight: 700, background: "#ffebee", color: "#c62828", border: "1px solid #ef9a9a", borderRadius: 20, padding: "4px 14px" }}>
+                  ✗ {allItems.filter(i => scores[i.code] === "notgood").length} Not Good
+                </span>
               </div>
             </div>
             <button onClick={resetForm} style={{ width: "100%", padding: 15, background: "#e0f2f1", border: "2px solid #80CBC4", borderRadius: 12, color: "#004D40", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
