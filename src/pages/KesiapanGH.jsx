@@ -578,19 +578,28 @@ export default function KesiapanGH() {
                 <div style={{ marginTop: 14, background: "#fff", border: "1.5px solid #e0e0e0", borderRadius: 12, padding: 14 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Ringkasan</div>
                   {aspekList.map(a => {
-                    const b = hitungBobotAspek(a, scores);
-                    const s = statusDariBobot(b);
+                    const b   = hitungBobotAspek(a, scores);
+                    const pct = a.bobotAspek > 0 ? Math.round((b / a.bobotAspek) * 100) : 0;
+                    const s   = statusDariBobot(b);
                     return (
-                      <div key={a.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: "1px solid #f0f0f0" }}>
-                        <span style={{ fontSize: 12, color: "#555" }}>{a.label}</span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: s.warna, fontFamily: "monospace" }}>{b.toFixed(2)}</span>
+                      <div key={a.key} style={{ padding: "7px 0", borderBottom: "1px solid #f0f0f0" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+                          <span style={{ fontSize: 12, color: "#555" }}>{a.label}</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: s.warna, fontFamily: "monospace" }}>
+                            {b.toFixed(2)} / {a.bobotAspek}
+                            <span style={{ fontSize: 10, marginLeft: 4, color: s.warna }}>({pct}%)</span>
+                          </span>
+                        </div>
+                        <div style={{ background: "#e0e0e0", borderRadius: 3, height: 4, overflow: "hidden" }}>
+                          <div style={{ height: "100%", borderRadius: 3, background: s.warna, width: `${pct}%`, transition: "width 0.3s" }} />
+                        </div>
                       </div>
                     );
                   })}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 10, marginTop: 4 }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: "#333" }}>Total bobot terlampaui</span>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 16, fontWeight: 800, color: status.warna, fontFamily: "monospace" }}>{totalBobot.toFixed(2)}</span>
+                      <span style={{ fontSize: 16, fontWeight: 800, color: status.warna, fontFamily: "monospace" }}>{totalBobot.toFixed(2)} / 100</span>
                       <span style={{ fontSize: 10, fontWeight: 700, color: status.warna, background: status.bg, border: `1px solid ${status.border}`, borderRadius: 20, padding: "2px 8px" }}>{status.label}</span>
                     </div>
                   </div>
@@ -619,15 +628,24 @@ export default function KesiapanGH() {
             <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 12 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>📊 Rekap Per Aspek</div>
               {aspekList.map(a => {
-                const b = hitungBobotAspek(a, scores);
-                const s = statusDariBobot(b);
+                const b   = hitungBobotAspek(a, scores);
+                const pct = a.bobotAspek > 0 ? Math.round((b / a.bobotAspek) * 100) : 0;
+                const s   = statusDariBobot(b);
                 return (
-                  <div key={a.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: "1px solid #f0f0f0" }}>
-                    <div>
-                      <div style={{ fontSize: 12, color: "#333", fontWeight: 500 }}>{a.label}</div>
-                      <div style={{ fontSize: 10, color: "#aaa" }}>bobot aspek {a.bobotAspek}</div>
+                  <div key={a.key} style={{ padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                      <div>
+                        <div style={{ fontSize: 12, color: "#333", fontWeight: 500 }}>{a.label}</div>
+                        <div style={{ fontSize: 10, color: "#aaa" }}>bobot aspek {a.bobotAspek}</div>
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: s.warna, fontFamily: "monospace" }}>
+                        {b.toFixed(2)} / {a.bobotAspek}
+                        <span style={{ fontSize: 10, marginLeft: 4 }}>({pct}%)</span>
+                      </span>
                     </div>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: s.warna, fontFamily: "monospace" }}>{b.toFixed(2)}</span>
+                    <div style={{ background: "#e0e0e0", borderRadius: 3, height: 4, overflow: "hidden" }}>
+                      <div style={{ height: "100%", borderRadius: 3, background: s.warna, width: `${pct}%`, transition: "width 0.3s" }} />
+                    </div>
                   </div>
                 );
               })}
