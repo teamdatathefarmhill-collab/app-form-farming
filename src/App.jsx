@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Sanitasi from "./pages/Sanitasi";
 import HPT from "./pages/HPT";
 import Gramasi from "./pages/Gramasi";
@@ -8,19 +8,40 @@ import Penyiraman from "./pages/Penyiraman";
 import FarmhillLogin from "./components/FarmhillLogin";
 import { useAuth } from "./hooks/useAuth";
 
-// Tambah "vigor" dan "kesiapan" — akses dikontrol lewat kolom di Google Sheet operator
-const ALL_TABS = [
-  { key: "sanitasi", label: "Sanitasi",  icon: "🌿", color: "#4CAF50", component: Sanitasi   },
-  { key: "hpt",      label: "HPT",       icon: "🐛", color: "#FF7043", component: HPT        },
-  { key: "gramasi",  label: "Gramasi",   icon: "⚖️", color: "#1E88E5", component: Gramasi    },
-  { key: "vigor",    label: "Vigor",     icon: "🌱", color: "#43A047", component: Vigor      },
-  { key: "kesiapan", label: "Kesiapan",  icon: "🏗️", color: "#00897B", component: KesiapanGH },
-  { key: "penyiraman", label: "Penyiraman",  icon: "💧", color: "#00899B", component: Penyiraman },
+// Sub-menu HPT — key harus match kolom di REF OPERATOR
+const HPT_SUBMENU = [
+  { key: "so",           label: "SO",           icon: "📋" },
+  { key: "penyemprotan", label: "Penyemprotan", icon: "💦" },
+  { key: "sanitasi",     label: "Sanitasi",     icon: "🌿", component: Sanitasi  },
+  { key: "hpt",          label: "HPT",          icon: "🐛", component: HPT       },
 ];
+
+// Menu standalone (bukan bagian HPT)
+const STANDALONE_TABS = [
+  { key: "gramasi",    label: "Gramasi",    icon: "⚖️",  color: "#1E88E5", component: Gramasi    },
+  { key: "penyiraman", label: "Penyiraman", icon: "💧",  color: "#0277bd", component: Penyiraman },
+  { key: "vigor",      label: "Vigor",      icon: "🌱",  color: "#43A047", component: Vigor      },
+  { key: "kesiapan",   label: "Kesiapan",   icon: "🏗️",  color: "#00897B", component: KesiapanGH },
+];
+
+const HPT_COLOR = "#FF7043";
 
 export default function App() {
   const { user, login, logout, isLoggedIn } = useAuth();
-  const [activeTab, setActiveTab] = useState(null);
+  const [activeTab, setActiveTab]     = useState(null);
+  const [hptOpen, setHptOpen]         = useState(false);
+  const hptRef                        = useRef(null);
+
+  // Tutup dropdown HPT saat klik di luar
+  useEffect(() => {
+    const handler = (e) => {
+      if (hptRef.current && !hptRef.current.contains(e.target)) {
+        setHptOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   if (!isLoggedIn) {
     return (
@@ -30,15 +51,35 @@ export default function App() {
     );
   }
 
-  // Filter tab sesuai akses user (YES/NO dari Google Sheet)
-  const TABS = ALL_TABS.filter(
-    (t) => user[t.key]?.toUpperCase() === "YES"
+  // Filter submenu HPT yang punya akses
+  const accessibleHPT = HPT_SUBMENU.filter(
+    t => user[t.key]?.toUpperCase() === "YES"
   );
 
-  const currentTab = TABS.find((t) => t.key === activeTab) ?? TABS[0];
-  const ActivePage = currentTab?.component;
+  // Filter standalone tabs yang punya akses
+  const accessibleStandalone = STANDALONE_TABS.filter(
+    t => user[t.key]?.toUpperCase() === "YES"
+  );
 
-  if (TABS.length === 0) {
+  const hasHPTAccess = accessibleHPT.length > 0;
+
+  // Semua tab yang bisa diakses (untuk cek apakah ada akses sama sekali)
+  const totalAccess = accessibleHPT.length + accessibleStandalone.length;
+
+  // Cari komponen aktif
+  const activeHPTItem       = accessibleHPT.find(t => t.key === activeTab);
+  const activeStandaloneItem = accessibleStandalone.find(t => t.key === activeTab);
+  const activeItem          = activeHPTItem || activeStandaloneItem;
+
+  // Default ke tab pertama yang tersedia
+  const defaultTab = accessibleHPT[0]?.key ?? accessibleStandalone[0]?.key ?? null;
+  const resolvedTab = activeTab ?? defaultTab;
+  const resolvedHPT = accessibleHPT.find(t => t.key === resolvedTab);
+  const resolvedStandalone = accessibleStandalone.find(t => t.key === resolvedTab);
+  const ActivePage = resolvedHPT?.component ?? resolvedStandalone?.component ?? null;
+  const isHPTActive = accessibleHPT.some(t => t.key === resolvedTab);
+
+  if (totalAccess === 0) {
     return (
       <div style={{
         minHeight: "100vh", background: "#0a1a0f",
@@ -57,6 +98,15 @@ export default function App() {
       </div>
     );
   }
+
+  // Halaman placeholder untuk SO dan Penyemprotan yang belum ada form
+  const PlaceholderPage = ({ label }) => (
+    <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12, padding: 32 }}>
+      <span style={{ fontSize: 48 }}>🚧</span>
+      <div style={{ fontSize: 16, fontWeight: 700, color: "#333" }}>Form {label}</div>
+      <div style={{ fontSize: 13, color: "#888", textAlign: "center" }}>Sedang dalam pengembangan</div>
+    </div>
+  );
 
   return (
     <div style={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", position: "relative" }}>
@@ -84,7 +134,7 @@ export default function App() {
 
       {/* Halaman aktif */}
       <div style={{ flex: 1, paddingTop: 48, paddingBottom: 64, width: "100%" }}>
-        {ActivePage && <ActivePage />}
+        {ActivePage ? <ActivePage /> : <PlaceholderPage label={resolvedHPT?.label ?? ""} />}
       </div>
 
       {/* Bottom Tab Navigation */}
@@ -94,12 +144,76 @@ export default function App() {
         borderTop: "1px solid rgba(255,255,255,0.1)",
         display: "flex", zIndex: 100,
         backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-        overflowX: "auto",
       }}>
-        {TABS.map((tab) => {
-          const isActive = currentTab?.key === tab.key;
+
+        {/* HPT Dropdown (jika ada akses) */}
+        {hasHPTAccess && (
+          <div ref={hptRef} style={{ flex: 1, position: "relative" }}>
+
+            {/* Dropdown menu — muncul ke atas */}
+            {hptOpen && (
+              <div style={{
+                position: "absolute", bottom: "100%", left: 0, right: 0,
+                background: "rgba(10,20,15,0.98)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderBottom: "none",
+                borderRadius: "12px 12px 0 0",
+                overflow: "hidden",
+              }}>
+                {accessibleHPT.map(item => {
+                  const isActive = resolvedTab === item.key;
+                  return (
+                    <button key={item.key} onClick={() => { setActiveTab(item.key); setHptOpen(false); }}
+                      style={{
+                        width: "100%", padding: "12px 16px",
+                        background: isActive ? "rgba(255,112,67,0.15)" : "transparent",
+                        border: "none", borderBottom: "1px solid rgba(255,255,255,0.06)",
+                        color: isActive ? HPT_COLOR : "rgba(255,255,255,0.7)",
+                        fontSize: 13, fontWeight: isActive ? 700 : 500,
+                        cursor: "pointer", textAlign: "left",
+                        display: "flex", alignItems: "center", gap: 10,
+                      }}>
+                      <span style={{ fontSize: 16 }}>{item.icon}</span>
+                      <span>{item.label}</span>
+                      {isActive && <span style={{ marginLeft: "auto", fontSize: 11, color: HPT_COLOR }}>●</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* HPT Tab Button */}
+            <button onClick={() => {
+                if (accessibleHPT.length === 1) {
+                  setActiveTab(accessibleHPT[0].key);
+                } else {
+                  setHptOpen(o => !o);
+                }
+              }}
+              style={{
+                width: "100%", padding: "10px 4px 14px",
+                background: "transparent", border: "none", cursor: "pointer",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                borderTop: isHPTActive ? `2px solid ${HPT_COLOR}` : "2px solid transparent",
+              }}>
+              <span style={{ fontSize: 20, lineHeight: 1 }}>🐛</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                <span style={{ fontSize: 10, fontWeight: isHPTActive ? 700 : 500, color: isHPTActive ? HPT_COLOR : "rgba(255,255,255,0.35)", letterSpacing: 0.5, whiteSpace: "nowrap" }}>
+                  {accessibleHPT.length === 1 ? accessibleHPT[0].label : (resolvedHPT?.label ?? "HPT")}
+                </span>
+                {accessibleHPT.length > 1 && (
+                  <span style={{ fontSize: 8, color: isHPTActive ? HPT_COLOR : "rgba(255,255,255,0.35)", transition: "transform 0.2s", display: "inline-block", transform: hptOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▲</span>
+                )}
+              </div>
+            </button>
+          </div>
+        )}
+
+        {/* Standalone tabs */}
+        {accessibleStandalone.map((tab) => {
+          const isActive = resolvedTab === tab.key;
           return (
-            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+            <button key={tab.key} onClick={() => { setActiveTab(tab.key); setHptOpen(false); }}
               style={{
                 flex: 1, minWidth: 60, padding: "10px 4px 14px",
                 background: "transparent", border: "none", cursor: "pointer",
@@ -108,7 +222,7 @@ export default function App() {
                 borderTop: isActive ? `2px solid ${tab.color}` : "2px solid transparent",
               }}>
               <span style={{ fontSize: 20, lineHeight: 1 }}>{tab.icon}</span>
-              <span style={{ fontSize: 10, fontWeight: isActive ? 700 : 500, color: isActive ? tab.color : "rgba(255,255,255,0.35)", letterSpacing: 0.5, transition: "color 0.2s", whiteSpace: "nowrap" }}>
+              <span style={{ fontSize: 10, fontWeight: isActive ? 700 : 500, color: isActive ? tab.color : "rgba(255,255,255,0.35)", letterSpacing: 0.5, whiteSpace: "nowrap" }}>
                 {tab.label}
               </span>
             </button>
