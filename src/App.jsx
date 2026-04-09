@@ -71,8 +71,8 @@ export default function App() {
   const activeStandaloneItem = accessibleStandalone.find(t => t.key === activeTab);
   const activeItem          = activeHPTItem || activeStandaloneItem;
 
-  // Default ke tab pertama yang tersedia
-  const defaultTab = accessibleHPT[0]?.key ?? accessibleStandalone[0]?.key ?? null;
+  // Default ke tab pertama standalone jika ada, atau HPT submenu pertama
+  const defaultTab = accessibleStandalone[0]?.key ?? accessibleHPT[0]?.key ?? null;
   const resolvedTab = activeTab ?? defaultTab;
   const resolvedHPT = accessibleHPT.find(t => t.key === resolvedTab);
   const resolvedStandalone = accessibleStandalone.find(t => t.key === resolvedTab);
@@ -199,7 +199,7 @@ export default function App() {
               <span style={{ fontSize: 20, lineHeight: 1 }}>🐛</span>
               <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
                 <span style={{ fontSize: 10, fontWeight: isHPTActive ? 700 : 500, color: isHPTActive ? HPT_COLOR : "rgba(255,255,255,0.35)", letterSpacing: 0.5, whiteSpace: "nowrap" }}>
-                  {accessibleHPT.length === 1 ? accessibleHPT[0].label : (resolvedHPT?.label ?? "HPT")}
+                  {accessibleHPT.length === 1 ? accessibleHPT[0].label : "HPT"}
                 </span>
                 {accessibleHPT.length > 1 && (
                   <span style={{ fontSize: 8, color: isHPTActive ? HPT_COLOR : "rgba(255,255,255,0.35)", transition: "transform 0.2s", display: "inline-block", transform: hptOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▲</span>
