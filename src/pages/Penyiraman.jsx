@@ -7,7 +7,7 @@ const GH_PER_TIPE = {
   "Drip/Kolam (Tohudan)": [
     "TOHUDAN 1","TOHUDAN 2","TOHUDAN 3","TOHUDAN 4","TOHUDAN 5","TOHUDAN 6",
     "TOHUDAN 7","TOHUDAN 8","TOHUDAN 9","TOHUDAN 10","TOHUDAN 11","TOHUDAN 12",
-    "COLOMADU 1","COLOMADU 2","COLOMADU 3","COLOMADU 4",
+    "COLOMADU 1","COLOMADU 2","COLOMADU 3","COLOMADU 4","TOHUDAN 13","TOHUDAN 14"
   ],
   "Drip (Bergas)": [
     "BERGAS 1","BERGAS 2","BERGAS 3","BERGAS 4","BERGAS 5","BERGAS 7","BERGAS 8",
@@ -16,7 +16,7 @@ const GH_PER_TIPE = {
     "SAWAHAN 1","SAWAHAN 2","SAWAHAN 3","SAWAHAN 4",
   ],
   "Dutch Bucket": [
-    "TOHUDAN 13","TOHUDAN 14","TOHUDAN 15","TOHUDAN 16","TOHUDAN 17",
+    "TOHUDAN 15","TOHUDAN 16","TOHUDAN 17",
     "TOHUDAN 18","TOHUDAN 19","TOHUDAN 20","TOHUDAN 21",
   ],
 };
@@ -303,52 +303,49 @@ export default function Penyiraman() {
             )}
 
             {/* Multi varian */}
-            {!isDB && varianList.map(v => {
+            {!isDB && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {varianList.map(v => {
               const d  = varianData[v] || initVarianData();
               const ok = d.ecIn && d.ecOut && d.phIn && d.phOut && d.volume && d.volNutrisi &&
                          (multiSuhuRH ? (d.suhuArr.every(x=>x!=="") && d.rhArr.every(x=>x!=="")) : (d.suhu && d.rh));
               return (
-                <div key={v} style={{ background: "#fff", borderRadius: 12, border: `1.5px solid ${ok ? "#a5d6a7" : "#e0e0e0"}`, marginBottom: 10, overflow: "hidden" }}>
-                  <div style={{ background: ok ? "#f1f8e9" : "#fafafa", padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: ok ? "#2e7d32" : "#0277bd" }}>🌱 {v}</span>
-                      {ok && <span>✅</span>}
-                    </div>
-                    {!ok && <span style={{ fontSize: 10, color: "#e65100", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 8px" }}>Belum lengkap</span>}
+                <div key={v} style={{ background: "#fff", borderRadius: 12, border: `1.5px solid ${ok ? "#a5d6a7" : "#e0e0e0"}`, overflow: "hidden" }}>
+                  <div style={{ background: ok ? "#f1f8e9" : "#fafafa", padding: "8px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: ok ? "#2e7d32" : "#0277bd" }}>🌱 {v}</span>
+                    {ok ? <span style={{ fontSize: 11 }}>✅</span> : <span style={{ fontSize: 9, color: "#e65100", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 6px" }}>Belum</span>}
                   </div>
-                  <div style={{ padding: "12px 14px" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                      <Field label="EC In"          value={d.ecIn}       onChange={val => updateVarian(v,"ecIn",val)}       satuan="mS/cm" />
-                      <Field label="EC Out"         value={d.ecOut}      onChange={val => updateVarian(v,"ecOut",val)}      satuan="mS/cm" />
-                      <Field label="pH In"          value={d.phIn}       onChange={val => updateVarian(v,"phIn",val)} />
-                      <Field label="pH Out"         value={d.phOut}      onChange={val => updateVarian(v,"phOut",val)} />
-                      <Field label="Volume"         value={d.volume}     onChange={val => updateVarian(v,"volume",val)}     satuan="ml/tan" />
-                      <Field label="Vol. Nutrisi"   value={d.volNutrisi} onChange={val => updateVarian(v,"volNutrisi",val)} satuan="L" />
-                      {!multiSuhuRH && (
-                        <>
-                          <Field label="Suhu" value={d.suhu} onChange={val => updateVarian(v,"suhu",val)} satuan="°C" />
-                          <Field label="RH"   value={d.rh}   onChange={val => updateVarian(v,"rh",val)}   satuan="%" />
-                        </>
-                      )}
-                    </div>
+                  <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
+                    <Field label="EC In"        value={d.ecIn}       onChange={val => updateVarian(v,"ecIn",val)}       satuan="mS/cm" />
+                    <Field label="EC Out"       value={d.ecOut}      onChange={val => updateVarian(v,"ecOut",val)}      satuan="mS/cm" />
+                    <Field label="pH In"        value={d.phIn}       onChange={val => updateVarian(v,"phIn",val)} />
+                    <Field label="pH Out"       value={d.phOut}      onChange={val => updateVarian(v,"phOut",val)} />
+                    <Field label="Volume"       value={d.volume}     onChange={val => updateVarian(v,"volume",val)}     satuan="ml/tan" />
+                    <Field label="Vol.Nutrisi"  value={d.volNutrisi} onChange={val => updateVarian(v,"volNutrisi",val)} satuan="L" />
+                    {!multiSuhuRH && (
+                      <>
+                        <Field label="Suhu" value={d.suhu} onChange={val => updateVarian(v,"suhu",val)} satuan="°C" />
+                        <Field label="RH"   value={d.rh}   onChange={val => updateVarian(v,"rh",val)}   satuan="%" />
+                      </>
+                    )}
                     {multiSuhuRH && (
-                      <div style={{ marginTop: 4 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: "#0277bd", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>🌡️ Suhu & RH (4 Alat)</div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                          {[0,1,2,3].map(idx => (
-                            <div key={idx} style={{ background: "#f9fbe7", border: "1px solid #dce775", borderRadius: 8, padding: "8px 10px" }}>
-                              <div style={{ fontSize: 11, fontWeight: 700, color: "#558b2f", marginBottom: 6 }}>Alat {idx+1}</div>
-                              <Field label="Suhu" value={d.suhuArr[idx]} onChange={val => updateSuhuArr(v,idx,val)} satuan="°C" />
-                              <Field label="RH"   value={d.rhArr[idx]}   onChange={val => updateRhArr(v,idx,val)}   satuan="%" />
-                            </div>
-                          ))}
-                        </div>
+                      <div>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: "#0277bd", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🌡️ Suhu & RH (4 Alat)</div>
+                        {[0,1,2,3].map(idx => (
+                          <div key={idx} style={{ background: "#f9fbe7", border: "1px solid #dce775", borderRadius: 6, padding: "6px 8px", marginBottom: 4 }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: "#558b2f", marginBottom: 4 }}>Alat {idx+1}</div>
+                            <Field label="Suhu" value={d.suhuArr[idx]} onChange={val => updateSuhuArr(v,idx,val)} satuan="°C" />
+                            <Field label="RH"   value={d.rhArr[idx]}   onChange={val => updateRhArr(v,idx,val)}   satuan="%" />
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
                 </div>
               );
             })}
+            </div>
+            )}
           </div>
         )}
 
