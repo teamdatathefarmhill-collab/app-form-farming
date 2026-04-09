@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
+import html2canvas from "html2canvas";
 
 const DB_NAME    = "KesiapanOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_KESIAPAN_URL;
@@ -418,7 +419,6 @@ export default function KesiapanGH() {
     if (!rekapRef.current) return;
     setDownloading(true);
     try {
-      const html2canvas = (await import("https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.esm.js")).default;
       const canvas = await html2canvas(rekapRef.current, {
         backgroundColor: "#f5f5f5",
         scale: 2,
@@ -435,6 +435,8 @@ export default function KesiapanGH() {
       setDownloading(false);
     }
   };
+
+  const handleSubmit = async () => {
     setSubmitting(true);
     setSubmitError(null);
     const payload = buildPayload();
