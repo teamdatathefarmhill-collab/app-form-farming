@@ -313,9 +313,9 @@ function statusAspek(aspek, scores) {
 }
 
 const LS_KEY = `kesiapan_${new Date().toLocaleDateString("id-ID")}`;
-function getSubmittedToday() { try { return JSON.parse(localStorage.getItem(LS_KEY) || "[]"); } catch { return []; } }
-function markSubmitted(key) {
-  const list = getSubmittedToday();
+function getSubmittedLocal() { try { return JSON.parse(localStorage.getItem(LS_KEY) || "[]"); } catch { return []; } }
+function markSubmittedLocal(key) {
+  const list = getSubmittedLocal();
   if (!list.includes(key)) localStorage.setItem(LS_KEY, JSON.stringify([...list, key]));
 }
 
@@ -336,7 +336,8 @@ export default function KesiapanGH() {
   const rekapRef = useRef(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [isSyncingPending, setIsSyncingPending] = useState(false);
-  const [submittedToday, setSubmittedToday] = useState(getSubmittedToday);
+  const [submittedToday, setSubmittedToday] = useState([]);
+  const [loadingSubmitted, setLoadingSubmitted] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const [pendingGH, setPendingGH] = useState("");
   const [showKodeInput, setShowKodeInput] = useState(false);
@@ -377,17 +378,42 @@ export default function KesiapanGH() {
       try {
         const res  = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(record.payload), redirect: "follow" });
         const json = await res.json();
-        if (json.success) { markSubmitted(record.key); setSubmittedToday(getSubmittedToday()); await idbDelete(DB_NAME, record.id); }
+        if (json.success) { markSubmittedLocal(record.key); await idbDelete(DB_NAME, record.id); }
       } catch {}
     }
     await refreshPendingCount();
     setIsSyncingPending(false);
   }, [refreshPendingCount]);
 
+  const fetchSubmitted = useCallback(async (selectedTipe) => {
+    if (!selectedTipe) return;
+    setLoadingSubmitted(true);
+    try {
+      const res  = await fetch(`${SCRIPT_URL}?action=getSubmitted&tipe=${encodeURIComponent(selectedTipe)}&tanggal=${encodeURIComponent(todayISO)}`);
+      const json = await res.json();
+      if (json.success) {
+        // Gabung dari GAS + localStorage sebagai fallback
+        const fromGAS   = json.submitted.map(gh => `${selectedTipe}__${gh}`);
+        const fromLocal = getSubmittedLocal().filter(k => k.startsWith(`${selectedTipe}__`));
+        const merged    = [...new Set([...fromGAS, ...fromLocal])];
+        setSubmittedToday(merged);
+      } else {
+        setSubmittedToday(getSubmittedLocal());
+      }
+    } catch {
+      // Fallback ke localStorage jika offline
+      setSubmittedToday(getSubmittedLocal());
+    } finally {
+      setLoadingSubmitted(false);
+    }
+  }, []);
+
   const handleSelectTipe = (t) => {
     setTipe(t); setGh("");
     setScores(initScores(t));
     setActiveAspek(MATRIKS[t]?.[0]?.key || "");
+    setSubmittedToday([]);
+    fetchSubmitted(t);
   };
 
   const handleSelectGH = (g) => {
@@ -452,7 +478,8 @@ export default function KesiapanGH() {
       try {
         await idbAdd(DB_NAME, { key: submittedKey, payload });
         await refreshPendingCount();
-        markSubmitted(submittedKey); setSubmittedToday(getSubmittedToday());
+        markSubmittedLocal(submittedKey);
+        setSubmittedToday(prev => [...new Set([...prev, submittedKey])]);
         setSavedOffline(true); setStep(4);
       } catch { setSubmitError("Gagal menyimpan offline. Coba lagi."); }
       finally { setSubmitting(false); }
@@ -463,7 +490,8 @@ export default function KesiapanGH() {
       const res  = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload), redirect: "follow" });
       const json = await res.json();
       if (!json.success) throw new Error(json.error || "GAS error");
-      markSubmitted(submittedKey); setSubmittedToday(getSubmittedToday());
+      markSubmittedLocal(submittedKey);
+      setSubmittedToday(prev => [...new Set([...prev, submittedKey])]);
       setSavedOffline(false); setStep(4);
     } catch (err) {
       setSubmitError("Gagal kirim data. " + err.message);
@@ -608,7 +636,10 @@ export default function KesiapanGH() {
 
             {tipe && (
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Nama Greenhouse</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
+                  Nama Greenhouse
+                  {loadingSubmitted && <span style={{ fontSize: 10, fontWeight: 400, color: "#aaa", marginLeft: 8 }}>memeriksa data...</span>}
+                </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   {GH_PER_TIPE[tipe].map(g => {
                     const sudahIsi = submittedToday.includes(`${tipe}__${g}`);
