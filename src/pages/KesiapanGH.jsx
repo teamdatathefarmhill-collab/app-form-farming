@@ -513,12 +513,23 @@ export default function KesiapanGH() {
           <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 360 }}>
             <div style={{ fontSize: 36, textAlign: "center", marginBottom: 12 }}>⚠️</div>
             <div style={{ fontWeight: 700, fontSize: 16, color: "#333", textAlign: "center", marginBottom: 8 }}>GH Sudah Dicek Hari Ini</div>
-            <div style={{ fontSize: 13, color: "#666", textAlign: "center", marginBottom: 20 }}>
+            <div style={{ fontSize: 13, color: "#666", textAlign: "center", marginBottom: 8, lineHeight: 1.5 }}>
               <strong>{tipe} · {pendingGH}</strong> sudah disubmit hari ini.
             </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => { setShowWarning(false); setPendingGH(""); }} style={{ flex: 1, padding: 11, background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 10, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Batal</button>
-              <button onClick={() => doSelectGH(pendingGH)} style={{ flex: 1, padding: 11, background: "#e53935", border: "none", borderRadius: 10, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Isi Ulang</button>
+            <div style={{ fontSize: 12, color: "#888", textAlign: "center", marginBottom: 20, lineHeight: 1.5 }}>
+              Jika ada kesalahan input, hubungi Team Data terlebih dahulu untuk konfirmasi sebelum mengisi ulang.
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <a href={`https://wa.me/08559932224?text=${encodeURIComponent(`Halo Team Data, saya ${user?.nama} ingin melaporkan kesalahan input pada Kesiapan GH.\nTipe: ${tipe}\nGreenhouse: ${pendingGH}\nTanggal: ${todayISO}\n\nMohon konfirmasi untuk pengisian ulang. Terima kasih.`)}`}
+                target="_blank" rel="noreferrer"
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: 12, background: "#25D366", border: "none", borderRadius: 10, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", textDecoration: "none", boxSizing: "border-box" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/></svg>
+                Hubungi Team Data via WhatsApp
+              </a>
+              <button onClick={() => { setShowWarning(false); setPendingGH(""); }}
+                style={{ padding: 11, background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 10, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                Kembali
+              </button>
             </div>
           </div>
         </div>
