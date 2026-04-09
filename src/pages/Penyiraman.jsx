@@ -42,8 +42,8 @@ function initVarianData() {
 function Field({ label, value, onChange, placeholder, satuan, type = "number" }) {
   const filled = value !== "";
   return (
-    <div style={{ marginBottom: 10 }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: "#0277bd", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 4 }}>
+    <div style={{ marginBottom: 6 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: "#0277bd", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 3 }}>
         {label} {satuan && <span style={{ fontWeight: 400, color: "#aaa", textTransform: "none" }}>({satuan})</span>}
       </div>
       <input
@@ -318,30 +318,31 @@ export default function Penyiraman() {
                   </div>
                   <div style={{ padding: "12px 14px" }}>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                      <Field label="EC In"  value={d.ecIn}  onChange={val => updateVarian(v,"ecIn",val)}  satuan="mS/cm" />
-                      <Field label="EC Out" value={d.ecOut} onChange={val => updateVarian(v,"ecOut",val)} satuan="mS/cm" />
-                      <Field label="pH In"  value={d.phIn}  onChange={val => updateVarian(v,"phIn",val)} />
-                      <Field label="pH Out" value={d.phOut} onChange={val => updateVarian(v,"phOut",val)} />
+                      <Field label="EC In"          value={d.ecIn}       onChange={val => updateVarian(v,"ecIn",val)}       satuan="mS/cm" />
+                      <Field label="EC Out"         value={d.ecOut}      onChange={val => updateVarian(v,"ecOut",val)}      satuan="mS/cm" />
+                      <Field label="pH In"          value={d.phIn}       onChange={val => updateVarian(v,"phIn",val)} />
+                      <Field label="pH Out"         value={d.phOut}      onChange={val => updateVarian(v,"phOut",val)} />
+                      <Field label="Volume"         value={d.volume}     onChange={val => updateVarian(v,"volume",val)}     satuan="ml/tan" />
+                      <Field label="Vol. Nutrisi"   value={d.volNutrisi} onChange={val => updateVarian(v,"volNutrisi",val)} satuan="L" />
+                      {!multiSuhuRH && (
+                        <>
+                          <Field label="Suhu" value={d.suhu} onChange={val => updateVarian(v,"suhu",val)} satuan="°C" />
+                          <Field label="RH"   value={d.rh}   onChange={val => updateVarian(v,"rh",val)}   satuan="%" />
+                        </>
+                      )}
                     </div>
-                    <Field label="Volume"         value={d.volume}    onChange={val => updateVarian(v,"volume",val)}    satuan="ml/tanaman" />
-                    <Field label="Volume Nutrisi" value={d.volNutrisi} onChange={val => updateVarian(v,"volNutrisi",val)} satuan="L" />
-                    {multiSuhuRH ? (
-                      <div>
+                    {multiSuhuRH && (
+                      <div style={{ marginTop: 4 }}>
                         <div style={{ fontSize: 10, fontWeight: 700, color: "#0277bd", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>🌡️ Suhu & RH (4 Alat)</div>
-                        {[0,1,2,3].map(idx => (
-                          <div key={idx} style={{ background: "#f9fbe7", border: "1px solid #dce775", borderRadius: 8, padding: "8px 10px", marginBottom: 6 }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: "#558b2f", marginBottom: 6 }}>Alat {idx+1}</div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                          {[0,1,2,3].map(idx => (
+                            <div key={idx} style={{ background: "#f9fbe7", border: "1px solid #dce775", borderRadius: 8, padding: "8px 10px" }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: "#558b2f", marginBottom: 6 }}>Alat {idx+1}</div>
                               <Field label="Suhu" value={d.suhuArr[idx]} onChange={val => updateSuhuArr(v,idx,val)} satuan="°C" />
                               <Field label="RH"   value={d.rhArr[idx]}   onChange={val => updateRhArr(v,idx,val)}   satuan="%" />
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                        <Field label="Suhu" value={d.suhu} onChange={val => updateVarian(v,"suhu",val)} satuan="°C" />
-                        <Field label="RH"   value={d.rh}   onChange={val => updateVarian(v,"rh",val)}   satuan="%" />
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
