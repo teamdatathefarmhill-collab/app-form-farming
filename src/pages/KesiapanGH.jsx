@@ -190,6 +190,8 @@ const MATRIKS = {
       ],
     },
   ],
+
+  "Kolam P2": [
     {
       key: "tandon_air_baku", label: "Tandon Air Baku", bobotAspek: 10,
       items: [
