@@ -31,7 +31,7 @@ const GH_NAMES = buildGHNames();
 // ─── Varian list untuk manual entry ──────────────────────────────────────────
 const VARIAN_LIST = [
   "Greeniegal","Midori","Elysia","Sunray","Sarasuka","Aruni",
-  "S7","Sagami","Daegoji","Emeralda","Sampel","Lainnya",
+  "Servo F1","Tombatu F1","Inko F1","Lainnya",
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -689,6 +689,91 @@ export default function SO() {
               style={{ width: "100%", padding: "10px", background: "#f3e5f5", border: "1.5px dashed #ce93d8", borderRadius: 10, color: "#6A1B9A", fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 16 }}>
               + Tambah baris / varian tidak terdaftar
             </button>
+
+            {/* Ringkasan & Copy to Clipboard */}
+            {filledCount > 0 && (() => {
+              // Hitung total per varian
+              const totalPerVarian = {};
+              let totalAll = 0;
+              tableData.forEach(r => {
+                if (r.populasi === "") return;
+                const pop = parseInt(r.populasi) || 0;
+                const v   = r.varian || "Tidak diketahui";
+                totalPerVarian[v] = (totalPerVarian[v] || 0) + pop;
+                totalAll += pop;
+              });
+
+              // Format teks per baris sesuai contoh:
+              // "A Greeniegal 179 Elysia 3"
+              // Jika satu baris ada 1 varian: "B Greeniegal 182"
+              // Jika satu baris ada >1 varian (manual): "O Aruni 82 Elysia 102"
+              // Karena satu baris = satu row di tabel, kita group per baris
+              const barisGroup = {};
+              tableData.forEach(r => {
+                if (r.populasi === "") return;
+                const b = r.baris;
+                if (!barisGroup[b]) barisGroup[b] = [];
+                barisGroup[b].push({ varian: r.varian, populasi: parseInt(r.populasi) || 0 });
+              });
+
+              // Build teks baris
+              const lines = Object.entries(barisGroup).map(([baris, items]) => {
+                const parts = items.map(it => `${it.varian} ${it.populasi}`).join(" ");
+                return `${baris} ${parts}`;
+              });
+
+              // Tambah total per varian
+              const totalLines = Object.entries(totalPerVarian)
+                .sort((a, b) => b[1] - a[1])
+                .map(([v, t]) => `${v}: ${t.toLocaleString("id-ID")} tanaman`);
+
+              const clipboardText = [
+                `SO ${selectedGH} - ${todayISO}`,
+                `Periode ${ghData[selectedGH]?.periode || ""} | ${ghAktifPerTipe ? (hitungHST(ghData[selectedGH]?.tanam) ?? "") : ""} HST`,
+                "",
+                ...lines,
+                "",
+                "--- TOTAL PER VARIAN ---",
+                ...totalLines,
+                `TOTAL: ${totalAll.toLocaleString("id-ID")} tanaman`,
+              ].join("\n");
+
+              return (
+                <div style={{ background: "#f9fbe7", border: "1.5px solid #dce775", borderRadius: 12, padding: 14, marginBottom: 16 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#558b2f", textTransform: "uppercase", letterSpacing: 1 }}>📊 Ringkasan</div>
+                    <button onClick={() => {
+                      navigator.clipboard.writeText(clipboardText)
+                        .then(() => alert("✅ Disalin ke clipboard!"))
+                        .catch(() => alert("Gagal menyalin, coba lagi."));
+                    }}
+                      style={{ padding: "5px 12px", background: "#558b2f", border: "none", borderRadius: 8, color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                      📋 Copy
+                    </button>
+                  </div>
+
+                  {/* Per baris */}
+                  <div style={{ fontFamily: "monospace", fontSize: 12, color: "#333", marginBottom: 10, whiteSpace: "pre-wrap", lineHeight: 1.7 }}>
+                    {lines.join("\n")}
+                  </div>
+
+                  {/* Total per varian */}
+                  <div style={{ borderTop: "1px solid #dce775", paddingTop: 8 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#558b2f", marginBottom: 6 }}>Total per varian</div>
+                    {Object.entries(totalPerVarian).sort((a,b) => b[1]-a[1]).map(([v, t]) => (
+                      <div key={v} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "2px 0" }}>
+                        <span style={{ color: "#555" }}>{v}</span>
+                        <span style={{ fontWeight: 700, color: "#1b5e20", fontFamily: "monospace" }}>{t.toLocaleString("id-ID")}</span>
+                      </div>
+                    ))}
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700, borderTop: "1px solid #dce775", marginTop: 6, paddingTop: 6 }}>
+                      <span>Total keseluruhan</span>
+                      <span style={{ color: "#1b5e20", fontFamily: "monospace" }}>{totalAll.toLocaleString("id-ID")}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Input operator */}
             <div style={{ marginBottom: 12 }}>
