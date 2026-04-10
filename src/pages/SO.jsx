@@ -137,13 +137,13 @@ const MOCK_GH_DATA = {
 
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
 export default function SO() {
-  const [step, setStep]               = useState(1); // 1=tipe, 2=pilih GH, 3=form, 4=sukses
+  const [step, setStep]               = useState(1); // 1=pilih GH (accordion), 2=form, 3=sukses
   const [ghData, setGhData]           = useState({});
   const [loadingRef, setLoadingRef]   = useState(true);
   const [isDemoMode, setIsDemoMode]   = useState(false);
   const [isOnline, setIsOnline]       = useState(navigator.onLine);
 
-  const [selectedTipe, setSelectedTipe] = useState(null);
+  const [openTipe, setOpenTipe] = useState(null); // accordion
   const [selectedGH, setSelectedGH]     = useState("");
   const [tableData, setTableData]       = useState([]); // [{baris, varian, populasi, isManual}]
   const [operator, setOperator]         = useState("");
@@ -271,7 +271,7 @@ export default function SO() {
     setTableData((info?.baris || []).map(b => ({ baris: b.baris, varian: b.varian, populasi: "", isManual: false })));
     setShowDoubleWarn(false);
     setPendingGH("");
-    setStep(3);
+    setStep(2);
   };
 
   // ── Tabel helpers ──
@@ -338,7 +338,7 @@ export default function SO() {
       }
       markSubmitted(selectedGH);
       setSubmittedToday(getSubmittedToday());
-      setStep(4); setSyncing(false);
+      setStep(3); setSyncing(false);
       return;
     }
 
@@ -349,7 +349,7 @@ export default function SO() {
         await refreshPendingCount();
         markSubmitted(selectedGH);
         setSubmittedToday(getSubmittedToday());
-        setSavedOffline(true); setStep(4);
+        setSavedOffline(true); setStep(3);
       } catch { setSubmitError("Gagal menyimpan data offline. Coba lagi."); }
       finally { setSyncing(false); }
       return;
@@ -375,11 +375,11 @@ export default function SO() {
     }
     markSubmitted(selectedGH);
     setSubmittedToday(getSubmittedToday());
-    setStep(4); setSyncing(false);
+    setStep(3); setSyncing(false);
   };
 
   const resetForm = () => {
-    setStep(1); setSelectedTipe(null); setSelectedGH(""); setTableData([]);
+    setStep(1); setOpenTipe(null); setSelectedGH(""); setTableData([]);
     setOperator(""); setSyncing(false); setSyncProgress({ done: 0, total: 0 });
     setSubmitError(null); setSavedOffline(false);
   };
@@ -389,7 +389,6 @@ export default function SO() {
   const hstAktif   = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : null;
   const chipStyle  = hstChipStyle(hstAktif);
   const reminders  = reminderGH();
-  const tipeColor  = TIPE_GH.find(t => t.key === selectedTipe)?.color || "#1b5e20";
 
   return (
     <div style={{ minHeight: "100vh", background: "#f5f5f5", fontFamily: "'DM Sans','Segoe UI',sans-serif" }}>
@@ -423,9 +422,9 @@ export default function SO() {
         )}
 
         {/* Step progress bar */}
-        {step < 4 && (
+        {step < 3 && (
           <div style={{ display: "flex", gap: 4, marginTop: 10 }}>
-            {[1, 2, 3].map(s => (
+            {[1, 2].map(s => (
               <div key={s} style={{ flex: 1, height: 3, borderRadius: 2, background: s <= step ? "#a5d6a7" : "rgba(255,255,255,0.2)", transition: "background 0.3s" }} />
             ))}
           </div>
@@ -451,10 +450,9 @@ export default function SO() {
 
       <div style={{ padding: "16px" }}>
 
-        {/* ══ STEP 1 — Pilih Tipe GH ══ */}
+        {/* ══ STEP 1 — Pilih GH (Accordion) ══ */}
         {step === 1 && (
           <div>
-            {/* Reminder banner H-1 */}
             {reminders.length > 0 && (
               <div style={{ background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 12, padding: "12px 14px", marginBottom: 16 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#e65100", marginBottom: 6 }}>🔔 Reminder SO — H-1 Deadline</div>
@@ -477,8 +475,8 @@ export default function SO() {
               </div>
             )}
 
-            <div style={{ fontWeight: 700, fontSize: 18, color: "#1b5e20", marginBottom: 4 }}>Pilih Tipe Greenhouse</div>
-            <div style={{ fontSize: 12, color: "#888", marginBottom: 16 }}>Stock opname dilakukan sekitar HST 30 & HST 50</div>
+            <div style={{ fontWeight: 700, fontSize: 18, color: "#1b5e20", marginBottom: 4 }}>Pilih Greenhouse</div>
+            <div style={{ fontSize: 12, color: "#888", marginBottom: 16 }}>Stock opname dilakukan sekitar HST 30 &amp; HST 50</div>
 
             {loadingRef ? (
               <div style={{ textAlign: "center", padding: "40px 0", color: "#aaa" }}>
@@ -486,25 +484,56 @@ export default function SO() {
                 <div style={{ fontSize: 13, marginTop: 8 }}>Memuat data referensi...</div>
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {TIPE_GH.map(tipe => {
-                  const aktif = ghAktifPerTipe(tipe.key);
+                  const aktif       = ghAktifPerTipe(tipe.key);
+                  const isOpen      = openTipe === tipe.key;
                   const hasReminder = aktif.some(g => g.hst === 29 || g.hst === 49);
                   return (
-                    <button key={tipe.key}
-                      onClick={() => { setSelectedTipe(tipe.key); setStep(2); }}
-                      style={{ padding: "16px", borderRadius: 14, border: `1.5px solid ${tipe.color}20`, background: "#fff", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-                      <div>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: tipe.color }}>{tipe.label}</div>
-                        <div style={{ fontSize: 12, color: "#888", marginTop: 3 }}>{aktif.length} GH aktif saat ini</div>
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        {hasReminder && (
-                          <div style={{ fontSize: 10, fontWeight: 700, background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 8px", color: "#e65100" }}>H-1 ⚠</div>
-                        )}
-                        <span style={{ fontSize: 20, color: "#ccc" }}>›</span>
-                      </div>
-                    </button>
+                    <div key={tipe.key} style={{ borderRadius: 14, border: `1.5px solid ${isOpen ? tipe.color : "#e0e0e0"}`, background: "#fff", overflow: "hidden", transition: "border-color 0.2s" }}>
+                      <button onClick={() => setOpenTipe(isOpen ? null : tipe.key)}
+                        style={{ width: "100%", padding: "14px 16px", background: isOpen ? `${tipe.color}10` : "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <div style={{ textAlign: "left" }}>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: tipe.color }}>{tipe.label}</div>
+                          <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{aktif.length} GH aktif saat ini</div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          {hasReminder && <div style={{ fontSize: 10, fontWeight: 700, background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 8px", color: "#e65100" }}>H-1 ⚠</div>}
+                          <span style={{ fontSize: 18, color: tipe.color, transition: "transform 0.2s", display: "inline-block", transform: isOpen ? "rotate(90deg)" : "rotate(0deg)" }}>›</span>
+                        </div>
+                      </button>
+
+                      {isOpen && (
+                        <div style={{ padding: "0 12px 14px", borderTop: `1px solid ${tipe.color}20` }}>
+                          {aktif.length === 0 ? (
+                            <div style={{ textAlign: "center", padding: "20px 0", color: "#aaa", fontSize: 13 }}>Tidak ada GH aktif untuk tipe ini.</div>
+                          ) : (
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 12 }}>
+                              {aktif.map(gh => {
+                                const chip     = hstChipStyle(gh.hst);
+                                const sudahIsi = submittedToday.includes(gh.name);
+                                const alert    = isSODeadlineAlert(gh.hst);
+                                return (
+                                  <button key={gh.name} onClick={() => handleSelectGH(gh.name)}
+                                    style={{ padding: "10px 8px", borderRadius: 12, cursor: "pointer", textAlign: "center", border: sudahIsi ? "1px solid #ffb74d" : alert ? `2px solid ${chip.border}` : "1px solid #e0e0e0", background: sudahIsi ? "#fff8e1" : "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, transition: "all 0.2s" }}>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: "#333", lineHeight: 1.3 }}>{gh.name}</div>
+                                    <div style={{ fontSize: 10, color: "#aaa" }}>P{gh.periode} · {gh.baris?.length || 0} baris</div>
+                                    {gh.hst !== null && (
+                                      <div style={{ background: chip.bg, border: `1px solid ${chip.border}`, borderRadius: 7, padding: "3px 10px", width: "100%" }}>
+                                        <span style={{ fontSize: 15, fontWeight: 800, color: chip.color }}>{gh.hst}</span>
+                                        <span style={{ fontSize: 10, color: chip.color, marginLeft: 3 }}>HST</span>
+                                      </div>
+                                    )}
+                                    {sudahIsi && <div style={{ fontSize: 10, background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 8px", color: "#e65100", fontWeight: 600 }}>✓ Sudah diisi</div>}
+                                    {alert && !sudahIsi && <div style={{ fontSize: 10, background: "#fbe9e7", border: "1px solid #ffab91", borderRadius: 20, padding: "2px 8px", color: "#bf360c", fontWeight: 600 }}>⚠ Deadline</div>}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -512,52 +541,10 @@ export default function SO() {
           </div>
         )}
 
-        {/* ══ STEP 2 — Pilih GH ══ */}
+        {/* ══ STEP 2 — Form Input ══ */}
         {step === 2 && (
           <div>
             <button onClick={() => setStep(1)} style={{ background: "none", border: "none", color: "#666", fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 12, display: "flex", alignItems: "center", gap: 4 }}>← Kembali</button>
-            <div style={{ fontWeight: 700, fontSize: 18, color: "#1b5e20", marginBottom: 4 }}>
-              Pilih Greenhouse — <span style={{ color: tipeColor }}>{TIPE_GH.find(t => t.key === selectedTipe)?.label}</span>
-            </div>
-            <div style={{ fontSize: 12, color: "#888", marginBottom: 16 }}>GH aktif (HST &lt; 65)</div>
-
-            {ghAktifPerTipe(selectedTipe).length === 0 ? (
-              <div style={{ textAlign: "center", padding: "32px 0", color: "#aaa", fontSize: 13 }}>Tidak ada GH aktif untuk tipe ini saat ini.</div>
-            ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                {ghAktifPerTipe(selectedTipe).map(gh => {
-                  const chip     = hstChipStyle(gh.hst);
-                  const sudahIsi = submittedToday.includes(gh.name);
-                  const alert    = isSODeadlineAlert(gh.hst);
-                  return (
-                    <button key={gh.name} onClick={() => handleSelectGH(gh.name)}
-                      style={{ padding: "12px 10px", borderRadius: 14, cursor: "pointer", textAlign: "center", border: sudahIsi ? "1px solid #ffb74d" : alert ? `2px solid ${chip.border}` : "1px solid #e0e0e0", background: sudahIsi ? "#fff8e1" : "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, transition: "all 0.2s" }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#333", lineHeight: 1.3 }}>{gh.name}</div>
-                      <div style={{ fontSize: 10, color: "#aaa" }}>P{gh.periode} · {gh.baris?.length || 0} baris</div>
-                      {gh.hst !== null && (
-                        <div style={{ background: chip.bg, border: `1px solid ${chip.border}`, borderRadius: 8, padding: "4px 12px", width: "100%" }}>
-                          <span style={{ fontSize: 17, fontWeight: 800, color: chip.color }}>{gh.hst}</span>
-                          <span style={{ fontSize: 10, color: chip.color, marginLeft: 3 }}>HST</span>
-                        </div>
-                      )}
-                      {sudahIsi && (
-                        <div style={{ fontSize: 10, background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 10px", color: "#e65100", fontWeight: 600 }}>✓ Sudah diisi</div>
-                      )}
-                      {alert && !sudahIsi && (
-                        <div style={{ fontSize: 10, background: "#fbe9e7", border: "1px solid #ffab91", borderRadius: 20, padding: "2px 10px", color: "#bf360c", fontWeight: 600 }}>⚠ Deadline SO</div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ══ STEP 3 — Form Input ══ */}
-        {step === 3 && (
-          <div>
-            <button onClick={() => setStep(2)} style={{ background: "none", border: "none", color: "#666", fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 12, display: "flex", alignItems: "center", gap: 4 }}>← Kembali</button>
 
             {/* Info chips */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
@@ -670,8 +657,8 @@ export default function SO() {
           </div>
         )}
 
-        {/* ══ STEP 4 — Sukses ══ */}
-        {step === 4 && (
+        {/* ══ STEP 3 — Sukses ══ */}
+        {step === 3 && (
           <div style={{ textAlign: "center", paddingTop: 32 }}>
             <div style={{ fontSize: 60, marginBottom: 12 }}>
               {isDemoMode ? "🧪" : savedOffline ? "💾" : "✅"}
@@ -713,9 +700,9 @@ export default function SO() {
       </div>
 
       {/* ── Bottom Nav ── */}
-      {step === 3 && (
+      {step === 2 && (
         <div style={{ padding: "12px 16px 24px", borderTop: "1px solid #e0e0e0", background: "#fff", position: "sticky", bottom: 0, display: "flex", gap: 10 }}>
-          <button onClick={() => { setStep(2); setSubmitError(null); }} style={{ flex: 1, padding: "13px", background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 12, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>← Kembali</button>
+          <button onClick={() => { setStep(1); setSubmitError(null); }} style={{ flex: 1, padding: "13px", background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 12, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>← Kembali</button>
           <button onClick={handleSubmit} disabled={!canSubmit || syncing}
             style={{ flex: 2, padding: "13px", border: "none", borderRadius: 12, background: canSubmit && !syncing ? (!isOnline ? "linear-gradient(135deg,#1565C0,#1976D2)" : "linear-gradient(135deg,#1b5e20,#2e7d32)") : "#e0e0e0", color: canSubmit && !syncing ? "#fff" : "#aaa", fontSize: 15, fontWeight: 700, cursor: canSubmit && !syncing ? "pointer" : "not-allowed", transition: "all 0.2s" }}>
             {syncing
