@@ -5,13 +5,14 @@ import Gramasi from "./pages/Gramasi";
 import Vigor from "./pages/Vigor";
 import KesiapanGH from "./pages/KesiapanGH";
 import Penyiraman from "./pages/Penyiraman";
+import SO from "./pages/SO";
 import FarmhillLogin from "./components/FarmhillLogin";
 import { useAuth } from "./hooks/useAuth";
 
 // Sub-menu HPT — key harus match kolom di REF OPERATOR
 const HPT_SUBMENU = [
-  { key: "so",           label: "SO",           icon: "📋" },
-  { key: "penyemprotan", label: "Penyemprotan", icon: "💦" },
+  { key: "so",           label: "SO",           icon: "📋", component: SO        },
+  { key: "penyemprotan", label: "Penyemprotan", icon: "💦"                       },
   { key: "sanitasi",     label: "Sanitasi",     icon: "🌿", component: Sanitasi  },
   { key: "hpt",          label: "HPT",          icon: "🐛", component: HPT       },
 ];
@@ -67,17 +68,16 @@ export default function App() {
   const totalAccess = accessibleHPT.length + accessibleStandalone.length;
 
   // Cari komponen aktif
-  const activeHPTItem       = accessibleHPT.find(t => t.key === activeTab);
+  const activeHPTItem        = accessibleHPT.find(t => t.key === activeTab);
   const activeStandaloneItem = accessibleStandalone.find(t => t.key === activeTab);
-  const activeItem          = activeHPTItem || activeStandaloneItem;
 
   // Default ke tab pertama standalone jika ada, atau HPT submenu pertama
-  const defaultTab = accessibleStandalone[0]?.key ?? accessibleHPT[0]?.key ?? null;
-  const resolvedTab = activeTab ?? defaultTab;
-  const resolvedHPT = accessibleHPT.find(t => t.key === resolvedTab);
+  const defaultTab         = accessibleStandalone[0]?.key ?? accessibleHPT[0]?.key ?? null;
+  const resolvedTab        = activeTab ?? defaultTab;
+  const resolvedHPT        = accessibleHPT.find(t => t.key === resolvedTab);
   const resolvedStandalone = accessibleStandalone.find(t => t.key === resolvedTab);
-  const ActivePage = resolvedHPT?.component ?? resolvedStandalone?.component ?? null;
-  const isHPTActive = accessibleHPT.some(t => t.key === resolvedTab);
+  const ActivePage         = resolvedHPT?.component ?? resolvedStandalone?.component ?? null;
+  const isHPTActive        = accessibleHPT.some(t => t.key === resolvedTab);
 
   if (totalAccess === 0) {
     return (
@@ -99,7 +99,7 @@ export default function App() {
     );
   }
 
-  // Halaman placeholder untuk SO dan Penyemprotan yang belum ada form
+  // Halaman placeholder untuk menu yang belum ada form
   const PlaceholderPage = ({ label }) => (
     <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12, padding: 32 }}>
       <span style={{ fontSize: 48 }}>🚧</span>
@@ -134,7 +134,10 @@ export default function App() {
 
       {/* Halaman aktif */}
       <div style={{ flex: 1, paddingTop: 48, paddingBottom: 64, width: "100%" }}>
-        {ActivePage ? <ActivePage /> : <PlaceholderPage label={resolvedHPT?.label ?? ""} />}
+        {ActivePage
+          ? <ActivePage />
+          : <PlaceholderPage label={resolvedHPT?.label ?? resolvedStandalone?.label ?? ""} />
+        }
       </div>
 
       {/* Bottom Tab Navigation */}
