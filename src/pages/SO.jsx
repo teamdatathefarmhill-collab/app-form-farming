@@ -106,11 +106,12 @@ function buildGHData(rows) {
   for (const row of rows) {
     const gh      = stripQ(row["greenhouse"]);
     const periode = stripQ(row["periode"]);
-    const tanam   = stripQ(row["tanam"]);
+    // Kolom L = Tanam — header CSV bisa "tanam" atau "bulan tanam"
+    const tanam   = stripQ(row["tanam"] || row["bulan tanam"] || "");
     if (!gh || !periode) continue;
     const pNew = parseFloat(periode);
     const pOld = parseFloat(latestPeriode[gh] ?? "-1");
-    if (!isNaN(pNew) && pNew >= pOld) {
+    if (!isNaN(pNew) && pNew > pOld) {
       latestPeriode[gh] = periode;
       latestTanam[gh]   = tanam;
     }
@@ -121,14 +122,16 @@ function buildGHData(rows) {
   for (const row of rows) {
     const gh      = stripQ(row["greenhouse"]);
     const periode = stripQ(row["periode"]);
+    // Kolom H = Baris, Kolom I = Varian
     const baris   = stripQ(row["baris"]);
-    const varian  = stripQ(row["varian"] || row["true var"]);
-    const tanam   = stripQ(row["tanam"]);
+    const varian  = stripQ(row["varian"] || row["true var"] || "");
+    const tanam   = stripQ(row["tanam"] || row["bulan tanam"] || "");
     if (!gh || !baris || !periode) continue;
     if (periode !== latestPeriode[gh]) continue;
     if (!map[gh]) map[gh] = { periode: latestPeriode[gh], tanam: latestTanam[gh], baris: [] };
+    // Hindari duplikat baris
     if (!map[gh].baris.find(b => b.baris === baris)) {
-      map[gh].baris.push({ baris, varian: varian || "" });
+      map[gh].baris.push({ baris, varian });
     }
   }
   return map;
@@ -242,10 +245,17 @@ export default function SO() {
       const res  = await fetch(REF_CSV_URL);
       const text = await res.text();
       const rows = parseCSV(text);
+      // Debug: log header baris pertama dan sample row
+      if (rows.length > 0) {
+        console.log("[SO REF] Headers:", Object.keys(rows[0]));
+        console.log("[SO REF] Sample row:", rows[0]);
+      }
       const data = buildGHData(rows);
+      console.log("[SO REF] GH loaded:", Object.keys(data).length, "GH");
       if (Object.keys(data).length === 0) throw new Error("empty");
       setGhData(data);
-    } catch {
+    } catch (err) {
+      console.warn("[SO REF] Fallback to demo:", err.message);
       setIsDemoMode(true);
       setGhData(MOCK_GH_DATA);
     } finally {
