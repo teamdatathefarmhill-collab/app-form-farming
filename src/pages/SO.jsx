@@ -31,7 +31,7 @@ const GH_NAMES = buildGHNames();
 // ─── Varian list untuk manual entry ──────────────────────────────────────────
 const VARIAN_LIST = [
   "Greeniegal","Midori","Elysia","Sunray","Sarasuka","Aruni",
-  "Servo F1","Tombatu F1","Inko F1","Lainnya",
+  "S7","Sagami","Daegoji","Emeralda","Sampel","Lainnya",
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
