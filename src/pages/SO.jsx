@@ -36,18 +36,49 @@ const VARIAN_LIST = [
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function hitungHST(tglStr) {
-  // format: "29-Jan-2026" atau "2026-01-29"
   const cleaned = tglStr?.trim();
   if (!cleaned) return null;
+
+  const BULAN = {
+    jan:1, feb:2, mar:3, apr:4, may:5, mei:5, jun:6,
+    jul:7, aug:8, agu:8, sep:9, oct:10, okt:10, nov:11, dec:12, des:12,
+  };
+
   let tanam;
+
   if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
+    // "2026-01-29"
     const [y, m, d] = cleaned.split("-").map(Number);
     tanam = new Date(y, m - 1, d);
-  } else {
+
+  } else if (/^\d{1,2}-[a-zA-Z]{3}-\d{4}$/.test(cleaned)) {
     // "29-Jan-2026"
-    tanam = new Date(cleaned.replace(/-/g, " "));
+    const [d, mon, y] = cleaned.split("-");
+    const m = BULAN[mon.toLowerCase()];
+    if (!m) return null;
+    tanam = new Date(parseInt(y), m - 1, parseInt(d));
+
+  } else if (/^\d{1,2}\s+[a-zA-Z]{3,}\s+\d{4}$/.test(cleaned)) {
+    // "9 Apr 2026" atau "10 April 2026"
+    const parts = cleaned.split(/\s+/);
+    const d = parseInt(parts[0]);
+    const mon = parts[1].slice(0, 3).toLowerCase();
+    const y = parseInt(parts[2]);
+    const m = BULAN[mon];
+    if (!m) return null;
+    tanam = new Date(y, m - 1, d);
+
+  } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(cleaned)) {
+    // "29/01/2026"
+    const [d, m, y] = cleaned.split("/").map(Number);
+    tanam = new Date(y, m - 1, d);
+
+  } else {
+    // fallback ke Date parser
+    tanam = new Date(cleaned);
   }
-  if (isNaN(tanam)) return null;
+
+  if (!tanam || isNaN(tanam)) return null;
   const now = new Date();
   const nowLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   return Math.floor((nowLocal - tanam) / 86400000);
