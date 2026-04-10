@@ -703,22 +703,23 @@ export default function SO() {
                 totalAll += pop;
               });
 
-              // Format teks per baris sesuai contoh:
-              // "A Greeniegal 179 Elysia 3"
-              // Jika satu baris ada 1 varian: "B Greeniegal 182"
-              // Jika satu baris ada >1 varian (manual): "O Aruni 82 Elysia 102"
-              // Karena satu baris = satu row di tabel, kita group per baris
+              // Group per huruf baris — K1, K2, K3 → K (strip angka di akhir)
               const barisGroup = {};
+              const barisOrder = [];
               tableData.forEach(r => {
                 if (r.populasi === "") return;
-                const b = r.baris;
-                if (!barisGroup[b]) barisGroup[b] = [];
-                barisGroup[b].push({ varian: r.varian, populasi: parseInt(r.populasi) || 0 });
+                const barisKey = r.baris.replace(/\d+$/, "").trim() || r.baris;
+                if (!barisGroup[barisKey]) {
+                  barisGroup[barisKey] = {};
+                  barisOrder.push(barisKey);
+                }
+                const v = r.varian || "?";
+                barisGroup[barisKey][v] = (barisGroup[barisKey][v] || 0) + (parseInt(r.populasi) || 0);
               });
 
-              // Build teks baris
-              const lines = Object.entries(barisGroup).map(([baris, items]) => {
-                const parts = items.map(it => `${it.varian} ${it.populasi}`).join(" ");
+              // Build teks baris — "K Elysia 130 Greeniegal 48 Sunray 4"
+              const lines = barisOrder.map(baris => {
+                const parts = Object.entries(barisGroup[baris]).map(([v, p]) => `${v} ${p}`).join(" ");
                 return `${baris} ${parts}`;
               });
 
