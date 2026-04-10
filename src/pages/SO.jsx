@@ -31,7 +31,7 @@ const GH_NAMES = buildGHNames();
 // ─── Varian list untuk manual entry ──────────────────────────────────────────
 const VARIAN_LIST = [
   "Greeniegal","Midori","Elysia","Sunray","Sarasuka","Aruni",
-  "S7","Sagami","Sampel","Lainnya",
+  "Servo F1","Tombatu F1","Inko F1","Lainnya",
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -86,27 +86,39 @@ function hitungHST(tglStr) {
 
 function parseCSV(text) {
   const lines = text.trim().split("\n").filter(l => l.trim());
-  const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/\r/g, ""));
+  const rawHeaders = lines[0].split(",").map(h =>
+    h.trim().replace(/\r/g, "").replace(/^"|"$/g, "").toLowerCase()
+  );
+
   return lines.slice(1).map(line => {
-    const vals = line.split(",").map(v => v.trim().replace(/\r/g, ""));
+    const vals = line.split(",").map(v =>
+      v.trim().replace(/\r/g, "").replace(/^"|"$/g, "")
+    );
     const obj = {};
-    headers.forEach((h, i) => (obj[h] = vals[i] ?? ""));
+    rawHeaders.forEach((h, i) => { if (h) obj[h] = vals[i] ?? ""; });
     return obj;
   });
 }
 
-// Dari CSV rows → struktur ghData: { "TOHUDAN 1": { periode, tanam, baris: [{baris, varian}] } }
 function buildGHData(rows) {
   const map = {};
   for (const row of rows) {
     const gh      = row["greenhouse"]?.trim();
     const periode = row["periode"]?.trim();
     const baris   = row["baris"]?.trim();
-    const varian  = row["varian"]?.trim();
+    const varian  = (row["varian"] || row["true var"])?.trim();
     const tanam   = row["tanam"]?.trim();
-    if (!gh || !baris) continue;
+    if (!gh || !baris || !tanam) continue;
     if (!map[gh]) map[gh] = { periode, tanam, baris: [] };
-    map[gh].baris.push({ baris, varian: varian || "" });
+    // Update tanam & periode jika data lebih baru
+    if (new Date(tanam.replace(/-/g, " ")) > new Date(map[gh].tanam?.replace(/-/g, " "))) {
+      map[gh].tanam   = tanam;
+      map[gh].periode = periode;
+    }
+    // Hindari duplikat baris
+    if (!map[gh].baris.find(b => b.baris === baris)) {
+      map[gh].baris.push({ baris, varian: varian || "" });
+    }
   }
   return map;
 }
