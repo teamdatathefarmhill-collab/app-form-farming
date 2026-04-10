@@ -84,16 +84,15 @@ function hitungHST(tglStr) {
   return Math.floor((nowLocal - tanam) / 86400000);
 }
 
+function stripQ(s) {
+  return (s || "").trim().replace(/\r/g, "").replace(/^["']+|["']+$/g, "").trim();
+}
+
 function parseCSV(text) {
   const lines = text.trim().split("\n").filter(l => l.trim());
-  const rawHeaders = lines[0].split(",").map(h =>
-    h.trim().replace(/\r/g, "").replace(/^"|"$/g, "").toLowerCase()
-  );
-
+  const rawHeaders = lines[0].split(",").map(h => stripQ(h).toLowerCase());
   return lines.slice(1).map(line => {
-    const vals = line.split(",").map(v =>
-      v.trim().replace(/\r/g, "").replace(/^"|"$/g, "")
-    );
+    const vals = line.split(",").map(v => stripQ(v));
     const obj = {};
     rawHeaders.forEach((h, i) => { if (h) obj[h] = vals[i] ?? ""; });
     return obj;
@@ -101,21 +100,33 @@ function parseCSV(text) {
 }
 
 function buildGHData(rows) {
+  // Pass 1: cari periode MAX per GH
+  const latestPeriode = {};
+  const latestTanam   = {};
+  for (const row of rows) {
+    const gh      = stripQ(row["greenhouse"]);
+    const periode = stripQ(row["periode"]);
+    const tanam   = stripQ(row["tanam"]);
+    if (!gh || !periode) continue;
+    const pNew = parseFloat(periode);
+    const pOld = parseFloat(latestPeriode[gh] ?? "-1");
+    if (!isNaN(pNew) && pNew >= pOld) {
+      latestPeriode[gh] = periode;
+      latestTanam[gh]   = tanam;
+    }
+  }
+
+  // Pass 2: ambil baris hanya dari periode max
   const map = {};
   for (const row of rows) {
-    const gh      = row["greenhouse"]?.trim();
-    const periode = row["periode"]?.trim();
-    const baris   = row["baris"]?.trim();
-    const varian  = (row["varian"] || row["true var"])?.trim();
-    const tanam   = row["tanam"]?.trim();
-    if (!gh || !baris || !tanam) continue;
-    if (!map[gh]) map[gh] = { periode, tanam, baris: [] };
-    // Update tanam & periode jika data lebih baru
-    if (new Date(tanam.replace(/-/g, " ")) > new Date(map[gh].tanam?.replace(/-/g, " "))) {
-      map[gh].tanam   = tanam;
-      map[gh].periode = periode;
-    }
-    // Hindari duplikat baris
+    const gh      = stripQ(row["greenhouse"]);
+    const periode = stripQ(row["periode"]);
+    const baris   = stripQ(row["baris"]);
+    const varian  = stripQ(row["varian"] || row["true var"]);
+    const tanam   = stripQ(row["tanam"]);
+    if (!gh || !baris || !periode) continue;
+    if (periode !== latestPeriode[gh]) continue;
+    if (!map[gh]) map[gh] = { periode: latestPeriode[gh], tanam: latestTanam[gh], baris: [] };
     if (!map[gh].baris.find(b => b.baris === baris)) {
       map[gh].baris.push({ baris, varian: varian || "" });
     }
