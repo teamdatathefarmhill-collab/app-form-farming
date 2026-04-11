@@ -135,7 +135,11 @@ export default function HPT() {
     setIsSyncingPending(false);
   }, [refreshPendingCount]);
 
-  const ghAktif    = Object.entries(produksiData);
+  const HST_MAKS = 65;
+  const ghAktif    = Object.entries(produksiData).filter(([, info]) => {
+    if (!info.tanam) return true;
+    return hitungHST(info.tanam) <= HST_MAKS;
+  });
   const semaiAktif = Object.entries(semaiData);
 
   const handleSelectGH = (gh) => {
@@ -202,7 +206,7 @@ export default function HPT() {
     if (isDemoMode) {
       markSubmitted(selectedGH);
       setSubmittedToday(getSubmittedToday());
-      setStep(4);
+      setStep(3);
       return;
     }
 
@@ -218,7 +222,7 @@ export default function HPT() {
         markSubmitted(selectedGH);
         setSubmittedToday(getSubmittedToday());
         setSavedOffline(true);
-        setStep(4);
+        setStep(3);
       } catch {
         setSubmitError("Gagal menyimpan data offline. Coba lagi.");
       } finally {
@@ -235,7 +239,7 @@ export default function HPT() {
       if (result?.status === "ok" || result?.success) {
         markSubmitted(selectedGH);
         setSubmittedToday(getSubmittedToday());
-        setStep(4);
+        setStep(3);
       } else {
         throw new Error(result?.message || "Gagal menyimpan");
       }
@@ -292,7 +296,7 @@ export default function HPT() {
           )}
 
           <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
-            {["Pilih GH","Operator","Input HPT","Selesai"].map((label, i) => {
+            {["Pilih GH","Input HPT","Selesai"].map((label, i) => {
               const s = i + 1;
               const active = step === s, done = step > s;
               return (
@@ -393,30 +397,8 @@ export default function HPT() {
             </div>
           )}
 
-          {/* ══ STEP 2 — Operator ══ */}
+          {/* ══ STEP 2 — Input HPT ══ */}
           {step === 2 && (
-            <div>
-              {ghInfo && hst !== null && hstC && (
-                <div style={{ padding: "10px 14px", background: "rgba(76,175,80,0.06)", border: "1px solid rgba(76,175,80,0.15)", borderRadius: 12, marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "#81c784" }}>{selectedGH}</div>
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>Periode {ghInfo.periode}</div>
-                  </div>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: hstC.text, background: hstC.bg, border: `1px solid ${hstC.border}`, borderRadius: 20, padding: "4px 12px" }}>{hst} HST</span>
-                </div>
-              )}
-              <div style={S.sectionTitle}>Nama Operator</div>
-              <input
-                type="text" value={operator}
-                onChange={e => setOperator(e.target.value)}
-                placeholder="Masukkan nama operator..."
-                style={{ width: "100%", padding: "13px 14px", background: "rgba(255,255,255,0.05)", border: `1px solid ${operator.length >= 2 ? "rgba(76,175,80,0.4)" : "rgba(255,255,255,0.1)"}`, borderRadius: 12, color: "#fff", fontSize: 15, outline: "none", boxSizing: "border-box" }}
-              />
-            </div>
-          )}
-
-          {/* ══ STEP 3 — Input HPT ══ */}
-          {step === 3 && (
             <div>
               <div style={{ padding: "9px 12px", background: "rgba(76,175,80,0.06)", border: "1px solid rgba(76,175,80,0.12)", borderRadius: 10, marginBottom: activeTab === "semai" ? 8 : 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ fontSize: 12, color: "#81c784", fontWeight: 600 }}>{selectedGH}</div>
@@ -503,6 +485,14 @@ export default function HPT() {
                 })}
               </div>
 
+              <div style={S.sectionTitle}>👤 Nama Operator</div>
+              <input
+                type="text" value={operator}
+                onChange={e => setOperator(e.target.value)}
+                placeholder="Masukkan nama operator..."
+                style={{ width: "100%", marginBottom: 16, padding: "13px 14px", background: "rgba(255,255,255,0.05)", border: `1px solid ${operator.length >= 2 ? "rgba(76,175,80,0.4)" : "rgba(255,255,255,0.1)"}`, borderRadius: 12, color: "#fff", fontSize: 15, outline: "none", boxSizing: "border-box" }}
+              />
+
               <div style={S.sectionTitle}>📝 Keterangan (opsional)</div>
               <textarea value={hptData.keterangan} onChange={e => setHptData(d => ({ ...d, keterangan: e.target.value }))} placeholder="Catatan tambahan..." rows={3} style={{ width: "100%", padding: "11px 13px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "#fff", fontSize: 13, outline: "none", resize: "none", boxSizing: "border-box" }} />
 
@@ -514,8 +504,8 @@ export default function HPT() {
             </div>
           )}
 
-          {/* ══ STEP 4 — Sukses ══ */}
-          {step === 4 && (
+          {/* ══ STEP 3 — Sukses ══ */}
+          {step === 3 && (
             <div style={{ textAlign: "center", paddingTop: 32 }}>
               <div style={{ fontSize: 60, marginBottom: 12 }}>
                 {isDemoMode ? "🧪" : savedOffline ? "💾" : "✅"}
@@ -584,18 +574,18 @@ export default function HPT() {
         </div>
 
         {/* ── Bottom Nav ── */}
-        {step < 4 && (
+        {step < 3 && (
           <div style={{ padding: "12px 16px 20px", borderTop: "1px solid rgba(255,255,255,0.07)", background: "rgba(0,0,0,0.3)", display: "flex", gap: 10 }}>
             {step > 1 && (
               <button onClick={() => setStep(s => s - 1)} style={{ flex: 1, padding: 14, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "rgba(255,255,255,0.65)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>← Kembali</button>
             )}
-            {step < 3 && (
-              <button onClick={() => setStep(s => s + 1)} disabled={step === 1 ? !selectedGH : !canProceedStep2} style={{ flex: 2, padding: 14, border: "none", borderRadius: 12, background: (step === 1 ? selectedGH : canProceedStep2) ? "linear-gradient(135deg, #2e7d32, #43a047)" : "rgba(255,255,255,0.05)", color: (step === 1 ? selectedGH : canProceedStep2) ? "#fff" : "rgba(255,255,255,0.25)", fontSize: 15, fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}>
-                {step === 1 ? "Lanjut →" : "Input HPT →"}
+            {step === 1 && (
+              <button onClick={() => setStep(2)} disabled={!selectedGH} style={{ flex: 2, padding: 14, border: "none", borderRadius: 12, background: selectedGH ? "linear-gradient(135deg, #2e7d32, #43a047)" : "rgba(255,255,255,0.05)", color: selectedGH ? "#fff" : "rgba(255,255,255,0.25)", fontSize: 15, fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}>
+                Lanjut →
               </button>
             )}
-            {step === 3 && (
-              <button onClick={handleSubmit} disabled={syncing} style={{ flex: 2, padding: 14, background: syncing ? "rgba(76,175,80,0.3)" : isDemoMode ? "linear-gradient(135deg, #5d4037, #795548)" : !isOnline ? "linear-gradient(135deg, #1565C0, #1976D2)" : "linear-gradient(135deg, #1b5e20, #2e7d32)", border: "none", borderRadius: 12, color: "#fff", fontSize: 15, fontWeight: 700, cursor: syncing ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            {step === 2 && (
+              <button onClick={handleSubmit} disabled={syncing || !canProceedStep2} style={{ flex: 2, padding: 14, background: syncing || !canProceedStep2 ? "rgba(255,255,255,0.05)" : isDemoMode ? "linear-gradient(135deg, #5d4037, #795548)" : !isOnline ? "linear-gradient(135deg, #1565C0, #1976D2)" : "linear-gradient(135deg, #1b5e20, #2e7d32)", border: "none", borderRadius: 12, color: syncing || !canProceedStep2 ? "rgba(255,255,255,0.25)" : "#fff", fontSize: 15, fontWeight: 700, cursor: syncing || !canProceedStep2 ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 {syncing ? "⏳ Menyimpan..." : isDemoMode ? "Submit Demo 🧪" : !isOnline ? "💾 Simpan Offline" : "Submit HPT ✓"}
               </button>
             )}
