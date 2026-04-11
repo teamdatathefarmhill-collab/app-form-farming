@@ -1,36 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch } from "../utils/idb";
+import { useGHData } from "../hooks/useGHData";
 
 const DB_NAME = "HPTOfflineDB";
 
 const SCRIPT_URL = import.meta.env.VITE_GAS_HPT_URL;
 
-const buatBaris = (jumlah, varianMap) => {
-  const abjad = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  return Array.from({ length: jumlah }, (_, i) => {
-    const label = i < 26 ? abjad[i] : abjad[Math.floor(i / 26) - 1] + abjad[i % 26];
-    return { baris: label, varian: varianMap[label] || "–" };
-  });
-};
-
-const MOCK_GH_DATA = {
-  "TOHUDAN 2": {
-    periode: "26.1", tanam: "2026-02-09",
-    baris: buatBaris(21, { A:"Aruni",B:"Aruni",C:"Aruni",D:"Greeniegal",E:"Greeniegal",F:"Aruni",G:"Midori",H:"Aruni",I:"Sarasuka",J:"Greeniegal",K:"Greeniegal",L:"Midori",M:"Midori",N:"Midori",O:"Sarasuka",P:"Sarasuka",Q:"Greeniegal",R:"Greeniegal",S:"Greeniegal",T:"Midori",U:"Greeniegal" }),
-  },
-  "COLOMADU 1": {
-    periode: "26.1", tanam: "2026-02-09",
-    baris: buatBaris(18, { A:"Servo F1",B:"Servo F1",C:"Tombatu F1",D:"Tombatu F1",E:"Inko F1",F:"Inko F1",G:"Servo F1",H:"Tombatu F1",I:"Inko F1",J:"Servo F1",K:"Tombatu F1",L:"Inko F1",M:"Servo F1",N:"Tombatu F1",O:"Inko F1",P:"Servo F1",Q:"Tombatu F1",R:"Inko F1" }),
-  },
-  "BERGAS 1":  { periode: "26.1", tanam: "2026-02-15", baris: buatBaris(18, {}) },
-  "SAWAHAN 1": { periode: "26.1", tanam: "2026-01-20", baris: buatBaris(42, {}) },
-};
-
-const MOCK_SEMAI_DATA = {
-  "SEMAI 1": { lokasi: "Blok A", tanam: "2026-02-20", keterangan: "Batch 26.1" },
-  "SEMAI 2": { lokasi: "Blok B", tanam: "2026-02-25", keterangan: "Batch 26.1" },
-  "SEMAI 3": { lokasi: "Blok C", tanam: "2026-03-01", keterangan: "Batch 26.2" },
-};
 
 const LS_KEY = `hpt_${new Date().toLocaleDateString("id-ID")}`;
 function getSubmittedToday() {
@@ -95,11 +70,10 @@ function initHPTData() {
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
 export default function HPT() {
-  const [step, setStep]             = useState(1);
-  const [ghData, setGhData]         = useState({});
-  const [loadingGH, setLoadingGH]   = useState(true);
-  const [isDemoMode, setIsDemoMode] = useState(false);
-  const [isOnline, setIsOnline]     = useState(navigator.onLine);
+  const [step, setStep]       = useState(1);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  const { produksiData, semaiData, loading: loadingGH, isDemoMode, refetch: fetchGHData } = useGHData();
 
   const [selectedGH, setSelectedGH] = useState("");
   const [activeTab, setActiveTab]   = useState("produksi");
@@ -139,53 +113,6 @@ export default function HPT() {
     if (isOnline) syncPendingData();
   }, [isOnline]);
 
-  // ── Fix: cancelled flag agar StrictMode tidak trigger demo ──
-  useEffect(() => {
-    let cancelled = false;
-
-    const load = async () => {
-      setLoadingGH(true);
-      try {
-        const data = await gasFetch(`${SCRIPT_URL}?action=getGH`);
-        if (cancelled) return;
-        if (data && typeof data === "object" && !data.error) {
-          setGhData({ produksi: data.produksi || {}, semai: data.semai || {} });
-          setIsDemoMode(false);
-        } else throw new Error("invalid");
-      } catch {
-        if (cancelled) return;
-        setGhData({ produksi: MOCK_GH_DATA, semai: MOCK_SEMAI_DATA });
-        setIsDemoMode(true);
-      } finally {
-        if (!cancelled) setLoadingGH(false);
-      }
-    };
-
-    load();
-    return () => { cancelled = true; };
-  }, []);
-
-  // ── Tombol "Coba Lagi" ──
-  const fetchGHData = () => {
-    let cancelled = false;
-    setLoadingGH(true);
-    setIsDemoMode(false);
-    gasFetch(`${SCRIPT_URL}?action=getGH`)
-      .then(data => {
-        if (cancelled) return;
-        if (data && typeof data === "object" && !data.error) {
-          setGhData({ produksi: data.produksi || {}, semai: data.semai || {} });
-          setIsDemoMode(false);
-        } else throw new Error("invalid");
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setGhData({ produksi: MOCK_GH_DATA, semai: MOCK_SEMAI_DATA });
-        setIsDemoMode(true);
-      })
-      .finally(() => { if (!cancelled) setLoadingGH(false); });
-    return () => { cancelled = true; };
-  };
 
   const syncPendingData = useCallback(async () => {
     const allPending = await idbGetAll(DB_NAME);
@@ -208,8 +135,8 @@ export default function HPT() {
     setIsSyncingPending(false);
   }, [refreshPendingCount]);
 
-  const ghAktif    = Object.entries(ghData.produksi || {});
-  const semaiAktif = Object.entries(ghData.semai || {});
+  const ghAktif    = Object.entries(produksiData);
+  const semaiAktif = Object.entries(semaiData);
 
   const handleSelectGH = (gh) => {
     if (submittedToday.includes(gh)) {
@@ -227,9 +154,7 @@ export default function HPT() {
     setPendingGH("");
   };
 
-  const ghInfo = activeTab === "semai"
-    ? (ghData.semai || {})[selectedGH]
-    : (ghData.produksi || {})[selectedGH];
+  const ghInfo = activeTab === "semai" ? semaiData[selectedGH] : produksiData[selectedGH];
   const hst  = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : null;
   const hstC = hst !== null ? hstColor(hst) : null;
 

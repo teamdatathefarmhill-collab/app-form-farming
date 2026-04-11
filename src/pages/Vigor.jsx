@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch } from "../utils/idb";
+import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
+import { useGHData } from "../hooks/useGHData";
 
 const DB_NAME    = "VigorOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_VIGOR_URL;
@@ -8,21 +9,6 @@ const HST_CHECKPOINTS = [7, 14, 21, 33, 38, 45, 54];
 const HST_MIN = 5;
 const HST_MAX = 60;
 
-// ─── Data GH mock (fallback demo) ────────────────────────────────────────────
-const buatBaris = (jumlah) => {
-  const abjad = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  return Array.from({ length: jumlah }, (_, i) => ({
-    baris: i < 26 ? abjad[i] : abjad[Math.floor(i / 26) - 1] + abjad[i % 26],
-    varian: "Aruni",
-  }));
-};
-
-const MOCK_GH_DATA = {
-  "TOHUDAN 2":  { periode: "26.1", tanam: "2026-02-09", baris: buatBaris(21) },
-  "COLOMADU 1": { periode: "26.1", tanam: "2026-02-09", baris: buatBaris(18) },
-  "BERGAS 1":   { periode: "26.1", tanam: "2026-02-15", baris: buatBaris(18) },
-  "SAWAHAN 1":  { periode: "26.1", tanam: "2026-01-20", baris: buatBaris(42) },
-};
 
 // ─── Aspek penilaian ──────────────────────────────────────────────────────────
 const ASPEK_TANAMAN = [
@@ -137,11 +123,10 @@ function NumInput({ value, onChange, placeholder, satuan }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function Vigor() {
-  const [step, setStep]           = useState(1);
-  const [ghData, setGhData]       = useState({});
-  const [loadingGH, setLoadingGH] = useState(true);
-  const [isDemoMode, setIsDemoMode] = useState(false);
-  const [isOnline, setIsOnline]   = useState(navigator.onLine);
+  const [step, setStep]       = useState(1);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  const { ghData, loading: loadingGH, isDemoMode } = useGHData();
 
   const [selectedGH, setSelectedGH]   = useState("");
   const [selectedHST, setSelectedHST] = useState(null);
@@ -176,22 +161,6 @@ export default function Vigor() {
   }, []);
 
   useEffect(() => { if (isOnline) syncPending(); }, [isOnline]);
-  useEffect(() => { fetchGHData(); }, []);
-
-  const fetchGHData = async () => {
-    setLoadingGH(true);
-    setIsDemoMode(false);
-    try {
-      const json = await gasFetch(`${SCRIPT_URL}?action=getGH`);
-      if (json.success) setGhData(json.data);
-      else throw new Error();
-    } catch {
-      setIsDemoMode(true);
-      setGhData(MOCK_GH_DATA);
-    } finally {
-      setLoadingGH(false);
-    }
-  };
 
   const syncPending = useCallback(async () => {
     const all = await idbGetAll(DB_NAME);

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch } from "../utils/idb";
+import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
+import { useGHData } from "../hooks/useGHData";
 
 const DB_NAME = "GramasiOfflineDB";
 
@@ -7,26 +8,6 @@ const SCRIPT_URL = import.meta.env.VITE_GAS_GRAMASI_URL;
 const HST_MIN = 30;
 const HST_MAX = 55;
 
-const buatBaris = (jumlah, varianMap) => {
-  const abjad = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  return Array.from({ length: jumlah }, (_, i) => {
-    const label = i < 26 ? abjad[i] : abjad[Math.floor(i / 26) - 1] + abjad[i % 26];
-    return { baris: label, varian: varianMap[label] || "Aruni" };
-  });
-};
-
-const MOCK_GH_DATA = {
-  "TOHUDAN 2": {
-    periode: "26.1", tanam: "2026-02-09",
-    baris: buatBaris(21, { A:"Aruni",B:"Aruni",C:"Aruni",D:"Greeniegal",E:"Greeniegal",F:"Aruni",G:"Midori",H:"Aruni",I:"Sarasuka",J:"Greeniegal",K:"Greeniegal",L:"Midori",M:"Midori",N:"Midori",O:"Sarasuka",P:"Sarasuka",Q:"Greeniegal",R:"Greeniegal",S:"Greeniegal",T:"Midori",U:"Greeniegal" }),
-  },
-  "COLOMADU 1": {
-    periode: "26.1", tanam: "2026-02-09",
-    baris: buatBaris(18, { A:"Servo F1",B:"Servo F1",C:"Tombatu F1",D:"Tombatu F1",E:"Inko F1",F:"Inko F1",G:"Servo F1",H:"Tombatu F1",I:"Inko F1",J:"Servo F1",K:"Tombatu F1",L:"Inko F1",M:"Servo F1",N:"Tombatu F1",O:"Inko F1",P:"Servo F1",Q:"Tombatu F1",R:"Inko F1" }),
-  },
-  "BERGAS 1":  { periode: "26.1", tanam: "2026-02-15", baris: buatBaris(18, {}) },
-  "SAWAHAN 1": { periode: "26.1", tanam: "2026-01-20", baris: buatBaris(42, {}) },
-};
 
 // ─── localStorage helpers ─────────────────────────────────────────────────────
 const LS_KEY = `gramasi_${new Date().toLocaleDateString("id-ID")}`;
@@ -67,11 +48,10 @@ const todayISO   = new Date().toLocaleDateString("id-ID", { day: "2-digit", mont
 const todayLabel = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
 export default function Gramasi() {
-  const [step, setStep]             = useState(1);
-  const [ghData, setGhData]         = useState({});
-  const [loadingGH, setLoadingGH]   = useState(true);
-  const [isDemoMode, setIsDemoMode] = useState(false);
-  const [isOnline, setIsOnline]     = useState(navigator.onLine);
+  const [step, setStep]   = useState(1);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  const { ghData, loading: loadingGH, isDemoMode } = useGHData();
 
   const [selectedGH, setSelectedGH]     = useState("");
   const [tableData, setTableData]       = useState([]);
@@ -113,22 +93,6 @@ export default function Gramasi() {
     if (isOnline) syncPendingData();
   }, [isOnline]);
 
-  useEffect(() => { fetchGHData(); }, []);
-
-  const fetchGHData = async () => {
-    setLoadingGH(true);
-    setIsDemoMode(false);
-    try {
-      const json = await gasFetch(`${SCRIPT_URL}?action=getGH`);
-      if (json.success) setGhData(json.data);
-      else throw new Error();
-    } catch {
-      setIsDemoMode(true);
-      setGhData(MOCK_GH_DATA);
-    } finally {
-      setLoadingGH(false);
-    }
-  };
 
   // ── Sync semua pending ke GAS ──
   const syncPendingData = useCallback(async () => {

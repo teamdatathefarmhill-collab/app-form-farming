@@ -1,19 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
-import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch } from "../utils/idb";
+import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
+import { useGHData } from "../hooks/useGHData";
 
 const DB_NAME = "SanitasiOfflineDB";
 
 const SCRIPT_URL = import.meta.env.VITE_GAS_SANITASI_URL;
 const HST_MAKS = 65;
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-const MOCK_GH_DATA = {
-  "COLOMADU 1": { periode: "3", tanam: "2026-01-15", varian: ["Servo F1", "Tombatu F1"] },
-  "COLOMADU 2": { periode: "3", tanam: "2026-01-20", varian: ["Servo F1", "Inko F1"] },
-  "COLOMADU 3": { periode: "2", tanam: "2025-12-10", varian: ["Tombatu F1"] },
-  "COLOMADU 4": { periode: "4", tanam: "2026-02-01", varian: ["Servo F1", "Tombatu F1", "Inko F1"] },
-  "COLOMADU 5": { periode: "1", tanam: "2025-10-01", varian: ["Inko F1"] },
-};
 
 // ─── Kategori sanitasi ────────────────────────────────────────────────────────
 const KATEGORI = [
@@ -157,10 +149,9 @@ function VarianBlock({ varian, data, onChange }) {
 
 // ─── App utama ────────────────────────────────────────────────────────────────
 export default function Sanitasi() {
-  const [step, setStep]             = useState(1);
-  const [ghData, setGhData]         = useState({});
-  const [loadingGH, setLoadingGH]   = useState(true);
-  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [step, setStep] = useState(1);
+
+  const { ghData, loading: loadingGH, isDemoMode } = useGHData();
 
   const [selectedGH, setSelectedGH]     = useState("");
   const [varianData, setVarianData]     = useState({});
@@ -216,27 +207,6 @@ export default function Sanitasi() {
       syncPendingData();
     }
   }, [isOnline]);
-
-  useEffect(() => { fetchGHData(); }, []);
-
-const fetchGHData = async () => {
-  setLoadingGH(true);
-  setIsDemoMode(false);
-  try {
-    const json = await gasFetch(`${SCRIPT_URL}?action=getGH`);
-    console.log("Data GH Sanitasi:", JSON.stringify(json.data)); // ← tambah ini
-    if (json.success) {
-      setGhData(json.data);
-    } else {
-      throw new Error("Response tidak sukses");
-    }
-  } catch {
-    setIsDemoMode(true);
-    setGhData(MOCK_GH_DATA);
-  } finally {
-    setLoadingGH(false);
-  }
-};
 
   // ── Sync semua data pending ke GAS ──
   const syncPendingData = useCallback(async () => {

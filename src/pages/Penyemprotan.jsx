@@ -1,18 +1,36 @@
 import { useState, useEffect, useCallback } from "react";
 import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
+import { useGHData } from "../hooks/useGHData";
 
 const DB_NAME    = "PenyemprotanOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_PENYEMPROTAN_URL;
 
-// ─── Data GH (statis) ─────────────────────────────────────────────────────────
-const GH_GROUPS = [
-  { area: "BERGAS",        color: "#FF7043", nomor: [1,2,3,4,5,7,8] },
-  { area: "TOHUDAN",       color: "#1E88E5", nomor: Array.from({length:22},(_,i)=>i+1) },
-  { area: "SAWAHAN",       color: "#43A047", nomor: [1,2,3,4] },
-  { area: "COLOMADU",      color: "#AB47BC", nomor: [1,2,3,4] },
-  { area: "NURSERY",       color: "#00897B", nomor: [1,2,3,4,5,6] },
-  { area: "SEMAI SAWAHAN", color: "#FFB300", nomor: [1] },
-];
+// ─── Warna per area GH ────────────────────────────────────────────────────────
+const AREA_COLORS = {
+  "BERGAS":        "#FF7043",
+  "TOHUDAN":       "#1E88E5",
+  "SAWAHAN":       "#43A047",
+  "COLOMADU":      "#AB47BC",
+  "NURSERY":       "#00897B",
+  "SEMAI SAWAHAN": "#FFB300",
+  "SEMAI":         "#FFB300",
+};
+
+function buildGHGroups(ghData) {
+  const areaMap = {};
+  Object.keys(ghData).sort().forEach(ghName => {
+    const match = ghName.match(/^(.+?)\s+(\d+)$/);
+    if (!match) return;
+    const area = match[1].trim();
+    const num  = parseInt(match[2]);
+    if (!areaMap[area]) {
+      areaMap[area] = { area, color: AREA_COLORS[area] || "#607D8B", nomor: [] };
+    }
+    if (!areaMap[area].nomor.includes(num)) areaMap[area].nomor.push(num);
+  });
+  Object.values(areaMap).forEach(g => g.nomor.sort((a, b) => a - b));
+  return Object.values(areaMap);
+}
 
 // ─── Pestisida (shared) ───────────────────────────────────────────────────────
 const PESTISIDA_LIST = [
@@ -94,10 +112,10 @@ function PestisidaPicker({ value, onChange, accentColor = "#64B5F6" }) {
 }
 
 // ─── Komponen: GH Picker ──────────────────────────────────────────────────────
-function GHPicker({ value, onChange }) {
+function GHPicker({ value, onChange, groups }) {
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-      {GH_GROUPS.map(group => (
+      {groups.map(group => (
         <div key={group.area}>
           <div style={{ fontSize:10, color:group.color, letterSpacing:1.5, textTransform:"uppercase", fontWeight:700, marginBottom:8 }}>
             {group.area}
@@ -178,6 +196,9 @@ export default function Penyemprotan() {
   const [isSyncingPending, setIsSyncingPending] = useState(false);
   const [sessionKey] = useState(() => "sk_" + Date.now() + "_" + Math.random().toString(36).slice(2));
   const isDemoMode = !SCRIPT_URL;
+
+  const { ghData, loading: loadingGH } = useGHData();
+  const ghGroups = buildGHGroups(ghData);
 
   const refreshPendingCount = useCallback(async () => {
     try { setPendingCount(await idbCount(DB_NAME)); } catch { setPendingCount(0); }
@@ -401,7 +422,10 @@ export default function Penyemprotan() {
             {activity && (
               <>
                 <h3 style={{ fontSize:15, fontWeight:700, margin:"0 0 14px", color:"#fff" }}>Pilih Greenhouse</h3>
-                <GHPicker value={selectedGH} onChange={setSelectedGH} />
+                {loadingGH
+                  ? <div style={{ color:"rgba(255,255,255,0.4)", fontSize:13, padding:"12px 0" }}>Memuat data GH...</div>
+                  : <GHPicker value={selectedGH} onChange={setSelectedGH} groups={ghGroups} />
+                }
                 {selectedGH && (
                   <div style={{ marginTop:14, padding:"9px 14px", background:`${ghColor}18`, border:`1px solid ${ghColor}44`, borderRadius:10, fontSize:13, color:ghColor, fontWeight:600 }}>
                     ✓ {selectedGH} dipilih

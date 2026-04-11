@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
-import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch } from "../utils/idb";
+import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
+import { useGHData } from "../hooks/useGHData";
 
-const DB_NAME     = "SOOfflineDB";
-const SCRIPT_URL  = import.meta.env.VITE_GAS_SO_URL;
-const REF_CSV_URL = import.meta.env.VITE_REF_SO_URL;
+const DB_NAME    = "SOOfflineDB";
+const SCRIPT_URL = import.meta.env.VITE_GAS_SO_URL;
 
 // ─── Tipe GH & mapping nama ───────────────────────────────────────────────────
 const TIPE_GH = [
@@ -84,58 +84,6 @@ function hitungHST(tglStr) {
   return Math.floor((nowLocal - tanam) / 86400000);
 }
 
-function stripQ(s) {
-  return (s || "").trim().replace(/\r/g, "").replace(/^["']+|["']+$/g, "").trim();
-}
-
-function parseCSV(text) {
-  const lines = text.trim().split("\n").filter(l => l.trim());
-  const rawHeaders = lines[0].split(",").map(h => stripQ(h).toLowerCase());
-  return lines.slice(1).map(line => {
-    const vals = line.split(",").map(v => stripQ(v));
-    const obj = {};
-    rawHeaders.forEach((h, i) => { if (h) obj[h] = vals[i] ?? ""; });
-    return obj;
-  });
-}
-
-function buildGHData(rows) {
-  // Pass 1: cari periode MAX per GH
-  const latestPeriode = {};
-  const latestTanam   = {};
-  for (const row of rows) {
-    const gh      = stripQ(row["greenhouse"]);
-    const periode = stripQ(row["periode"]);
-    // Kolom L = Tanam — header CSV bisa "tanam" atau "bulan tanam"
-    const tanam   = stripQ(row["tanam"] || row["bulan tanam"] || "");
-    if (!gh || !periode) continue;
-    const pNew = parseFloat(periode);
-    const pOld = parseFloat(latestPeriode[gh] ?? "-1");
-    if (!isNaN(pNew) && pNew > pOld) {
-      latestPeriode[gh] = periode;
-      latestTanam[gh]   = tanam;
-    }
-  }
-
-  // Pass 2: ambil baris hanya dari periode max
-  const map = {};
-  for (const row of rows) {
-    const gh      = stripQ(row["greenhouse"]);
-    const periode = stripQ(row["periode"]);
-    // Kolom H = Baris, Kolom I = Varian
-    const baris   = stripQ(row["baris"]);
-    const varian  = stripQ(row["varian"] || row["true var"] || "");
-    const tanam   = stripQ(row["tanam"] || row["bulan tanam"] || "");
-    if (!gh || !baris || !periode) continue;
-    if (periode !== latestPeriode[gh]) continue;
-    if (!map[gh]) map[gh] = { periode: latestPeriode[gh], tanam: latestTanam[gh], baris: [] };
-    // Hindari duplikat baris
-    if (!map[gh].baris.find(b => b.baris === baris)) {
-      map[gh].baris.push({ baris, varian });
-    }
-  }
-  return map;
-}
 
 function hstChipStyle(hst) {
   if (hst === null) return { bg: "#f5f5f5", color: "#999", border: "#e0e0e0" };
@@ -171,34 +119,13 @@ const todayISO   = new Date().toLocaleDateString("id-ID", { day: "2-digit", mont
 const todayLabel = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const todayTimestamp = () => new Date().toLocaleString("id-ID");
 
-// ─── MOCK DATA fallback ───────────────────────────────────────────────────────
-const MOCK_GH_DATA = {
-  "TOHUDAN 1": {
-    periode: "26.1", tanam: "29-Jan-2026",
-    baris: [
-      { baris: "A", varian: "Greeniegal" }, { baris: "B", varian: "Sarasuka" },
-      { baris: "C", varian: "Sarasuka" },   { baris: "D1", varian: "Greeniegal" },
-      { baris: "D2", varian: "Sarasuka" },  { baris: "E", varian: "Greeniegal" },
-      { baris: "F", varian: "Sarasuka" },   { baris: "G", varian: "Elysia" },
-      { baris: "H", varian: "Elysia" },     { baris: "I", varian: "Midori" },
-    ],
-  },
-  "BERGAS 3": {
-    periode: "25.2", tanam: "11-Mar-2026",
-    baris: [
-      { baris: "A", varian: "Sunray" },  { baris: "B", varian: "Greeniegal" },
-      { baris: "C", varian: "Midori" },  { baris: "D", varian: "Elysia" },
-    ],
-  },
-};
 
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
 export default function SO() {
-  const [step, setStep]               = useState(1); // 1=pilih GH (accordion), 2=form, 3=sukses
-  const [ghData, setGhData]           = useState({});
-  const [loadingRef, setLoadingRef]   = useState(true);
-  const [isDemoMode, setIsDemoMode]   = useState(false);
-  const [isOnline, setIsOnline]       = useState(navigator.onLine);
+  const [step, setStep]       = useState(1); // 1=pilih GH (accordion), 2=form, 3=sukses
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  const { ghData, loading: loadingRef, isDemoMode, refetch: fetchRefData } = useGHData();
 
   const [openTipe, setOpenTipe] = useState(null); // accordion
   const [selectedGH, setSelectedGH]     = useState("");
@@ -235,33 +162,6 @@ export default function SO() {
   // ── Auto-sync saat kembali online ──
   useEffect(() => { if (isOnline) syncPendingData(); }, [isOnline]);
 
-  // ── Fetch REF CSV ──
-  useEffect(() => { fetchRefData(); }, []);
-
-  const fetchRefData = async () => {
-    setLoadingRef(true);
-    setIsDemoMode(false);
-    try {
-      const res  = await fetch(REF_CSV_URL);
-      const text = await res.text();
-      const rows = parseCSV(text);
-      // Debug: log header baris pertama dan sample row
-      if (rows.length > 0) {
-        console.log("[SO REF] Headers:", Object.keys(rows[0]));
-        console.log("[SO REF] Sample row:", rows[0]);
-      }
-      const data = buildGHData(rows);
-      console.log("[SO REF] GH loaded:", Object.keys(data).length, "GH");
-      if (Object.keys(data).length === 0) throw new Error("empty");
-      setGhData(data);
-    } catch (err) {
-      console.warn("[SO REF] Fallback to demo:", err.message);
-      setIsDemoMode(true);
-      setGhData(MOCK_GH_DATA);
-    } finally {
-      setLoadingRef(false);
-    }
-  };
 
   // ── Sync pending offline ──
   const syncPendingData = useCallback(async () => {
