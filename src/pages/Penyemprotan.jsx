@@ -309,7 +309,7 @@ export default function Penyemprotan() {
   const canSubmit  = operator.trim() !== "";
 
   const actColor = activity === "oles_gsb" ? "#FF7043" : "#1E88E5";
-  const ghGroup  = GH_GROUPS.find(g => selectedGH.startsWith(g.area));
+  const ghGroup  = ghGroups.find(g => selectedGH.startsWith(g.area));
   const ghColor  = ghGroup?.color || "#64B5F6";
 
   // ── Shared input style helper ──
