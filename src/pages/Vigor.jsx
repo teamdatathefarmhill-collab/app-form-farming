@@ -5,37 +5,52 @@ import { useGHData } from "../hooks/useGHData";
 const DB_NAME    = "VigorOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_VIGOR_URL;
 
-const HST_CHECKPOINTS = [7, 14, 21, 33, 38, 45, 54];
 const HST_MIN = 5;
 const HST_MAX = 60;
+const HST_CHECKPOINTS = [7, 14, 21, 33, 38, 45, 54];
+const HST_NEAR_RANGE  = 2; // hari sebelum checkpoint = reminder
 
+function getCheckpointStatus(hst) {
+  if (hst === null) return null;
+  // Cek apakah pas atau sudah lewat checkpoint (dalam 3 hari setelah checkpoint)
+  for (const cp of HST_CHECKPOINTS) {
+    if (hst >= cp && hst <= cp + 3) {
+      return { type: "due", cp, label: `⚠️ Waktunya input Vigor HST ${cp}!` };
+    }
+  }
+  // Cek approaching (dalam HST_NEAR_RANGE hari sebelum checkpoint)
+  for (const cp of HST_CHECKPOINTS) {
+    if (hst >= cp - HST_NEAR_RANGE && hst < cp) {
+      return { type: "soon", cp, label: `🔔 ${cp - hst} hari lagi menuju checkpoint HST ${cp}` };
+    }
+  }
+  return null;
+}
 
-// ─── Aspek penilaian ──────────────────────────────────────────────────────────
-const ASPEK_TANAMAN = [
-  { key: "tinggi",   label: "Tinggi tanaman", satuan: "cm",  tipe: "numerik",  placeholder: "cth: 45" },
-  { key: "daun",     label: "Jumlah daun",    satuan: "lbr", tipe: "numerik",  placeholder: "cth: 12" },
-  { key: "tunas",    label: "Tunas air",       satuan: "bh",  tipe: "numerik",  placeholder: "cth: 2" },
-  { key: "warnaDaun",label: "Warna daun",     satuan: "",    tipe: "skor",     placeholder: "" },
-  { key: "batang",   label: "Kondisi batang",  satuan: "",    tipe: "skor",     placeholder: "" },
-  { key: "akar",     label: "Kondisi akar",    satuan: "",    tipe: "skor",     placeholder: "" },
-  { key: "vigor",    label: "Skor vigor",      satuan: "",    tipe: "skor",     placeholder: "" },
+function hstTerdekat(hst) {
+  return HST_CHECKPOINTS.reduce((prev, curr) =>
+    Math.abs(curr - hst) < Math.abs(prev - hst) ? curr : prev
+  );
+}
+
+// ─── Aspek Vigor ──────────────────────────────────────────────────────────────
+const LEBAR_DAUN_OPTIONS = ["<7", "7–9,9", "10–12"];
+const DIAMETER_OPTIONS   = [
+  "Tanaman kutilang",
+  "Batang kecil, antar ruas pendek",
+  "Batang besar, antar ruas panjang",
+  "Batang besar, ruas pendek",
+];
+const WARNA_DAUN_OPTIONS = [
+  "> 8 tanaman menguning",
+  "5–8 tanaman menguning",
+  "1–4 tanaman menguning",
+  "Tidak ada menguning",
 ];
 
-const ASPEK_BUAH = [
-  { key: "diameterBuah", label: "Diameter buah",    satuan: "cm", tipe: "numerik", placeholder: "cth: 8.5" },
-  { key: "bobotBuah",    label: "Bobot estimasi",   satuan: "g",  tipe: "numerik", placeholder: "cth: 350" },
-  { key: "jumlahBuah",   label: "Jumlah buah",      satuan: "bh", tipe: "numerik", placeholder: "cth: 1" },
-  { key: "warnaBuah",    label: "Warna kulit",       satuan: "",   tipe: "skor",    placeholder: "" },
-  { key: "jaring",       label: "Kondisi jaring",    satuan: "",   tipe: "skor",    placeholder: "" },
-  { key: "kualitasBuah", label: "Skor kualitas buah",satuan: "",   tipe: "skor",    placeholder: "" },
-];
-
-const SKOR_DESC = {
-  1: { label: "Buruk",       warna: "#c62828", bg: "#ffebee", border: "#ef9a9a" },
-  2: { label: "Cukup",       warna: "#e65100", bg: "#fff3e0", border: "#ffb74d" },
-  3: { label: "Baik",        warna: "#1565C0", bg: "#e3f2fd", border: "#90CAF9" },
-  4: { label: "Sangat Baik", warna: "#2e7d32", bg: "#e8f5e9", border: "#a5d6a7" },
-};
+// ─── Aspek Perakaran ──────────────────────────────────────────────────────────
+const WARNA_AKAR_OPTIONS  = ["Akar Coklat", "Akar Putih Bersih"];
+const VOLUME_AKAR_OPTIONS = ["Tidak Ada Akar", "Volume Akar Sedikit", "Volume Akar Banyak"];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function hitungHST(tgl) {
@@ -45,22 +60,29 @@ function hitungHST(tgl) {
   return Math.floor((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - tanam) / 86400000);
 }
 
-function hstTerdekat(hst) {
-  return HST_CHECKPOINTS.reduce((prev, curr) =>
-    Math.abs(curr - hst) < Math.abs(prev - hst) ? curr : prev
-  );
-}
-
 function hstColor(hst) {
   if (hst <= 21) return { bg: "#e8f5e9", border: "#a5d6a7", text: "#2e7d32", badge: "#c8e6c9" };
   if (hst <= 40) return { bg: "#fff8e1", border: "#ffe082", text: "#f57f17", badge: "#fff9c4" };
   return              { bg: "#fbe9e7", border: "#ffab91", text: "#bf360c", badge: "#fce4ec" };
 }
 
-function initRowData(baris) {
-  const tanaman = Object.fromEntries(ASPEK_TANAMAN.map(a => [a.key, ""]));
-  const buah    = Object.fromEntries(ASPEK_BUAH.map(a => [a.key, ""]));
-  return baris.map(b => ({ ...b, tanaman: { ...tanaman }, buah: { ...buah } }));
+function initVarianData(varianList) {
+  const obj = {};
+  varianList.forEach(v => {
+    obj[v] = {
+      lebarDaun:   "",
+      diameterBatang: "",
+      warnaDaun:   "",
+      warnaAkar:   "",
+      volumeAkar:  "",
+    };
+  });
+  return obj;
+}
+
+function isVarianFilled(d) {
+  return d.lebarDaun !== "" && d.diameterBatang !== "" && d.warnaDaun !== "" &&
+         d.warnaAkar !== "" && d.volumeAkar !== "";
 }
 
 const LS_KEY = `vigor_${new Date().toLocaleDateString("id-ID")}`;
@@ -75,48 +97,27 @@ function markSubmitted(gh) {
 const todayISO   = new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
 const todayLabel = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
-// ─── Komponen Skor Button ─────────────────────────────────────────────────────
-function SkorBtn({ value, onChange }) {
+// ─── Komponen: Pilih Opsi (Radio style) ──────────────────────────────────────
+function PilihOpsi({ options, value, onChange, color = "#2e7d32" }) {
   return (
-    <div style={{ display: "flex", gap: 4 }}>
-      {[1, 2, 3, 4].map(n => {
-        const s = SKOR_DESC[n];
-        const active = value === String(n);
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {options.map((opt, i) => {
+        const active = value === opt;
         return (
-          <button key={n} onClick={() => onChange(String(n))}
+          <button key={i} onClick={() => onChange(opt)}
             style={{
-              flex: 1, padding: "6px 2px", border: `1.5px solid ${active ? s.border : "#e0e0e0"}`,
-              borderRadius: 8, background: active ? s.bg : "#fff",
-              color: active ? s.warna : "#bbb", fontSize: 13, fontWeight: 700,
-              cursor: "pointer", transition: "all .15s", lineHeight: 1,
+              padding: "9px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer",
+              border: `1.5px solid ${active ? color : "#e0e0e0"}`,
+              background: active ? `${color}12` : "#fff",
+              color: active ? color : "#555",
+              fontSize: 13, fontWeight: active ? 700 : 400,
+              transition: "all 0.15s",
             }}>
-            {n}
-            <div style={{ fontSize: 8, marginTop: 2, fontWeight: 400, color: active ? s.warna : "#ccc" }}>
-              {s.label}
-            </div>
+            <span style={{ marginRight: 8 }}>{active ? "●" : "○"}</span>
+            {opt}
           </button>
         );
       })}
-    </div>
-  );
-}
-
-// ─── Komponen Input Numerik ───────────────────────────────────────────────────
-function NumInput({ value, onChange, placeholder, satuan }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <input
-        type="number" inputMode="decimal" value={value}
-        onChange={e => { if (e.target.value === "" || /^\d*\.?\d*$/.test(e.target.value)) onChange(e.target.value); }}
-        placeholder={placeholder}
-        style={{
-          flex: 1, height: 36, padding: "0 10px", textAlign: "center",
-          border: `1.5px solid ${value !== "" ? "#81c784" : "#e0e0e0"}`,
-          borderRadius: 8, fontSize: 14, fontWeight: 600,
-          color: value !== "" ? "#2e7d32" : "#bbb", outline: "none", background: "#fff",
-        }}
-      />
-      {satuan && <span style={{ fontSize: 11, color: "#aaa", flexShrink: 0 }}>{satuan}</span>}
     </div>
   );
 }
@@ -130,13 +131,11 @@ export default function Vigor() {
 
   const [selectedGH, setSelectedGH]   = useState("");
   const [selectedHST, setSelectedHST] = useState(null);
-  const [tableData, setTableData]     = useState([]);
+  const [varianData, setVarianData]   = useState({});
   const [operator, setOperator]       = useState("");
-  const [isiPerformabuah, setIsiPerformaBuah] = useState(false);
-  const [activeRow, setActiveRow]     = useState(null);
+  const [activeVarian, setActiveVarian] = useState(null);
 
   const [submitting, setSubmitting]   = useState(false);
-  const [submitProgress, setSubmitProgress] = useState({ done: 0, total: 0 });
   const [submitError, setSubmitError] = useState(null);
   const [savedOffline, setSavedOffline] = useState(false);
 
@@ -195,180 +194,136 @@ export default function Vigor() {
   const doSelectGH = (gh) => {
     const info = ghData[gh];
     const hst  = info?.tanam ? hitungHST(info.tanam) : null;
-    const snap = hst !== null ? hstTerdekat(hst) : HST_CHECKPOINTS[0];
     setSelectedGH(gh);
-    setSelectedHST(snap);
-    setTableData(initRowData(info?.baris || []));
-    setActiveRow(null);
+    setSelectedHST(hst !== null ? hstTerdekat(hst) : HST_CHECKPOINTS[0]);
+    setVarianData(initVarianData(info?.varian || []));
+    setActiveVarian(null);
     setShowWarning(false);
     setPendingGH("");
   };
 
-  // Update nilai sel tanaman atau buah
-  const updateTanaman = (rowIdx, key, val) => {
-    setTableData(prev => {
-      const d = [...prev];
-      d[rowIdx] = { ...d[rowIdx], tanaman: { ...d[rowIdx].tanaman, [key]: val } };
-      return d;
-    });
+  const updateVarian = (varian, field, val) => {
+    setVarianData(prev => ({ ...prev, [varian]: { ...prev[varian], [field]: val } }));
   };
 
-  const updateBuah = (rowIdx, key, val) => {
-    setTableData(prev => {
-      const d = [...prev];
-      d[rowIdx] = { ...d[rowIdx], buah: { ...d[rowIdx].buah, [key]: val } };
-      return d;
-    });
-  };
+  const ghInfo   = ghData[selectedGH];
+  const varianList = ghInfo?.varian || [];
+  const hstAktual  = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : null;
+  const col        = hstAktual !== null ? hstColor(hstAktual) : hstColor(21);
 
-  // Cek baris terisi
-  const isRowTanamanFilled = (row) =>
-    ASPEK_TANAMAN.every(a => row.tanaman[a.key] !== "");
-
-  const isRowBuahFilled = (row) =>
-    !isiPerformabuah || ASPEK_BUAH.every(a => row.buah[a.key] !== "");
-
-  const filledCount = tableData.filter(r => isRowTanamanFilled(r) && isRowBuahFilled(r)).length;
-  const allFilled   = tableData.length > 0 && filledCount === tableData.length;
+  const filledCount = varianList.filter(v => isVarianFilled(varianData[v] || {})).length;
+  const allFilled   = varianList.length > 0 && filledCount === varianList.length;
   const canSubmit   = allFilled && operator.trim().length > 0;
 
-  const ghInfo = ghData[selectedGH];
-  const hstAktual = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : null;
-  const col = hstAktual !== null ? hstColor(hstAktual) : hstColor(21);
-
-  // Build payloads per baris
   const buildPayloads = () =>
-    tableData.map(row => ({
-      action: "submitVigor",
-      tanggal: todayISO,
-      gh: selectedGH,
-      periode: ghInfo?.periode || "",
-      hst_aktual: hstAktual ?? "",
-      hst_checkpoint: selectedHST,
-      baris: row.baris,
-      varian: row.varian,
-      operator,
-      // Tanaman
-      tinggi:    row.tanaman.tinggi    || 0,
-      daun:      row.tanaman.daun      || 0,
-      tunas:     row.tanaman.tunas     || 0,
-      warnaDaun: row.tanaman.warnaDaun || 0,
-      batang:    row.tanaman.batang    || 0,
-      akar:      row.tanaman.akar      || 0,
-      vigor:     row.tanaman.vigor     || 0,
-      // Buah
-      isiBuah:      isiPerformabuah ? "YA" : "TIDAK",
-      diameterBuah: isiPerformabuah ? (row.buah.diameterBuah || 0) : "",
-      bobotBuah:    isiPerformabuah ? (row.buah.bobotBuah    || 0) : "",
-      jumlahBuah:   isiPerformabuah ? (row.buah.jumlahBuah   || 0) : "",
-      warnaBuah:    isiPerformabuah ? (row.buah.warnaBuah    || 0) : "",
-      jaring:       isiPerformabuah ? (row.buah.jaring       || 0) : "",
-      kualitasBuah: isiPerformabuah ? (row.buah.kualitasBuah || 0) : "",
-    }));
+    varianList.map(varian => {
+      const d = varianData[varian] || {};
+      return {
+        action:          "submitVigor",
+        tanggal:         todayISO,
+        gh:              selectedGH,
+        periode:         ghInfo?.periode || "",
+        hst_aktual:      hstAktual ?? "",
+        hst_checkpoint:  selectedHST ?? "",
+        varian,
+        operator,
+        lebar_daun:      d.lebarDaun      || "",
+        diameter_batang: d.diameterBatang || "",
+        warna_daun:      d.warnaDaun      || "",
+        warna_akar:      d.warnaAkar      || "",
+        volume_akar:     d.volumeAkar     || "",
+      };
+    });
 
   const handleSubmit = async () => {
     setSubmitting(true);
     setSubmitError(null);
     const payloads = buildPayloads();
-    setSubmitProgress({ done: 0, total: payloads.length });
 
-    // Demo mode
     if (isDemoMode) {
-      for (let i = 0; i < payloads.length; i++) {
-        await new Promise(r => setTimeout(r, 40));
-        setSubmitProgress({ done: i + 1, total: payloads.length });
-      }
+      await new Promise(r => setTimeout(r, 600));
       markSubmitted(selectedGH); setSubmittedToday(getSubmittedToday());
       setStep(3); setSubmitting(false);
       return;
     }
 
-    // Offline
     if (!isOnline) {
       try {
         await idbAdd(DB_NAME, { gh: selectedGH, tanggal: todayISO, createdAt: Date.now(), payloads });
         await refreshPendingCount();
         markSubmitted(selectedGH); setSubmittedToday(getSubmittedToday());
         setSavedOffline(true); setStep(3);
-      } catch { setSubmitError("Gagal menyimpan offline. Coba lagi."); }
-      finally { setSubmitting(false); }
+      } catch {
+        setSubmitError("Gagal menyimpan data offline. Coba lagi.");
+      } finally { setSubmitting(false); }
       return;
     }
 
-    // Online — kirim per baris
     setSavedOffline(false);
-    let done = 0;
-    for (const payload of payloads) {
-      try {
-        const res = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload), redirect: "follow" });
+    try {
+      for (const payload of payloads) {
+        const res  = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload), redirect: "follow" });
         const json = await res.json();
-        if (!json.success) throw new Error(json.error || "GAS error");
-        done++;
-        setSubmitProgress({ done, total: payloads.length });;
-      } catch {
-        setSubmitError(`Gagal kirim baris ${payload.baris}. Periksa koneksi.`);
-        setSubmitting(false);
-        return;
+        if (!json.success) throw new Error(json.message || "Gagal menyimpan");
       }
-    }
-    markSubmitted(selectedGH); setSubmittedToday(getSubmittedToday());
-    setStep(3); setSubmitting(false);
+      markSubmitted(selectedGH); setSubmittedToday(getSubmittedToday());
+      setStep(3);
+    } catch (e) {
+      setSubmitError(e.message || "Terjadi kesalahan, coba lagi.");
+    } finally { setSubmitting(false); }
   };
 
   const resetForm = () => {
-    setStep(1); setSelectedGH(""); setSelectedHST(null); setTableData([]);
-    setOperator(""); setIsiPerformaBuah(false); setActiveRow(null);
-    setSubmitting(false); setSubmitProgress({ done: 0, total: 0 });
+    setStep(1); setSelectedGH(""); setOperator(""); setVarianData({});
+    setSelectedHST(null); setActiveVarian(null); setSubmitting(false);
     setSubmitError(null); setSavedOffline(false);
   };
 
-  // ─── RENDER ───────────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: "100vh", background: "#f5f5f5", fontFamily: "'DM Sans','Segoe UI',sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "#f4f7f4", fontFamily: "'Segoe UI', system-ui, sans-serif", display: "flex", flexDirection: "column" }}>
 
       {/* Header */}
-      <div style={{ background: "#1b5e20", color: "#fff", padding: "14px 16px 10px", position: "sticky", top: 0, zIndex: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ background: "linear-gradient(135deg, #1b5e20, #2e7d32)", padding: "14px 16px 12px", position: "sticky", top: 0, zIndex: 10 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
-            <div style={{ fontSize: 10, opacity: 0.75, letterSpacing: 1.5, textTransform: "uppercase" }}>Form Vigor Harian</div>
-            <div style={{ fontSize: 13, opacity: 0.65, marginTop: 1 }}>{todayLabel}</div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", letterSpacing: 2, textTransform: "uppercase" }}>Form Vigor Harian</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{todayLabel}</div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
             {pendingCount > 0 && (
               <button onClick={isOnline ? syncPending : undefined}
-                style={{ fontSize: 10, fontWeight: 700, background: isOnline ? "rgba(33,150,243,0.3)" : "rgba(255,179,0,0.3)", border: `1px solid ${isOnline ? "rgba(33,150,243,0.6)" : "rgba(255,179,0,0.6)"}`, color: "#fff", padding: "2px 8px", borderRadius: 20, cursor: isOnline ? "pointer" : "default", display: "flex", alignItems: "center", gap: 4 }}>
+                style={{ fontSize: 10, fontWeight: 700, background: isOnline ? "rgba(33,150,243,0.25)" : "rgba(255,179,0,0.2)", border: `1px solid ${isOnline ? "rgba(33,150,243,0.5)" : "rgba(255,179,0,0.4)"}`, borderRadius: 20, padding: "3px 9px", color: isOnline ? "#90CAF9" : "#FFB300", cursor: isOnline ? "pointer" : "default" }}>
                 {isSyncingPending ? "⏳" : "📤"} {pendingCount} pending
               </button>
             )}
-            {isDemoMode && (
-              <div style={{ fontSize: 10, fontWeight: 700, background: "rgba(255,179,0,0.25)", border: "1px solid rgba(255,179,0,0.5)", borderRadius: 20, padding: "2px 8px", color: "#fff9c4" }}>DEMO</div>
-            )}
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: isOnline ? "#a5d6a7" : "#ef9a9a" }} />
+            {isDemoMode && <span style={{ fontSize: 10, background: "rgba(255,179,0,0.2)", border: "1px solid rgba(255,179,0,0.4)", color: "#FFB300", padding: "3px 8px", borderRadius: 20, fontWeight: 700 }}>DEMO</span>}
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: isOnline ? "#69f0ae" : "#f44336", display: "inline-block", boxShadow: isOnline ? "0 0 6px #69f0ae" : "0 0 6px #f44336" }} />
           </div>
         </div>
-        {!isOnline && (
-          <div style={{ marginTop: 8, padding: "6px 10px", background: "rgba(244,67,54,0.2)", border: "1px solid rgba(244,67,54,0.4)", borderRadius: 7, display: "flex", alignItems: "center", gap: 7 }}>
-            <span style={{ fontSize: 13 }}>📵</span>
-            <span style={{ fontSize: 11, color: "#ffcdd2" }}>Mode offline — data tersimpan lokal & sync otomatis saat online</span>
-          </div>
-        )}
-        {step < 3 && (
-          <div style={{ display: "flex", gap: 4, marginTop: 10 }}>
-            {[1, 2].map(s => (
-              <div key={s} style={{ flex: 1, height: 3, borderRadius: 2, background: s <= step ? "#a5d6a7" : "rgba(255,255,255,0.2)", transition: "background 0.3s" }} />
-            ))}
-          </div>
-        )}
+
+        {/* Progress bar */}
+        <div style={{ display: "flex", gap: 5, marginTop: 12 }}>
+          {["Pilih GH", "Input Vigor", "Selesai"].map((label, i) => {
+            const s = i + 1;
+            const active = step === s, done = step > s;
+            return (
+              <div key={s} style={{ flex: 1, textAlign: "center" }}>
+                <div style={{ height: 3, borderRadius: 2, marginBottom: 4, background: done ? "#69f0ae" : active ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.15)", transition: "background 0.3s" }} />
+                <div style={{ fontSize: 9, color: active ? "#fff" : done ? "#69f0ae" : "rgba(255,255,255,0.3)", fontWeight: active ? 700 : 400 }}>{label}</div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Modal double submit */}
+      {/* Warning modal */}
       {showWarning && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
-            <div style={{ fontSize: 36, textAlign: "center", marginBottom: 12 }}>⚠️</div>
-            <div style={{ fontWeight: 700, fontSize: 16, color: "#333", textAlign: "center", marginBottom: 8 }}>GH Sudah Diisi Hari Ini</div>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 24, maxWidth: 340, width: "100%" }}>
+            <div style={{ fontSize: 32, textAlign: "center", marginBottom: 12 }}>⚠️</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#333", textAlign: "center", marginBottom: 8 }}>Sudah disubmit hari ini</div>
             <div style={{ fontSize: 13, color: "#666", textAlign: "center", marginBottom: 20, lineHeight: 1.5 }}>
-              <strong>{pendingGH}</strong> sudah disubmit hari ini. Data baru akan ditambahkan ke Sheets.
+              <strong>{pendingGH}</strong> sudah disubmit hari ini. Data baru akan ditambahkan.
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => { setShowWarning(false); setPendingGH(""); }} style={{ flex: 1, padding: 11, background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 10, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Batal</button>
@@ -378,24 +333,13 @@ export default function Vigor() {
         </div>
       )}
 
-      <div style={{ padding: 16 }}>
+      <div style={{ flex: 1, padding: 16 }}>
 
         {/* ══ STEP 1 — Pilih GH ══ */}
         {step === 1 && (
           <div>
             <div style={{ fontWeight: 700, fontSize: 18, color: "#1b5e20", marginBottom: 4 }}>Pilih Greenhouse</div>
             <div style={{ fontSize: 12, color: "#888", marginBottom: 14 }}>GH aktif HST {HST_MIN}–{HST_MAX}</div>
-
-            {isDemoMode && (
-              <div style={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 10, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 18 }}>🔌</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, color: "#f57f17", fontWeight: 600 }}>Server tidak terjangkau</div>
-                  <div style={{ fontSize: 11, color: "#a67c00", marginTop: 2 }}>Menampilkan data demo</div>
-                </div>
-                <button onClick={fetchGHData} style={{ padding: "5px 10px", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 7, color: "#e65100", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>Coba Lagi</button>
-              </div>
-            )}
 
             {loadingGH ? (
               <div style={{ textAlign: "center", padding: "40px 0", color: "#aaa" }}>
@@ -415,15 +359,23 @@ export default function Vigor() {
                     <button key={gh} onClick={() => handleSelectGH(gh)}
                       style={{ padding: "12px 10px", borderRadius: 14, cursor: "pointer", textAlign: "center", border: dipilih ? "2px solid #1b5e20" : sudahIsi ? "1px solid #ffb74d" : "1px solid #e0e0e0", background: dipilih ? "#e8f5e9" : sudahIsi ? "#fff8e1" : "#fff", display: "flex", flexDirection: "column", alignItems: "center", gap: 7, transition: "all 0.2s" }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: dipilih ? "#1b5e20" : "#333" }}>{gh}</div>
-                      <div style={{ fontSize: 10, color: "#aaa" }}>P{info.periode} · {info.baris?.length || 0} baris</div>
+                      <div style={{ fontSize: 10, color: "#aaa" }}>P{info.periode} · {info.varian?.length || 0} varian</div>
                       {hstGH !== null && (
                         <div style={{ background: c.badge, border: `1px solid ${c.border}`, borderRadius: 8, padding: "4px 12px", width: "100%" }}>
                           <span style={{ fontSize: 17, fontWeight: 800, color: c.text }}>{hstGH}</span>
                           <span style={{ fontSize: 10, color: c.text, marginLeft: 3 }}>HST</span>
                         </div>
                       )}
-                      {sudahIsi && <div style={{ fontSize: 10, background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 10px", color: "#e65100", fontWeight: 600 }}>✓ Sudah diisi hari ini</div>}
-                      {dipilih && !sudahIsi && <div style={{ fontSize: 13 }}>✅</div>}
+                      {(() => {
+                        const cs = getCheckpointStatus(hstGH);
+                        if (!cs) return null;
+                        return (
+                          <div style={{ width: "100%", fontSize: 10, borderRadius: 7, padding: "3px 8px", fontWeight: 700, background: cs.type === "due" ? "#fff3e0" : "#e8f5e9", border: `1px solid ${cs.type === "due" ? "#ffb74d" : "#a5d6a7"}`, color: cs.type === "due" ? "#e65100" : "#2e7d32" }}>
+                            {cs.label}
+                          </div>
+                        );
+                      })()}
+                      {sudahIsi && <div style={{ fontSize: 10, background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 10px", color: "#e65100", fontWeight: 600 }}>✓ Sudah diisi</div>}
                     </button>
                   );
                 })}
@@ -432,7 +384,7 @@ export default function Vigor() {
           </div>
         )}
 
-        {/* ══ STEP 2 — Input Per Baris ══ */}
+        {/* ══ STEP 2 — Input Per Varian ══ */}
         {step === 2 && (
           <div>
             {/* Info GH */}
@@ -444,7 +396,18 @@ export default function Vigor() {
               )}
             </div>
 
-            {/* HST Checkpoint */}
+            {/* Checkpoint warning */}
+            {(() => {
+              const cs = getCheckpointStatus(hstAktual);
+              if (!cs) return null;
+              return (
+                <div style={{ marginBottom: 12, padding: "9px 14px", background: cs.type === "due" ? "#fff3e0" : "#e8f5e9", border: `1px solid ${cs.type === "due" ? "#ffb74d" : "#a5d6a7"}`, borderRadius: 10, fontSize: 12, color: cs.type === "due" ? "#e65100" : "#2e7d32", fontWeight: 600 }}>
+                  {cs.label}
+                </div>
+              );
+            })()}
+
+            {/* Checkpoint selector */}
             <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 11, color: "#388e3c", letterSpacing: 1.1, textTransform: "uppercase", fontWeight: 700, marginBottom: 6 }}>Checkpoint HST</div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -457,22 +420,10 @@ export default function Vigor() {
               </div>
             </div>
 
-            {/* Toggle Buah */}
-            <div style={{ background: isiPerformabuah ? "#e8f5e9" : "#fff", border: `1.5px solid ${isiPerformabuah ? "#a5d6a7" : "#e0e0e0"}`, borderRadius: 12, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#333" }}>Isi performa buah?</div>
-                <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Aktifkan jika buah sudah terbentuk</div>
-              </div>
-              <button onClick={() => setIsiPerformaBuah(v => !v)}
-                style={{ width: 44, height: 24, borderRadius: 12, border: "none", background: isiPerformabuah ? "#2e7d32" : "#e0e0e0", position: "relative", cursor: "pointer", transition: "background 0.2s" }}>
-                <div style={{ width: 18, height: 18, borderRadius: "50%", background: "#fff", position: "absolute", top: 3, left: isiPerformabuah ? 23 : 3, transition: "left 0.2s" }} />
-              </button>
-            </div>
-
             {/* Progress */}
-            <div style={{ fontSize: 12, color: "#888", marginBottom: 6 }}>{filledCount}/{tableData.length} baris terisi</div>
+            <div style={{ fontSize: 12, color: "#888", marginBottom: 6 }}>{filledCount}/{varianList.length} varian terisi</div>
             <div style={{ background: "#e0e0e0", borderRadius: 4, height: 5, marginBottom: 14, overflow: "hidden" }}>
-              <div style={{ height: "100%", borderRadius: 4, background: "#4CAF50", width: `${tableData.length > 0 ? (filledCount / tableData.length) * 100 : 0}%`, transition: "width 0.3s" }} />
+              <div style={{ height: "100%", borderRadius: 4, background: "#4CAF50", width: `${varianList.length > 0 ? (filledCount / varianList.length) * 100 : 0}%`, transition: "width 0.3s" }} />
             </div>
 
             {!isOnline && (
@@ -482,86 +433,71 @@ export default function Vigor() {
               </div>
             )}
 
-            {/* List baris — accordion per baris */}
+            {/* List varian accordion */}
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-              {tableData.map((row, i) => {
-                const tFilled = isRowTanamanFilled(row);
-                const bFilled = isRowBuahFilled(row);
-                const rowOk   = tFilled && bFilled;
-                const isOpen  = activeRow === i;
+              {varianList.map((varian, i) => {
+                const d      = varianData[varian] || {};
+                const filled = isVarianFilled(d);
+                const isOpen = activeVarian === varian;
 
                 return (
-                  <div key={i} style={{ background: "#fff", borderRadius: 12, border: `1.5px solid ${rowOk ? "#a5d6a7" : "#e0e0e0"}`, overflow: "hidden" }}>
-                    {/* Header baris */}
-                    <button onClick={() => setActiveRow(isOpen ? null : i)}
-                      style={{ width: "100%", padding: "11px 14px", background: rowOk ? "#f1f8e9" : "#fff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div key={varian} style={{ background: "#fff", borderRadius: 12, border: `1.5px solid ${filled ? "#a5d6a7" : "#e0e0e0"}`, overflow: "hidden" }}>
+                    {/* Header varian */}
+                    <button onClick={() => setActiveVarian(isOpen ? null : varian)}
+                      style={{ width: "100%", padding: "12px 14px", background: filled ? "#f1f8e9" : "#fff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ fontWeight: 700, fontSize: 15, color: rowOk ? "#2e7d32" : "#333" }}>Baris {row.baris}</span>
-                        <span style={{ fontSize: 11, color: "#aaa" }}>{row.varian}</span>
+                        <span style={{ fontWeight: 700, fontSize: 15, color: filled ? "#2e7d32" : "#333" }}>🌾 {varian}</span>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        {rowOk && <span style={{ fontSize: 14 }}>✅</span>}
-                        {!tFilled && <span style={{ fontSize: 10, background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 8px", color: "#e65100" }}>Belum lengkap</span>}
+                        {filled && <span style={{ fontSize: 14 }}>✅</span>}
+                        {!filled && <span style={{ fontSize: 10, background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 8px", color: "#e65100" }}>Belum lengkap</span>}
                         <span style={{ fontSize: 12, color: "#bbb", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
                       </div>
                     </button>
 
-                    {/* Body baris */}
+                    {/* Body varian */}
                     {isOpen && (
-                      <div style={{ padding: "12px 14px", borderTop: "1px solid #f0f0f0" }}>
-                        {/* Performa Tanaman */}
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "#388e3c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>🌿 Performa Tanaman</div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
-                          {ASPEK_TANAMAN.map(aspek => (
-                            <div key={aspek.key}>
-                              <div style={{ fontSize: 12, color: "#555", marginBottom: 5, fontWeight: 500 }}>
-                                {aspek.label} {aspek.satuan && <span style={{ color: "#aaa" }}>({aspek.satuan})</span>}
-                              </div>
-                              {aspek.tipe === "numerik" ? (
-                                <NumInput
-                                  value={row.tanaman[aspek.key]}
-                                  onChange={val => updateTanaman(i, aspek.key, val)}
-                                  placeholder={aspek.placeholder}
-                                  satuan={aspek.satuan}
-                                />
-                              ) : (
-                                <SkorBtn
-                                  value={row.tanaman[aspek.key]}
-                                  onChange={val => updateTanaman(i, aspek.key, val)}
-                                />
-                              )}
-                            </div>
-                          ))}
+                      <div style={{ padding: "14px", borderTop: "1px solid #f0f0f0" }}>
+
+                        {/* === ASPEK VIGOR === */}
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "#388e3c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>🌿 Aspek Vigor Tanaman</div>
+                        <div style={{ fontSize: 10, color: "#888", marginBottom: 4 }}>Pendataan 14 tanaman per varian (7 depan + 7 belakang)</div>
+
+                        {/* Lebar Daun */}
+                        <div style={{ marginBottom: 14 }}>
+                          <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>1. Lebar Daun (cm)</div>
+                          <PilihOpsi options={LEBAR_DAUN_OPTIONS} value={d.lebarDaun} onChange={val => updateVarian(varian, "lebarDaun", val)} color="#2e7d32" />
                         </div>
 
-                        {/* Performa Buah */}
-                        {isiPerformabuah && (
-                          <>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: "#e65100", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>🍈 Performa Buah</div>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                              {ASPEK_BUAH.map(aspek => (
-                                <div key={aspek.key}>
-                                  <div style={{ fontSize: 12, color: "#555", marginBottom: 5, fontWeight: 500 }}>
-                                    {aspek.label} {aspek.satuan && <span style={{ color: "#aaa" }}>({aspek.satuan})</span>}
-                                  </div>
-                                  {aspek.tipe === "numerik" ? (
-                                    <NumInput
-                                      value={row.buah[aspek.key]}
-                                      onChange={val => updateBuah(i, aspek.key, val)}
-                                      placeholder={aspek.placeholder}
-                                      satuan={aspek.satuan}
-                                    />
-                                  ) : (
-                                    <SkorBtn
-                                      value={row.buah[aspek.key]}
-                                      onChange={val => updateBuah(i, aspek.key, val)}
-                                    />
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </>
-                        )}
+                        {/* Diameter Batang */}
+                        <div style={{ marginBottom: 14 }}>
+                          <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>2. Diameter Batang</div>
+                          <PilihOpsi options={DIAMETER_OPTIONS} value={d.diameterBatang} onChange={val => updateVarian(varian, "diameterBatang", val)} color="#1565C0" />
+                        </div>
+
+                        {/* Warna Daun */}
+                        <div style={{ marginBottom: 18 }}>
+                          <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>3. Warna Daun</div>
+                          <PilihOpsi options={WARNA_DAUN_OPTIONS} value={d.warnaDaun} onChange={val => updateVarian(varian, "warnaDaun", val)} color="#f57f17" />
+                        </div>
+
+                        {/* === ASPEK PERAKARAN === */}
+                        <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginBottom: 12 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: "#795548", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🪱 Aspek Perakaran</div>
+                          <div style={{ fontSize: 10, color: "#888", marginBottom: 12 }}>Sampel 1 tanaman per varian, gali ±2 cm pada media tanam</div>
+                        </div>
+
+                        {/* Warna Akar */}
+                        <div style={{ marginBottom: 14 }}>
+                          <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>1. Warna Akar Serabut</div>
+                          <PilihOpsi options={WARNA_AKAR_OPTIONS} value={d.warnaAkar} onChange={val => updateVarian(varian, "warnaAkar", val)} color="#795548" />
+                        </div>
+
+                        {/* Volume Akar */}
+                        <div style={{ marginBottom: 6 }}>
+                          <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>2. Volume Akar</div>
+                          <PilihOpsi options={VOLUME_AKAR_OPTIONS} value={d.volumeAkar} onChange={val => updateVarian(varian, "volumeAkar", val)} color="#795548" />
+                        </div>
                       </div>
                     )}
                   </div>
@@ -578,21 +514,13 @@ export default function Vigor() {
                 style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: "#fff", border: `1.5px solid ${operator.trim() ? "#81c784" : "#e0e0e0"}`, borderRadius: 10, color: "#333", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
             </div>
 
-            {!allFilled && tableData.length > 0 && (
+            {!allFilled && varianList.length > 0 && (
               <div style={{ fontSize: 12, color: "#e65100", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
-                ⚠️ {tableData.length - filledCount} baris belum lengkap — tap baris untuk mengisi
+                ⚠️ {varianList.length - filledCount} varian belum lengkap — tap varian untuk mengisi
               </div>
             )}
             {submitError && (
               <div style={{ fontSize: 12, color: "#c62828", background: "#ffebee", border: "1px solid #ef9a9a", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>⚠️ {submitError}</div>
-            )}
-            {submitting && (
-              <div style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 12, color: "#666", marginBottom: 6 }}>Menyimpan {submitProgress.done}/{submitProgress.total} baris...</div>
-                <div style={{ background: "#e0e0e0", borderRadius: 4, height: 6, overflow: "hidden" }}>
-                  <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#1b5e20,#4CAF50)", width: `${submitProgress.total > 0 ? (submitProgress.done / submitProgress.total) * 100 : 0}%`, transition: "width 0.3s" }} />
-                </div>
-              </div>
             )}
           </div>
         )}
@@ -607,13 +535,12 @@ export default function Vigor() {
             <div style={{ fontSize: 13, color: "#888", marginBottom: 20 }}>
               {isDemoMode ? "Data tidak dikirim (mode demo)"
                 : savedOffline ? "Otomatis terkirim ke Google Sheets saat online."
-                : `${tableData.length} baris berhasil dikirim ke Google Sheets`}
+                : `${varianList.length} varian berhasil dikirim ke Google Sheets`}
             </div>
             <div style={{ background: savedOffline ? "#e3f2fd" : "#e8f5e9", border: `1px solid ${savedOffline ? "#90CAF9" : "#a5d6a7"}`, borderRadius: 14, padding: 16, textAlign: "left", marginBottom: 20 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "#333" }}>{selectedGH} · P{ghInfo?.periode} · {hstAktual} HST</div>
-              <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>Checkpoint: HST {selectedHST} · Operator: {operator}</div>
-              <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>Performa buah: {isiPerformabuah ? "Ya" : "Tidak"}</div>
-              <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>{tableData.length} baris · {todayISO}</div>
+              <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>Operator: {operator}</div>
+              <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>{varianList.length} varian · {todayISO}</div>
             </div>
             <button onClick={resetForm} style={{ width: "100%", padding: 15, background: "#e8f5e9", border: "2px solid #81c784", borderRadius: 12, color: "#2e7d32", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
               + Input GH Berikutnya
@@ -638,9 +565,9 @@ export default function Vigor() {
           {step === 2 && (
             <button onClick={handleSubmit} disabled={!canSubmit || submitting}
               style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: canSubmit && !submitting ? (!isOnline ? "linear-gradient(135deg,#1565C0,#1976D2)" : "linear-gradient(135deg,#1b5e20,#2e7d32)") : "#e0e0e0", color: canSubmit && !submitting ? "#fff" : "#aaa", fontSize: 15, fontWeight: 700, cursor: canSubmit && !submitting ? "pointer" : "not-allowed" }}>
-              {submitting ? `⏳ ${submitProgress.done}/${submitProgress.total}...`
-                : !isOnline && canSubmit ? `💾 Simpan Offline (${tableData.length} baris)`
-                : `Submit ${tableData.length} Baris ✓`}
+              {submitting ? "⏳ Menyimpan..."
+                : !isOnline && canSubmit ? `💾 Simpan Offline`
+                : `Submit ${varianList.length} Varian ✓`}
             </button>
           )}
         </div>
