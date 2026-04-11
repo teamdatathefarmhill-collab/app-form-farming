@@ -54,7 +54,7 @@ function getGHData() {
     for (var r = 1; r < rows.length; r++) {
       var gh      = String(rows[r][iGH]      || "").trim();
       var periode = String(rows[r][iPeriode] || "").trim();
-      var tanam   = iTanam >= 0 ? String(rows[r][iTanam] || "").trim() : "";
+      var tanam   = iTanam >= 0 ? formatDateISO(rows[r][iTanam]) : "";
       if (!gh || !periode) continue;
       var pNew = parseFloat(periode);
       var pOld = parseFloat(latestPeriode[gh] !== undefined ? latestPeriode[gh] : "-1");
@@ -114,6 +114,17 @@ function getGHData() {
   } catch (err) {
     return { success: false, error: err.message };
   }
+}
+
+// ── Helper: format nilai tanggal dari Sheets → "yyyy-MM-dd" ──
+// getValues() mengembalikan JS Date untuk cell bertipe Date, bukan string.
+function formatDateISO(val) {
+  if (!val) return "";
+  if (val instanceof Date && !isNaN(val.getTime())) {
+    return Utilities.formatDate(val, "Asia/Jakarta", "yyyy-MM-dd");
+  }
+  // Sudah berupa string (sel teks)
+  return String(val).trim();
 }
 
 // ── Helper: cari kolom pertama yang cocok dari daftar kandidat ──

@@ -22,15 +22,23 @@ const buatBaris = (jumlah) => {
   }));
 };
 
+// Tanggal tanam dihitung mundur dari hari ini agar HST selalu valid saat demo.
+// Fungsi ini dipanggil sekali saat modul dimuat.
+function mockTanam(hstTarget) {
+  const d = new Date();
+  d.setDate(d.getDate() - hstTarget);
+  return d.toISOString().slice(0, 10); // "yyyy-MM-dd"
+}
+
 const MOCK_DATA = {
-  "BERGAS 1":         { periode: "26.1", tanam: "2026-02-15", baris: buatBaris(18), varian: ["Servo F1"] },
-  "BERGAS 2":         { periode: "26.1", tanam: "2026-02-10", baris: buatBaris(18), varian: ["Servo F1"] },
-  "TOHUDAN 1":        { periode: "26.1", tanam: "2026-02-09", baris: buatBaris(21), varian: ["Greeniegal", "Sarasuka"] },
-  "TOHUDAN 2":        { periode: "26.1", tanam: "2026-02-09", baris: buatBaris(21), varian: ["Aruni", "Greeniegal"] },
-  "COLOMADU 1":       { periode: "26.1", tanam: "2026-02-09", baris: buatBaris(18), varian: ["Servo F1", "Tombatu F1"] },
-  "SAWAHAN 1":        { periode: "26.1", tanam: "2026-01-20", baris: buatBaris(42), varian: ["Midori"] },
-  "NURSERY 1":        { periode: "26.1", tanam: "2026-03-01", baris: buatBaris(6),  varian: ["Aruni"] },
-  "SEMAI SAWAHAN 1":  { periode: "26.1", tanam: "2026-03-05", baris: buatBaris(4),  varian: [] },
+  "BERGAS 1":         { periode: "26.1", tanam: mockTanam(35), baris: buatBaris(18), varian: ["Servo F1"] },
+  "BERGAS 2":         { periode: "26.1", tanam: mockTanam(42), baris: buatBaris(18), varian: ["Servo F1"] },
+  "TOHUDAN 1":        { periode: "26.1", tanam: mockTanam(50), baris: buatBaris(21), varian: ["Greeniegal", "Sarasuka"] },
+  "TOHUDAN 2":        { periode: "26.1", tanam: mockTanam(55), baris: buatBaris(21), varian: ["Aruni", "Greeniegal"] },
+  "COLOMADU 1":       { periode: "26.1", tanam: mockTanam(38), baris: buatBaris(18), varian: ["Servo F1", "Tombatu F1"] },
+  "SAWAHAN 1":        { periode: "26.1", tanam: mockTanam(45), baris: buatBaris(42), varian: ["Midori"] },
+  "NURSERY 1":        { periode: "26.1", tanam: mockTanam(20), baris: buatBaris(6),  varian: ["Aruni"] },
+  "SEMAI SAWAHAN 1":  { periode: "26.1", tanam: mockTanam(15), baris: buatBaris(4),  varian: [] },
 };
 
 // ─── Helper: pisah produksi vs semai ────────────────────────────────────────
