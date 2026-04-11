@@ -378,79 +378,84 @@ export default function Vigor() {
               </div>
             ) : ghAktif.length === 0 ? (
               <div style={{ textAlign: "center", padding: "32px 0", color: "#aaa", fontSize: 13 }}>Tidak ada GH aktif</div>
-            ) : !selectedTipe ? (
-              <>
-                <div style={{ fontSize: 11, color: "#388e3c", fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 10 }}>Pilih Tipe Irigasi</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {TIPE_GH.map(tipe => {
-                    const ghDiTipe = ghAktif.filter(([gh]) => tipe.pattern(gh));
-                    return (
-                      <button key={tipe.key} onClick={() => setSelectedTipe(tipe.key)}
-                        style={{ padding: "14px 16px", background: "#fff", border: "1px solid #e0e0e0", borderRadius: 14, cursor: "pointer", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {TIPE_GH.map(tipe => {
+                  const ghDiTipe  = ghAktif.filter(([gh]) => tipe.pattern(gh));
+                  const isOpen    = selectedTipe === tipe.key;
+                  const hasDue    = ghDiTipe.some(([gh, info]) => {
+                    const cs = getCheckpointStatus(info.tanam ? hitungHST(info.tanam) : null);
+                    return cs?.type === "due";
+                  });
+                  const hasSoon   = !hasDue && ghDiTipe.some(([gh, info]) => {
+                    const cs = getCheckpointStatus(info.tanam ? hitungHST(info.tanam) : null);
+                    return cs?.type === "soon";
+                  });
+
+                  return (
+                    <div key={tipe.key} style={{ border: `1.5px solid ${isOpen ? tipe.color + "55" : "#e0e0e0"}`, borderRadius: 14, overflow: "hidden", background: "#fff" }}>
+                      {/* Accordion header */}
+                      <button onClick={() => setSelectedTipe(isOpen ? "" : tipe.key)}
+                        style={{ width: "100%", padding: "13px 16px", background: isOpen ? `${tipe.color}10` : "#fff", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          <span style={{ fontSize: 22 }}>{tipe.icon}</span>
-                          <div>
-                            <div style={{ fontSize: 15, fontWeight: 800, color: "#333" }}>{tipe.label}</div>
-                            <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>{ghDiTipe.length} GH aktif</div>
+                          <span style={{ fontSize: 20 }}>{tipe.icon}</span>
+                          <div style={{ textAlign: "left" }}>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: isOpen ? tipe.color : "#333" }}>{tipe.label}</div>
+                            <div style={{ fontSize: 11, color: "#aaa", marginTop: 1 }}>{ghDiTipe.length} GH aktif saat ini</div>
                           </div>
                         </div>
-                        <span style={{ fontSize: 18, color: "#ccc" }}>›</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          {hasDue  && <span style={{ fontSize: 10, background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 8px", color: "#e65100", fontWeight: 700 }}>⚠️ Due</span>}
+                          {hasSoon && <span style={{ fontSize: 10, background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 20, padding: "2px 8px", color: "#2e7d32", fontWeight: 700 }}>🔔 Soon</span>}
+                          <span style={{ fontSize: 14, color: "#bbb", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "inline-block" }}>▼</span>
+                        </div>
                       </button>
-                    );
-                  })}
-                </div>
-              </>
-            ) : (() => {
-              const tipe = TIPE_GH.find(t => t.key === selectedTipe);
-              const ghDiTipe = ghAktif.filter(([gh]) => tipe.pattern(gh));
-              return (
-                <>
-                  <button onClick={() => { setSelectedTipe(""); setSelectedGH(""); }}
-                    style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, background: "none", border: "none", cursor: "pointer", color: "#888", fontSize: 12, padding: 0 }}>
-                    ← Ganti tipe
-                  </button>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                    <span style={{ fontSize: 16 }}>{tipe.icon}</span>
-                    <div style={{ fontSize: 11, color: tipe.color, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase" }}>{tipe.label} — {ghDiTipe.length} GH Aktif</div>
-                  </div>
-                  {ghDiTipe.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: 32, color: "#aaa", fontSize: 13 }}>Tidak ada GH aktif di tipe ini.</div>
-                  ) : (
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                      {ghDiTipe.map(([gh, info]) => {
-                        const hstGH    = info.tanam ? hitungHST(info.tanam) : null;
-                        const c        = hstGH !== null ? hstColor(hstGH) : hstColor(21);
-                        const dipilih  = selectedGH === gh;
-                        const sudahIsi = submittedToday.includes(gh);
-                        return (
-                          <button key={gh} onClick={() => handleSelectGH(gh)}
-                            style={{ padding: "12px 10px", borderRadius: 14, cursor: "pointer", textAlign: "center", border: dipilih ? "2px solid #1b5e20" : sudahIsi ? "1px solid #ffb74d" : "1px solid #e0e0e0", background: dipilih ? "#e8f5e9" : sudahIsi ? "#fff8e1" : "#fff", display: "flex", flexDirection: "column", alignItems: "center", gap: 7, transition: "all 0.2s" }}>
-                            <div style={{ fontSize: 13, fontWeight: 700, color: dipilih ? "#1b5e20" : "#333" }}>{gh}</div>
-                            <div style={{ fontSize: 10, color: "#aaa" }}>P{info.periode} · {info.varian?.length || 0} varian</div>
-                            {hstGH !== null && (
-                              <div style={{ background: c.badge, border: `1px solid ${c.border}`, borderRadius: 8, padding: "4px 12px", width: "100%" }}>
-                                <span style={{ fontSize: 17, fontWeight: 800, color: c.text }}>{hstGH}</span>
-                                <span style={{ fontSize: 10, color: c.text, marginLeft: 3 }}>HST</span>
-                              </div>
-                            )}
-                            {(() => {
-                              const cs = getCheckpointStatus(hstGH);
-                              if (!cs) return null;
-                              return (
-                                <div style={{ width: "100%", fontSize: 10, borderRadius: 7, padding: "3px 8px", fontWeight: 700, background: cs.type === "due" ? "#fff3e0" : "#e8f5e9", border: `1px solid ${cs.type === "due" ? "#ffb74d" : "#a5d6a7"}`, color: cs.type === "due" ? "#e65100" : "#2e7d32" }}>
-                                  {cs.label}
-                                </div>
-                              );
-                            })()}
-                            {sudahIsi && <div style={{ fontSize: 10, background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 10px", color: "#e65100", fontWeight: 600 }}>✓ Sudah diisi</div>}
-                          </button>
-                        );
-                      })}
+
+                      {/* GH grid */}
+                      {isOpen && (
+                        <div style={{ padding: "10px 12px 14px", borderTop: `1px solid ${tipe.color}22` }}>
+                          {ghDiTipe.length === 0 ? (
+                            <div style={{ textAlign: "center", padding: 20, color: "#aaa", fontSize: 13 }}>Tidak ada GH aktif di tipe ini.</div>
+                          ) : (
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                              {ghDiTipe.map(([gh, info]) => {
+                                const hstGH    = info.tanam ? hitungHST(info.tanam) : null;
+                                const c        = hstGH !== null ? hstColor(hstGH) : hstColor(21);
+                                const dipilih  = selectedGH === gh;
+                                const sudahIsi = submittedToday.includes(gh);
+                                return (
+                                  <button key={gh} onClick={() => handleSelectGH(gh)}
+                                    style={{ padding: "12px 10px", borderRadius: 12, cursor: "pointer", textAlign: "center", border: dipilih ? `2px solid ${tipe.color}` : sudahIsi ? "1px solid #ffb74d" : "1px solid #e0e0e0", background: dipilih ? `${tipe.color}12` : sudahIsi ? "#fff8e1" : "#fafafa", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, transition: "all 0.2s" }}>
+                                    <div style={{ fontSize: 13, fontWeight: 700, color: dipilih ? tipe.color : "#333" }}>{gh}</div>
+                                    <div style={{ fontSize: 10, color: "#aaa" }}>P{info.periode} · {info.varian?.length || 0} varian</div>
+                                    {hstGH !== null && (
+                                      <div style={{ background: c.badge, border: `1px solid ${c.border}`, borderRadius: 8, padding: "4px 10px", width: "100%" }}>
+                                        <span style={{ fontSize: 16, fontWeight: 800, color: c.text }}>{hstGH}</span>
+                                        <span style={{ fontSize: 10, color: c.text, marginLeft: 3 }}>HST</span>
+                                      </div>
+                                    )}
+                                    {(() => {
+                                      const cs = getCheckpointStatus(hstGH);
+                                      if (!cs) return null;
+                                      return (
+                                        <div style={{ width: "100%", fontSize: 10, borderRadius: 7, padding: "3px 6px", fontWeight: 700, background: cs.type === "due" ? "#fff3e0" : "#e8f5e9", border: `1px solid ${cs.type === "due" ? "#ffb74d" : "#a5d6a7"}`, color: cs.type === "due" ? "#e65100" : "#2e7d32" }}>
+                                          {cs.label}
+                                        </div>
+                                      );
+                                    })()}
+                                    {sudahIsi && <div style={{ fontSize: 10, background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 8px", color: "#e65100", fontWeight: 600 }}>✓ Sudah diisi</div>}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </>
-              );
-            })()}
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
