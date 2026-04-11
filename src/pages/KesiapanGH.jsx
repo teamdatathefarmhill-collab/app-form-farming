@@ -102,15 +102,16 @@ const MATRIKS = {
     {
       key: "inst_input", label: "Instalasi Input", bobotAspek: 40,
       items: [
-        { code: "DR_II1", label: "Tekanan air yang mengalir sesuai standar (1.2 bar)", bobotVariabel: 5  },
-        { code: "DR_II2", label: "Stop kran PE 16 mm berfungsi normal",                bobotVariabel: 5  },
-        { code: "DR_II3", label: "Tidak ada kebocoran stop kran PE 16 mm",             bobotVariabel: 5  },
-        { code: "DR_II4", label: "Tidak ada kebocoran selang PE 16 mm",                bobotVariabel: 10 },
-        { code: "DR_II5", label: "Tekanan air pada pipa PE 16 mm sesuai (≥ 0.3 bar)", bobotVariabel: 10 },
-        { code: "DR_II6", label: "Seluruh PCJ berfungsi normal (4 L/H)",               bobotVariabel: 15 },
-        { code: "DR_II7", label: "Selang PE 5 mm berfungsi normal",                    bobotVariabel: 10 },
-        { code: "DR_II8", label: "Dripper berfungsi normal",                            bobotVariabel: 15 },
-        { code: "DR_II9", label: "Debit air dripper rata (toleransi 10 ml)",            bobotVariabel: 15 },
+        { code: "DR_II0",  label: "Tidak ada sumbatan dan kebocoran pipa input",        bobotVariabel: 10 },
+        { code: "DR_II1",  label: "Tekanan air yang mengalir sesuai standar (1.2 bar)", bobotVariabel: 5  },
+        { code: "DR_II2",  label: "Stop kran PE 16 mm berfungsi normal",                bobotVariabel: 5  },
+        { code: "DR_II3",  label: "Tidak ada kebocoran stop kran PE 16 mm",             bobotVariabel: 5  },
+        { code: "DR_II4",  label: "Tidak ada kebocoran selang PE 16 mm",                bobotVariabel: 10 },
+        { code: "DR_II5",  label: "Tekanan air pada pipa PE 16 mm sesuai (≥ 0.3 bar)", bobotVariabel: 10 },
+        { code: "DR_II6",  label: "Seluruh PCJ berfungsi normal (4 L/H)",               bobotVariabel: 15 },
+        { code: "DR_II7",  label: "Selang PE 5 mm berfungsi normal",                    bobotVariabel: 10 },
+        { code: "DR_II8",  label: "Dripper berfungsi normal",                            bobotVariabel: 15 },
+        { code: "DR_II9",  label: "Debit air dripper rata (toleransi 10 ml)",            bobotVariabel: 15 },
       ],
     },
     {
@@ -179,10 +180,13 @@ const MATRIKS = {
     {
       key: "inst_gh", label: "Instalasi Greenhouse", bobotAspek: 25,
       items: [
-        { code: "P1_IG1", label: "Weedmat dalam kondisi baik",             bobotVariabel: 10 },
-        { code: "P1_IG2", label: "Jumlah tali rambat sesuai kebutuhan",    bobotVariabel: 10 },
-        { code: "P1_IG3", label: "Kawat seling dalam kondisi baik",        bobotVariabel: 15 },
-        { code: "P1_IG4", label: "Termohigrometer berfungsi normal",       bobotVariabel: 10 },
+        { code: "P1_IG0", label: "Bangunan GH dalam kondisi baik",            bobotVariabel: 15 },
+        { code: "P1_IG01", label: "Plastik UV & insectnet dalam kondisi baik", bobotVariabel: 20 },
+        { code: "P1_IG02", label: "Tidak ada kebocoran talang",                bobotVariabel: 20 },
+        { code: "P1_IG1", label: "Weedmat dalam kondisi baik",                bobotVariabel: 10 },
+        { code: "P1_IG2", label: "Jumlah tali rambat sesuai kebutuhan",       bobotVariabel: 10 },
+        { code: "P1_IG3", label: "Kawat seling dalam kondisi baik",           bobotVariabel: 15 },
+        { code: "P1_IG4", label: "Termohigrometer berfungsi normal",          bobotVariabel: 10 },
       ],
     },
   ],
@@ -309,9 +313,9 @@ function statusAspek(aspek, scores) {
 }
 
 const LS_KEY = `kesiapan_${new Date().toLocaleDateString("id-ID")}`;
-function getSubmittedToday() { try { return JSON.parse(localStorage.getItem(LS_KEY) || "[]"); } catch { return []; } }
-function markSubmitted(key) {
-  const list = getSubmittedToday();
+function getSubmittedLocal() { try { return JSON.parse(localStorage.getItem(LS_KEY) || "[]"); } catch { return []; } }
+function markSubmittedLocal(key) {
+  const list = getSubmittedLocal();
   if (!list.includes(key)) localStorage.setItem(LS_KEY, JSON.stringify([...list, key]));
 }
 
@@ -332,9 +336,13 @@ export default function KesiapanGH() {
   const rekapRef = useRef(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [isSyncingPending, setIsSyncingPending] = useState(false);
-  const [submittedToday, setSubmittedToday] = useState(getSubmittedToday);
+  const [submittedToday, setSubmittedToday] = useState([]);
+  const [loadingSubmitted, setLoadingSubmitted] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const [pendingGH, setPendingGH] = useState("");
+  const [showKodeInput, setShowKodeInput] = useState(false);
+  const [kodeInput, setKodeInput]         = useState("");
+  const [kodeError, setKodeError]         = useState("");
 
   const aspekList   = tipe ? MATRIKS[tipe] : [];
   const allItems    = aspekList.flatMap(a => a.items);
@@ -370,17 +378,42 @@ export default function KesiapanGH() {
       try {
         const res  = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(record.payload), redirect: "follow" });
         const json = await res.json();
-        if (json.success) { markSubmitted(record.key); setSubmittedToday(getSubmittedToday()); await idbDelete(DB_NAME, record.id); }
+        if (json.success) { markSubmittedLocal(record.key); await idbDelete(DB_NAME, record.id); }
       } catch {}
     }
     await refreshPendingCount();
     setIsSyncingPending(false);
   }, [refreshPendingCount]);
 
+  const fetchSubmitted = useCallback(async (selectedTipe) => {
+    if (!selectedTipe) return;
+    setLoadingSubmitted(true);
+    try {
+      const res  = await fetch(`${SCRIPT_URL}?action=getSubmitted&tipe=${encodeURIComponent(selectedTipe)}&tanggal=${encodeURIComponent(todayISO)}`);
+      const json = await res.json();
+      if (json.success) {
+        // Gabung dari GAS + localStorage sebagai fallback
+        const fromGAS   = json.submitted.map(gh => `${selectedTipe}__${gh}`);
+        const fromLocal = getSubmittedLocal().filter(k => k.startsWith(`${selectedTipe}__`));
+        const merged    = [...new Set([...fromGAS, ...fromLocal])];
+        setSubmittedToday(merged);
+      } else {
+        setSubmittedToday(getSubmittedLocal());
+      }
+    } catch {
+      // Fallback ke localStorage jika offline
+      setSubmittedToday(getSubmittedLocal());
+    } finally {
+      setLoadingSubmitted(false);
+    }
+  }, []);
+
   const handleSelectTipe = (t) => {
     setTipe(t); setGh("");
     setScores(initScores(t));
     setActiveAspek(MATRIKS[t]?.[0]?.key || "");
+    setSubmittedToday([]);
+    fetchSubmitted(t);
   };
 
   const handleSelectGH = (g) => {
@@ -445,7 +478,8 @@ export default function KesiapanGH() {
       try {
         await idbAdd(DB_NAME, { key: submittedKey, payload });
         await refreshPendingCount();
-        markSubmitted(submittedKey); setSubmittedToday(getSubmittedToday());
+        markSubmittedLocal(submittedKey);
+        setSubmittedToday(prev => [...new Set([...prev, submittedKey])]);
         setSavedOffline(true); setStep(4);
       } catch { setSubmitError("Gagal menyimpan offline. Coba lagi."); }
       finally { setSubmitting(false); }
@@ -456,7 +490,8 @@ export default function KesiapanGH() {
       const res  = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload), redirect: "follow" });
       const json = await res.json();
       if (!json.success) throw new Error(json.error || "GAS error");
-      markSubmitted(submittedKey); setSubmittedToday(getSubmittedToday());
+      markSubmittedLocal(submittedKey);
+      setSubmittedToday(prev => [...new Set([...prev, submittedKey])]);
       setSavedOffline(false); setStep(4);
     } catch (err) {
       setSubmitError("Gagal kirim data. " + err.message);
@@ -509,13 +544,71 @@ export default function KesiapanGH() {
           <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 360 }}>
             <div style={{ fontSize: 36, textAlign: "center", marginBottom: 12 }}>⚠️</div>
             <div style={{ fontWeight: 700, fontSize: 16, color: "#333", textAlign: "center", marginBottom: 8 }}>GH Sudah Dicek Hari Ini</div>
-            <div style={{ fontSize: 13, color: "#666", textAlign: "center", marginBottom: 20 }}>
+            <div style={{ fontSize: 13, color: "#666", textAlign: "center", marginBottom: 8, lineHeight: 1.5 }}>
               <strong>{tipe} · {pendingGH}</strong> sudah disubmit hari ini.
             </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => { setShowWarning(false); setPendingGH(""); }} style={{ flex: 1, padding: 11, background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 10, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Batal</button>
-              <button onClick={() => doSelectGH(pendingGH)} style={{ flex: 1, padding: 11, background: "#e53935", border: "none", borderRadius: 10, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Isi Ulang</button>
-            </div>
+
+            {!showKodeInput ? (
+              <>
+                <div style={{ fontSize: 12, color: "#888", textAlign: "center", marginBottom: 20, lineHeight: 1.5 }}>
+                  Jika ada kesalahan input, hubungi Team Data untuk konfirmasi dan dapatkan kode akses.
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <a href={`https://wa.me/08559932224?text=${encodeURIComponent(`Halo Team Data, saya ${user?.nama} ingin melaporkan kesalahan input pada Kesiapan GH.\nTipe: ${tipe}\nGreenhouse: ${pendingGH}\nTanggal: ${todayISO}\n\nMohon kode akses untuk pengisian ulang. Terima kasih.`)}`}
+                    target="_blank" rel="noreferrer"
+                    style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: 12, background: "#25D366", border: "none", borderRadius: 10, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", textDecoration: "none", boxSizing: "border-box" }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/></svg>
+                    Hubungi Team Data via WhatsApp
+                  </a>
+                  <button onClick={() => setShowKodeInput(true)}
+                    style={{ padding: 11, background: "#e0f2f1", border: "1px solid #80CBC4", borderRadius: 10, color: "#004D40", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                    Sudah punya kode akses
+                  </button>
+                  <button onClick={() => { setShowWarning(false); setPendingGH(""); setKodeInput(""); setKodeError(""); }}
+                    style={{ padding: 11, background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 10, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                    Kembali
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 12, color: "#888", textAlign: "center", marginBottom: 16, lineHeight: 1.5 }}>
+                  Masukkan kode akses dari Team Data untuk melanjutkan.
+                </div>
+                <input
+                  type="number" inputMode="numeric" maxLength={4}
+                  value={kodeInput} onChange={e => { setKodeInput(e.target.value); setKodeError(""); }}
+                  placeholder="Kode 4 digit"
+                  style={{ width: "100%", padding: "12px", textAlign: "center", fontSize: 24, fontWeight: 700, letterSpacing: 8, border: `2px solid ${kodeError ? "#ef9a9a" : "#e0e0e0"}`, borderRadius: 10, outline: "none", boxSizing: "border-box", marginBottom: 8, color: "#333" }}
+                />
+                {kodeError && (
+                  <div style={{ fontSize: 12, color: "#c62828", textAlign: "center", marginBottom: 8 }}>⚠️ {kodeError}</div>
+                )}
+                <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+                  <button onClick={() => { setShowKodeInput(false); setKodeInput(""); setKodeError(""); }}
+                    style={{ flex: 1, padding: 11, background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 10, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                    ← Kembali
+                  </button>
+                  <button onClick={() => {
+                    const now = new Date();
+                    const dd = String(now.getDate()).padStart(2, "0");
+                    const mm = String(now.getMonth() + 1).padStart(2, "0");
+                    const kodeHariIni = `${dd}${mm}`;
+                    if (kodeInput === kodeHariIni) {
+                      doSelectGH(pendingGH);
+                      setShowKodeInput(false);
+                      setKodeInput("");
+                      setKodeError("");
+                    } else {
+                      setKodeError("Kode salah. Hubungi Team Data.");
+                    }
+                  }}
+                    style={{ flex: 1, padding: 11, background: "#004D40", border: "none", borderRadius: 10, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+                    Verifikasi
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -543,7 +636,10 @@ export default function KesiapanGH() {
 
             {tipe && (
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Nama Greenhouse</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
+                  Nama Greenhouse
+                  {loadingSubmitted && <span style={{ fontSize: 10, fontWeight: 400, color: "#aaa", marginLeft: 8 }}>memeriksa data...</span>}
+                </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   {GH_PER_TIPE[tipe].map(g => {
                     const sudahIsi = submittedToday.includes(`${tipe}__${g}`);
@@ -596,58 +692,28 @@ export default function KesiapanGH() {
             {/* Item penilaian */}
             {activeAspekData && (
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
-                  {activeAspekData.label} · bobot aspek {activeAspekData.bobotAspek}
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
+                  {activeAspekData.label}
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   {activeAspekData.items.map(item => {
                     const val = scores[item.code];
                     return (
-                      <div key={item.code} style={{ background: "#fff", border: `1.5px solid ${val === "notgood" ? "#ef9a9a" : val === "good" ? "#a5d6a7" : "#e0e0e0"}`, borderRadius: 12, padding: "12px 14px" }}>
-                        <div style={{ fontSize: 13, color: "#333", fontWeight: 500, marginBottom: 8 }}>{item.label}</div>
-                        <div style={{ display: "flex", gap: 8 }}>
+                      <div key={item.code} style={{ background: "#fff", border: `1.5px solid ${val === "notgood" ? "#ef9a9a" : val === "good" ? "#a5d6a7" : "#e0e0e0"}`, borderRadius: 12, padding: "10px 12px" }}>
+                        <div style={{ fontSize: 12, color: "#333", fontWeight: 500, marginBottom: 8, minHeight: 32, display: "flex", alignItems: "center" }}>{item.label}</div>
+                        <div style={{ display: "flex", gap: 6 }}>
                           <button onClick={() => setScore(item.code, "good")}
-                            style={{ flex: 1, padding: "9px 8px", borderRadius: 9, border: `1.5px solid ${val === "good" ? "#a5d6a7" : "#e0e0e0"}`, background: val === "good" ? "#e8f5e9" : "#fafafa", color: val === "good" ? "#2e7d32" : "#aaa", fontSize: 13, fontWeight: 700, cursor: "pointer", transition: "all .15s" }}>
-                            Good · 0
+                            style={{ flex: 1, padding: "8px 4px", borderRadius: 8, border: `1.5px solid ${val === "good" ? "#a5d6a7" : "#e0e0e0"}`, background: val === "good" ? "#e8f5e9" : "#fafafa", color: val === "good" ? "#2e7d32" : "#aaa", fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all .15s" }}>
+                            Good
                           </button>
                           <button onClick={() => setScore(item.code, "notgood")}
-                            style={{ flex: 1, padding: "9px 8px", borderRadius: 9, border: `1.5px solid ${val === "notgood" ? "#ef9a9a" : "#e0e0e0"}`, background: val === "notgood" ? "#ffebee" : "#fafafa", color: val === "notgood" ? "#c62828" : "#aaa", fontSize: 13, fontWeight: 700, cursor: "pointer", transition: "all .15s" }}>
-                            Not Good · 4
+                            style={{ flex: 1, padding: "8px 4px", borderRadius: 8, border: `1.5px solid ${val === "notgood" ? "#ef9a9a" : "#e0e0e0"}`, background: val === "notgood" ? "#ffebee" : "#fafafa", color: val === "notgood" ? "#c62828" : "#aaa", fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all .15s" }}>
+                            Not Good
                           </button>
                         </div>
-                        <div style={{ fontSize: 10, color: "#aaa", marginTop: 6 }}>bobot variabel: {item.bobotVariabel}</div>
                       </div>
                     );
                   })}
-                </div>
-
-                {/* Ringkasan skor aspek aktif */}
-                <div style={{ marginTop: 14, background: "#fff", border: "1.5px solid #e0e0e0", borderRadius: 12, padding: 14 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Ringkasan</div>
-                  {aspekList.map(a => {
-                    const { bobot, max, pct, warna } = statusAspek(a, scores);
-                    return (
-                      <div key={a.key} style={{ padding: "7px 0", borderBottom: "1px solid #f0f0f0" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-                          <span style={{ fontSize: 12, color: "#555" }}>{a.label}</span>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: warna, fontFamily: "monospace" }}>
-                            {bobot.toFixed(2)} / {max.toFixed(2)}
-                            <span style={{ fontSize: 10, marginLeft: 4, color: warna }}>({pct}%)</span>
-                          </span>
-                        </div>
-                        <div style={{ background: "#e0e0e0", borderRadius: 3, height: 4, overflow: "hidden" }}>
-                          <div style={{ height: "100%", borderRadius: 3, background: warna, width: `${pct}%`, transition: "width 0.3s" }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 10, marginTop: 4 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#333" }}>Total bobot terpenuhi</span>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 16, fontWeight: 800, color: status.warna, fontFamily: "monospace" }}>{totalBobot.toFixed(2)} / {maxTotal.toFixed(2)} <span style={{ fontSize: 12 }}>({totalPct}%)</span></span>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: status.warna, background: status.bg, border: `1px solid ${status.border}`, borderRadius: 20, padding: "2px 8px" }}>{status.label}</span>
-                    </div>
-                  </div>
                 </div>
               </div>
             )}
@@ -672,46 +738,50 @@ export default function KesiapanGH() {
                 </div>
               </div>
 
-            <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 10 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>📋 Informasi Umum</div>
-              {[["Tanggal", todayISO], ["Operator", user?.nama], ["Tipe GH", tipe], ["Greenhouse", gh]].map(([l, v]) => (
-                <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #f0f0f0" }}>
-                  <span style={{ fontSize: 12, color: "#666" }}>{l}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "#333" }}>{v}</span>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 10 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>📊 Rekap Per Aspek</div>
-              {aspekList.map(a => {
-                const { bobot, max, pct, warna } = statusAspek(a, scores);
-                return (
-                  <div key={a.key} style={{ padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                      <div>
-                        <div style={{ fontSize: 12, color: "#333", fontWeight: 500 }}>{a.label}</div>
-                        <div style={{ fontSize: 10, color: "#aaa" }}>bobot aspek {a.bobotAspek}</div>
-                      </div>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: warna, fontFamily: "monospace" }}>
-                        {bobot.toFixed(2)} / {max.toFixed(2)}
-                        <span style={{ fontSize: 10, marginLeft: 4 }}>({pct}%)</span>
-                      </span>
-                    </div>
-                    <div style={{ background: "#e0e0e0", borderRadius: 3, height: 4, overflow: "hidden" }}>
-                      <div style={{ height: "100%", borderRadius: 3, background: warna, width: `${pct}%` }} />
-                    </div>
+              {/* Info umum */}
+              <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>📋 Informasi Umum</div>
+                {[["Tanggal", todayISO], ["Operator", user?.nama], ["Tipe GH", tipe], ["Greenhouse", gh]].map(([l, v]) => (
+                  <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #f0f0f0" }}>
+                    <span style={{ fontSize: 12, color: "#666" }}>{l}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#333" }}>{v}</span>
                   </div>
-                );
-              })}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 12, marginTop: 4 }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: "#333" }}>Total bobot terpenuhi</span>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 18, fontWeight: 800, color: status.warna, fontFamily: "monospace" }}>{totalBobot.toFixed(2)} / {maxTotal.toFixed(2)} <span style={{ fontSize: 12 }}>({totalPct}%)</span></span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: status.warna, background: status.bg, border: `1px solid ${status.border}`, borderRadius: 20, padding: "3px 10px" }}>{status.label}</span>
+                ))}
+              </div>
+
+              {/* Rekap per aspek — hanya Good/Not Good count, tanpa bobot */}
+              <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>📋 Rekap Per Aspek</div>
+                {aspekList.map(a => {
+                  const goodCount    = a.items.filter(i => scores[i.code] === "good").length;
+                  const notGoodCount = a.items.filter(i => scores[i.code] === "notgood").length;
+                  return (
+                    <div key={a.key} style={{ padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 12, color: "#333", fontWeight: 500 }}>{a.label}</span>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, background: "#e8f5e9", color: "#2e7d32", border: "1px solid #a5d6a7", borderRadius: 20, padding: "2px 10px" }}>✓ {goodCount} Good</span>
+                          {notGoodCount > 0 && (
+                            <span style={{ fontSize: 11, fontWeight: 700, background: "#ffebee", color: "#c62828", border: "1px solid #ef9a9a", borderRadius: 20, padding: "2px 10px" }}>✗ {notGoodCount} Not Good</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {/* Total simpel */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 10, marginTop: 4 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#333" }}>Total</span>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, background: "#e8f5e9", color: "#2e7d32", border: "1px solid #a5d6a7", borderRadius: 20, padding: "3px 12px" }}>
+                      ✓ {allItems.filter(i => scores[i.code] === "good").length} Good
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 700, background: "#ffebee", color: "#c62828", border: "1px solid #ef9a9a", borderRadius: 20, padding: "3px 12px" }}>
+                      ✗ {allItems.filter(i => scores[i.code] === "notgood").length} Not Good
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
 
             </div>{/* end rekapRef */}
 
@@ -740,20 +810,13 @@ export default function KesiapanGH() {
             <div style={{ background: savedOffline ? "#e3f2fd" : "#e0f2f1", border: `1px solid ${savedOffline ? "#90CAF9" : "#80CBC4"}`, borderRadius: 14, padding: 16, textAlign: "left", marginBottom: 20 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "#004D40" }}>{tipe} · {gh}</div>
               <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>Operator: {user?.nama} · {todayISO}</div>
-              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(0,0,0,0.06)" }}>
-                {aspekList.map(a => {
-                  const { bobot, max, pct, warna } = statusAspek(a, scores);
-                  return (
-                    <div key={a.key} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "3px 0" }}>
-                      <span style={{ color: "#666" }}>{a.label}</span>
-                      <span style={{ fontWeight: 700, color: warna, fontFamily: "monospace" }}>{bobot.toFixed(2)} / {max.toFixed(2)} ({pct}%)</span>
-                    </div>
-                  );
-                })}
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700, paddingTop: 8, marginTop: 4, borderTop: "1px solid rgba(0,0,0,0.06)" }}>
-                  <span>Total</span>
-                  <span style={{ color: status.warna }}>{totalBobot.toFixed(2)} / {maxTotal.toFixed(2)} ({totalPct}%) — {status.label}</span>
-                </div>
+              <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(0,0,0,0.06)", display: "flex", gap: 10, justifyContent: "center" }}>
+                <span style={{ fontSize: 13, fontWeight: 700, background: "#e8f5e9", color: "#2e7d32", border: "1px solid #a5d6a7", borderRadius: 20, padding: "4px 14px" }}>
+                  ✓ {allItems.filter(i => scores[i.code] === "good").length} Good
+                </span>
+                <span style={{ fontSize: 13, fontWeight: 700, background: "#ffebee", color: "#c62828", border: "1px solid #ef9a9a", borderRadius: 20, padding: "4px 14px" }}>
+                  ✗ {allItems.filter(i => scores[i.code] === "notgood").length} Not Good
+                </span>
               </div>
             </div>
             <button onClick={resetForm} style={{ width: "100%", padding: 15, background: "#e0f2f1", border: "2px solid #80CBC4", borderRadius: 12, color: "#004D40", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
