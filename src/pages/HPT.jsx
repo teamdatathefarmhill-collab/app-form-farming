@@ -68,7 +68,60 @@ function initHPTData() {
   return { hama, penyakit, keterangan: "" };
 }
 
-// ─── Main App ─────────────────────────────────────────────────────────────────
+const TIPE_GH = [
+  {
+    key: "drip",
+    label: "Drip",
+    icon: "💧",
+    color: "#1E88E5",
+    pattern: (gh) => {
+      const upper = gh.toUpperCase();
+      if (upper.startsWith("BERGAS")) {
+        const num = parseInt(upper.replace("BERGAS", "").trim());
+        return num >= 1 && num <= 8 && num !== 6;
+      }
+      if (upper.startsWith("COLOMADU")) {
+        const num = parseInt(upper.replace("COLOMADU", "").trim());
+        return num >= 1 && num <= 4;
+      }
+      return false;
+    },
+  },
+  {
+    key: "kolam",
+    label: "Kolam",
+    icon: "🏊",
+    color: "#00897B",
+    pattern: (gh) => {
+      const upper = gh.toUpperCase();
+      if (upper.startsWith("TOHUDAN")) {
+        const num = parseInt(upper.replace("TOHUDAN", "").trim());
+        return (num >= 1 && num <= 14) || num === 22;
+      }
+      if (upper.startsWith("SAWAHAN")) {
+        const num = parseInt(upper.replace("SAWAHAN", "").trim());
+        return num >= 1 && num <= 4;
+      }
+      return false;
+    },
+  },
+  {
+    key: "dutch",
+    label: "Dutch Bucket",
+    icon: "🪣",
+    color: "#FB8C00",
+    pattern: (gh) => {
+      const upper = gh.toUpperCase();
+      if (upper.startsWith("TOHUDAN")) {
+        const num = parseInt(upper.replace("TOHUDAN", "").trim());
+        return num >= 15 && num <= 21;
+      }
+      return false;
+    },
+  },
+];
+
+
 export default function HPT() {
   const [step, setStep]       = useState(1);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -77,6 +130,7 @@ export default function HPT() {
 
   const [selectedGH, setSelectedGH] = useState("");
   const [activeTab, setActiveTab]   = useState("produksi");
+  const [selectedTipe, setSelectedTipe] = useState("");
   const [operator, setOperator]     = useState("");
   const [hptData, setHptData]       = useState(initHPTData());
   const [syncing, setSyncing]       = useState(false);
@@ -176,6 +230,7 @@ export default function HPT() {
 
   const resetForm = () => {
     setStep(1); setSelectedGH(""); setOperator(""); setActiveTab("produksi");
+    setSelectedTipe("");
     setHptData(initHPTData()); setSyncing(false);
     setSubmitError(null); setSavedOffline(false);
   };
@@ -314,9 +369,10 @@ export default function HPT() {
           {/* ══ STEP 1 — Pilih GH ══ */}
           {step === 1 && (
             <div>
+              {/* Tab Produksi / Semai */}
               <div style={{ display: "flex", gap: 6, marginBottom: 14, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 4 }}>
                 {[{ key: "produksi", label: "🌿 GH Produksi" }, { key: "semai", label: "🌱 Semai" }].map(tab => (
-                  <button key={tab.key} onClick={() => { setActiveTab(tab.key); setSelectedGH(""); }} style={{ flex: 1, padding: "8px 0", background: activeTab === tab.key ? "rgba(76,175,80,0.2)" : "transparent", border: `1px solid ${activeTab === tab.key ? "rgba(76,175,80,0.4)" : "transparent"}`, borderRadius: 8, cursor: "pointer", color: activeTab === tab.key ? "#81c784" : "rgba(255,255,255,0.4)", fontSize: 13, fontWeight: 700, transition: "all 0.2s" }}>
+                  <button key={tab.key} onClick={() => { setActiveTab(tab.key); setSelectedGH(""); setSelectedTipe(""); }} style={{ flex: 1, padding: "8px 0", background: activeTab === tab.key ? "rgba(76,175,80,0.2)" : "transparent", border: `1px solid ${activeTab === tab.key ? "rgba(76,175,80,0.4)" : "transparent"}`, borderRadius: 8, cursor: "pointer", color: activeTab === tab.key ? "#81c784" : "rgba(255,255,255,0.4)", fontSize: 13, fontWeight: 700, transition: "all 0.2s" }}>
                     {tab.label}
                   </button>
                 ))}
@@ -332,30 +388,73 @@ export default function HPT() {
               {activeTab === "produksi" && (
                 loadingGH ? (
                   <div style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.3)", fontSize: 13 }}>⏳ Memuat data GH...</div>
-                ) : ghAktif.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.3)", fontSize: 13 }}>Tidak ada GH aktif saat ini.</div>
                 ) : (
                   <>
-                    <div style={{ fontSize: 11, color: "#81c784", fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 8 }}>GH Aktif ({ghAktif.length})</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                      {ghAktif.map(([gh, info]) => {
-                        const h = info.tanam ? hitungHST(info.tanam) : null;
-                        const hc = h !== null ? hstColor(h) : null;
-                        const done = submittedToday.includes(gh);
-                        const selected = selectedGH === gh;
-                        return (
-                          <button key={gh} onClick={() => handleSelectGH(gh)} style={{ padding: "12px 12px 10px", background: selected ? "rgba(76,175,80,0.12)" : done ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.04)", border: `1px solid ${selected ? "rgba(76,175,80,0.45)" : done ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.1)"}`, borderRadius: 14, cursor: "pointer", textAlign: "left", transition: "all 0.2s", opacity: done ? 0.7 : 1 }}>
-                            <div style={{ fontSize: 13, fontWeight: 800, color: selected ? "#81c784" : "#fff", marginBottom: 3 }}>{gh}</div>
-                            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginBottom: 10 }}>P{info.periode}</div>
-                            <div style={{ display: "inline-block", padding: "5px 10px", borderRadius: 8, background: done ? "rgba(76,175,80,0.15)" : (hc ? hc.bg : "rgba(255,255,255,0.06)"), border: `1px solid ${done ? "rgba(76,175,80,0.3)" : (hc ? hc.border : "rgba(255,255,255,0.1)")}` }}>
-                              {done ? <span style={{ fontSize: 12, fontWeight: 700, color: "#81c784" }}>✓ Done</span>
-                                : h !== null ? <span style={{ fontSize: 14, fontWeight: 800, color: hc.text }}>{h} HST</span>
-                                : <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>– HST</span>}
-                            </div>
+                    {/* Pilih Tipe */}
+                    {!selectedTipe && (
+                      <>
+                        <div style={{ fontSize: 11, color: "#81c784", fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 10 }}>Pilih Tipe Irigasi</div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {TIPE_GH.map(tipe => {
+                            const ghDiTipe = ghAktif.filter(([gh]) => tipe.pattern(gh));
+                            return (
+                              <button key={tipe.key} onClick={() => setSelectedTipe(tipe.key)}
+                                style={{ padding: "14px 16px", background: "rgba(255,255,255,0.04)", border: `1px solid rgba(255,255,255,0.1)`, borderRadius: 14, cursor: "pointer", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", transition: "all 0.2s" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                  <span style={{ fontSize: 22 }}>{tipe.icon}</span>
+                                  <div>
+                                    <div style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>{tipe.label}</div>
+                                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>{ghDiTipe.length} GH aktif</div>
+                                  </div>
+                                </div>
+                                <span style={{ fontSize: 18, color: "rgba(255,255,255,0.25)" }}>›</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+
+                    {/* GH List setelah tipe dipilih */}
+                    {selectedTipe && (() => {
+                      const tipe = TIPE_GH.find(t => t.key === selectedTipe);
+                      const ghDiTipe = ghAktif.filter(([gh]) => tipe.pattern(gh));
+                      return (
+                        <>
+                          <button onClick={() => { setSelectedTipe(""); setSelectedGH(""); }}
+                            style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.4)", fontSize: 12, padding: 0 }}>
+                            ← Ganti tipe
                           </button>
-                        );
-                      })}
-                    </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                            <span style={{ fontSize: 16 }}>{tipe.icon}</span>
+                            <div style={{ fontSize: 11, color: tipe.color, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase" }}>{tipe.label} — {ghDiTipe.length} GH Aktif</div>
+                          </div>
+                          {ghDiTipe.length === 0 ? (
+                            <div style={{ textAlign: "center", padding: 32, color: "rgba(255,255,255,0.3)", fontSize: 13 }}>Tidak ada GH aktif di tipe ini.</div>
+                          ) : (
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                              {ghDiTipe.map(([gh, info]) => {
+                                const h = info.tanam ? hitungHST(info.tanam) : null;
+                                const hc = h !== null ? hstColor(h) : null;
+                                const done = submittedToday.includes(gh);
+                                const selected = selectedGH === gh;
+                                return (
+                                  <button key={gh} onClick={() => handleSelectGH(gh)} style={{ padding: "12px 12px 10px", background: selected ? "rgba(76,175,80,0.12)" : done ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.04)", border: `1px solid ${selected ? "rgba(76,175,80,0.45)" : done ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.1)"}`, borderRadius: 14, cursor: "pointer", textAlign: "left", transition: "all 0.2s", opacity: done ? 0.7 : 1 }}>
+                                    <div style={{ fontSize: 13, fontWeight: 800, color: selected ? "#81c784" : "#fff", marginBottom: 3 }}>{gh}</div>
+                                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginBottom: 10 }}>P{info.periode}</div>
+                                    <div style={{ display: "inline-block", padding: "5px 10px", borderRadius: 8, background: done ? "rgba(76,175,80,0.15)" : (hc ? hc.bg : "rgba(255,255,255,0.06)"), border: `1px solid ${done ? "rgba(76,175,80,0.3)" : (hc ? hc.border : "rgba(255,255,255,0.1)")}` }}>
+                                      {done ? <span style={{ fontSize: 12, fontWeight: 700, color: "#81c784" }}>✓ Done</span>
+                                        : h !== null ? <span style={{ fontSize: 14, fontWeight: 800, color: hc.text }}>{h} HST</span>
+                                        : <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>– HST</span>}
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </>
                 )
               )}
