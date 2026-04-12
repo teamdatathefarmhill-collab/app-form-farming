@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
+import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 
 const DB_NAME    = "PenyemprotanOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_PENYEMPROTAN_URL;
@@ -307,6 +308,7 @@ export default function Penyemprotan() {
   const canAmbil   = adaPengambilan === true ? (ambil.namaPestisida !== "" && ambil.jumlah !== "") : true;
   const canGuna    = guna.namaPestisida !== "" && guna.konsentrasi !== "" && guna.jumlahPemakaian !== "";
   const canSubmit  = operator.trim() !== "";
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const actColor = activity === "oles_gsb" ? "#FF7043" : "#1E88E5";
   const ghGroup  = ghGroups.find(g => selectedGH.startsWith(g.area));
@@ -757,13 +759,29 @@ export default function Penyemprotan() {
           )}
 
           {step === "rekap" && (
-            <button onClick={handleSubmit} disabled={syncing || !canSubmit}
+            <button onClick={() => setConfirmOpen(true)} disabled={syncing || !canSubmit}
               style={{ flex:2, padding:"14px", border:"none", borderRadius:12, background: syncing ? "rgba(30,136,229,0.3)" : !canSubmit ? "rgba(255,255,255,0.06)" : isDemoMode ? "linear-gradient(135deg,#5d4037,#795548)" : !isOnline ? "linear-gradient(135deg,#1565C0,#1976D2)" : "linear-gradient(135deg,#0d47a1,#1565C0)", color: canSubmit ? "#fff" : "rgba(255,255,255,0.3)", fontSize:15, fontWeight:700, cursor: syncing || !canSubmit ? "not-allowed" : "pointer" }}>
               {syncing ? "⏳ Mengirim..." : isDemoMode ? "Submit Demo 🧪" : !isOnline ? "💾 Simpan Offline" : "Submit ✓"}
             </button>
           )}
         </div>
       )}
+
+      <ConfirmSubmitModal
+        open={confirmOpen}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => { setConfirmOpen(false); handleSubmit(); }}
+        color="#1E88E5"
+        isOffline={!isOnline}
+        isDemoMode={isDemoMode}
+        summary={[
+          { label: "Tanggal",   value: todayISO },
+          { label: "GH",        value: selectedGH },
+          { label: "Kegiatan",  value: activity === "oles_gsb" ? "Oles GSB" : "Penggunaan & Pengambilan" },
+          { label: "Pestisida", value: activity === "oles_gsb" ? pestisidaGSB : guna.namaPestisida },
+          { label: "Operator",  value: operator },
+        ]}
+      />
 
       <style>{`
         input[type=number]::-webkit-outer-spin-button,

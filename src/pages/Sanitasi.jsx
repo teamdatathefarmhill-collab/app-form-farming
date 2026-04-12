@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
+import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 
 const DB_NAME = "SanitasiOfflineDB";
 
@@ -165,6 +166,7 @@ export default function Sanitasi() {
   const [syncProgress, setSyncProgress] = useState({ done: 0, total: 0 });
   const [submitError, setSubmitError]   = useState(null);
   const [isOnline, setIsOnline]         = useState(navigator.onLine);
+  const [confirmOpen, setConfirmOpen]   = useState(false);
 
   // ── State offline ──
   const [pendingCount, setPendingCount] = useState(0);
@@ -871,7 +873,7 @@ export default function Sanitasi() {
           )}
           {step === 3 && (
             <button
-              onClick={handleSubmit}
+              onClick={() => setConfirmOpen(true)}
               disabled={syncing}
               style={{ flex: 2, padding: "14px", background: syncing ? "rgba(76,175,80,0.3)" : isDemoMode ? "linear-gradient(135deg, #5d4037, #795548)" : !isOnline ? "linear-gradient(135deg, #1565C0, #1976D2)" : "linear-gradient(135deg, #1b5e20, #2e7d32)", border: "none", borderRadius: 12, color: "#fff", fontSize: 15, fontWeight: 700, cursor: syncing ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
             >
@@ -886,6 +888,21 @@ export default function Sanitasi() {
           )}
         </div>
       )}
+
+      <ConfirmSubmitModal
+        open={confirmOpen}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => { setConfirmOpen(false); handleSubmit(); }}
+        color="#4CAF50"
+        isOffline={!isOnline}
+        isDemoMode={isDemoMode}
+        summary={[
+          { label: "Tanggal",  value: todayISO },
+          { label: "GH",       value: selectedGH },
+          { label: "Varian",   value: `${varianList.length} varian` },
+          { label: "Operator", value: operator },
+        ]}
+      />
 
       <style>{`
         input[type=number]::-webkit-outer-spin-button,

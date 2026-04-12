@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
+import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 
 const DB_NAME = "HPTOfflineDB";
 
@@ -134,6 +135,7 @@ export default function HPT() {
   const [operator, setOperator]     = useState("");
   const [hptData, setHptData]       = useState(initHPTData());
   const [syncing, setSyncing]       = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [savedOffline, setSavedOffline] = useState(false);
 
@@ -684,12 +686,27 @@ export default function HPT() {
               </button>
             )}
             {step === 2 && (
-              <button onClick={handleSubmit} disabled={syncing || !canProceedStep2} style={{ flex: 2, padding: 14, background: syncing || !canProceedStep2 ? "rgba(255,255,255,0.05)" : isDemoMode ? "linear-gradient(135deg, #5d4037, #795548)" : !isOnline ? "linear-gradient(135deg, #1565C0, #1976D2)" : "linear-gradient(135deg, #1b5e20, #2e7d32)", border: "none", borderRadius: 12, color: syncing || !canProceedStep2 ? "rgba(255,255,255,0.25)" : "#fff", fontSize: 15, fontWeight: 700, cursor: syncing || !canProceedStep2 ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <button onClick={() => setConfirmOpen(true)} disabled={syncing || !canProceedStep2} style={{ flex: 2, padding: 14, background: syncing || !canProceedStep2 ? "rgba(255,255,255,0.05)" : isDemoMode ? "linear-gradient(135deg, #5d4037, #795548)" : !isOnline ? "linear-gradient(135deg, #1565C0, #1976D2)" : "linear-gradient(135deg, #1b5e20, #2e7d32)", border: "none", borderRadius: 12, color: syncing || !canProceedStep2 ? "rgba(255,255,255,0.25)" : "#fff", fontSize: 15, fontWeight: 700, cursor: syncing || !canProceedStep2 ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 {syncing ? "⏳ Menyimpan..." : isDemoMode ? "Submit Demo 🧪" : !isOnline ? "💾 Simpan Offline" : "Submit HPT ✓"}
               </button>
             )}
           </div>
         )}
+
+        <ConfirmSubmitModal
+          open={confirmOpen}
+          onCancel={() => setConfirmOpen(false)}
+          onConfirm={() => { setConfirmOpen(false); handleSubmit(); }}
+          color="#FF7043"
+          isOffline={!isOnline}
+          isDemoMode={isDemoMode}
+          summary={[
+            { label: "Tanggal",  value: todayISO },
+            { label: "GH",       value: selectedGH },
+            { label: "Tipe",     value: activeTab === "semai" ? "Semai" : "Produksi" },
+            { label: "Operator", value: operator },
+          ]}
+        />
 
         <style>{`
           input[type=number]::-webkit-outer-spin-button,

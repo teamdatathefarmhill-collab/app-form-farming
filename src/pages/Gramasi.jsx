@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
+import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 
 const DB_NAME = "GramasiOfflineDB";
 
@@ -60,6 +61,7 @@ export default function Gramasi() {
   const [syncProgress, setSyncProgress] = useState({ done: 0, total: 0 });
   const [submitError, setSubmitError]   = useState(null);
   const [savedOffline, setSavedOffline] = useState(false);
+  const [confirmOpen, setConfirmOpen]   = useState(false);
 
   const [submittedToday, setSubmittedToday] = useState(getSubmittedToday());
   const [showWarning, setShowWarning]       = useState(false);
@@ -535,7 +537,7 @@ export default function Gramasi() {
             </button>
           )}
           {step === 2 && (
-            <button onClick={handleSubmit} disabled={!canSubmit || syncing} style={{ flex: 2, padding: "13px", border: "none", borderRadius: 12, background: canSubmit && !syncing ? (!isOnline ? "linear-gradient(135deg,#1565C0,#1976D2)" : "linear-gradient(135deg,#1b5e20,#2e7d32)") : "#e0e0e0", color: canSubmit && !syncing ? "#fff" : "#aaa", fontSize: 15, fontWeight: 700, cursor: canSubmit && !syncing ? "pointer" : "not-allowed", transition: "all 0.2s" }}>
+            <button onClick={() => setConfirmOpen(true)} disabled={!canSubmit || syncing} style={{ flex: 2, padding: "13px", border: "none", borderRadius: 12, background: canSubmit && !syncing ? (!isOnline ? "linear-gradient(135deg,#1565C0,#1976D2)" : "linear-gradient(135deg,#1b5e20,#2e7d32)") : "#e0e0e0", color: canSubmit && !syncing ? "#fff" : "#aaa", fontSize: 15, fontWeight: 700, cursor: canSubmit && !syncing ? "pointer" : "not-allowed", transition: "all 0.2s" }}>
               {syncing
                 ? `⏳ ${syncProgress.done}/${syncProgress.total}...`
                 : !isOnline && canSubmit
@@ -545,6 +547,20 @@ export default function Gramasi() {
           )}
         </div>
       )}
+
+      <ConfirmSubmitModal
+        open={confirmOpen}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => { setConfirmOpen(false); handleSubmit(); }}
+        color="#1E88E5"
+        isOffline={!isOnline}
+        summary={[
+          { label: "Tanggal",   value: todayISO },
+          { label: "GH",        value: selectedGH },
+          { label: "Jml Baris", value: `${tableData.length} baris` },
+          { label: "Operator",  value: operator },
+        ]}
+      />
 
       <style>{`
         input[type=number]::-webkit-outer-spin-button,

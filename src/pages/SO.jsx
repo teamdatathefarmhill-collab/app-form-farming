@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
+import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 
 const DB_NAME    = "SOOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_SO_URL;
@@ -136,6 +137,7 @@ export default function SO() {
   const [syncProgress, setSyncProgress] = useState({ done: 0, total: 0 });
   const [submitError, setSubmitError]   = useState(null);
   const [savedOffline, setSavedOffline] = useState(false);
+  const [confirmOpen, setConfirmOpen]   = useState(false);
 
   const [submittedToday, setSubmittedToday] = useState(getSubmittedToday());
   const [showDoubleWarn, setShowDoubleWarn] = useState(false);
@@ -753,7 +755,7 @@ export default function SO() {
       {step === 2 && (
         <div style={{ padding: "12px 16px 24px", borderTop: "1px solid #e0e0e0", background: "#fff", position: "sticky", bottom: 0, display: "flex", gap: 10 }}>
           <button onClick={() => { setStep(1); setSubmitError(null); }} style={{ flex: 1, padding: "13px", background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 12, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>← Kembali</button>
-          <button onClick={handleSubmit} disabled={!canSubmit || syncing}
+          <button onClick={() => setConfirmOpen(true)} disabled={!canSubmit || syncing}
             style={{ flex: 2, padding: "13px", border: "none", borderRadius: 12, background: canSubmit && !syncing ? (!isOnline ? "linear-gradient(135deg,#1565C0,#1976D2)" : "linear-gradient(135deg,#1b5e20,#2e7d32)") : "#e0e0e0", color: canSubmit && !syncing ? "#fff" : "#aaa", fontSize: 15, fontWeight: 700, cursor: canSubmit && !syncing ? "pointer" : "not-allowed", transition: "all 0.2s" }}>
             {syncing
               ? `⏳ ${syncProgress.done}/${syncProgress.total}...`
@@ -763,6 +765,21 @@ export default function SO() {
           </button>
         </div>
       )}
+
+      <ConfirmSubmitModal
+        open={confirmOpen}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => { setConfirmOpen(false); handleSubmit(); }}
+        color="#43A047"
+        isOffline={!isOnline}
+        isDemoMode={isDemoMode}
+        summary={[
+          { label: "Tanggal",   value: todayISO },
+          { label: "GH",        value: selectedGH },
+          { label: "Jml Baris", value: `${tableData.filter(r => r.populasi !== "").length} baris terisi` },
+          { label: "Operator",  value: operator },
+        ]}
+      />
 
       <style>{`
         input[type=number]::-webkit-outer-spin-button,

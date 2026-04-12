@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../hooks/useAuth";
+import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 
 const SCRIPT_URL = import.meta.env.VITE_GAS_PENYIRAMAN_URL;
 
@@ -78,6 +79,7 @@ export default function Penyiraman() {
   const [tipe, setTipe]         = useState("");
   const [gh, setGh]             = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitProgress, setSubmitProgress] = useState({ done: 0, total: 0 });
   const [submitError, setSubmitError] = useState(null);
   const [isOnline] = useState(navigator.onLine);
@@ -462,13 +464,28 @@ export default function Penyiraman() {
             </button>
           )}
           {step === 3 && (
-            <button onClick={handleSubmit} disabled={submitting}
+            <button onClick={() => setConfirmOpen(true)} disabled={submitting}
               style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: submitting ? "#e0e0e0" : "linear-gradient(135deg,#0277bd,#0288d1)", color: submitting ? "#aaa" : "#fff", fontSize: 15, fontWeight: 700, cursor: submitting ? "not-allowed" : "pointer" }}>
               {submitting ? `⏳ ${submitProgress.done}/${submitProgress.total}...` : `Submit ${isDB ? "" : varianList.length + " Varian"} ✓`}
             </button>
           )}
         </div>
       )}
+
+      <ConfirmSubmitModal
+        open={confirmOpen}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => { setConfirmOpen(false); handleSubmit(); }}
+        color="#0277bd"
+        isOffline={!isOnline}
+        summary={[
+          { label: "Tanggal",  value: todayISO },
+          { label: "GH",       value: gh },
+          { label: "Tipe",     value: tipe },
+          { label: "Varian",   value: isDB ? "Dutch Bucket" : `${varianList.length} varian` },
+          { label: "Operator", value: user?.nama || "" },
+        ]}
+      />
 
       <style>{`
         input[type=number]::-webkit-outer-spin-button,

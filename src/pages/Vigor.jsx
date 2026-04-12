@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
+import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 
 const DB_NAME    = "VigorOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_VIGOR_URL;
@@ -166,6 +167,7 @@ export default function Vigor() {
   const [activeVarian, setActiveVarian] = useState(null);
 
   const [submitting, setSubmitting]   = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [savedOffline, setSavedOffline] = useState(false);
 
@@ -638,7 +640,7 @@ export default function Vigor() {
             </button>
           )}
           {step === 2 && (
-            <button onClick={handleSubmit} disabled={!canSubmit || submitting}
+            <button onClick={() => setConfirmOpen(true)} disabled={!canSubmit || submitting}
               style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: canSubmit && !submitting ? (!isOnline ? "linear-gradient(135deg,#1565C0,#1976D2)" : "linear-gradient(135deg,#1b5e20,#2e7d32)") : "#e0e0e0", color: canSubmit && !submitting ? "#fff" : "#aaa", fontSize: 15, fontWeight: 700, cursor: canSubmit && !submitting ? "pointer" : "not-allowed" }}>
               {submitting ? "⏳ Menyimpan..."
                 : !isOnline && canSubmit ? `💾 Simpan Offline`
@@ -647,6 +649,21 @@ export default function Vigor() {
           )}
         </div>
       )}
+
+      <ConfirmSubmitModal
+        open={confirmOpen}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => { setConfirmOpen(false); handleSubmit(); }}
+        color="#43A047"
+        isOffline={!isOnline}
+        isDemoMode={isDemoMode}
+        summary={[
+          { label: "Tanggal",  value: todayISO },
+          { label: "GH",       value: selectedGH },
+          { label: "Varian",   value: `${varianList.length} varian` },
+          { label: "Operator", value: operator },
+        ]}
+      />
 
       <style>{`
         input[type=number]::-webkit-outer-spin-button,

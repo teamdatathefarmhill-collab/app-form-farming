@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 import html2canvas from "html2canvas";
+import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 
 const DB_NAME    = "KesiapanOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_KESIAPAN_URL;
@@ -343,6 +344,7 @@ export default function KesiapanGH() {
   const [showKodeInput, setShowKodeInput] = useState(false);
   const [kodeInput, setKodeInput]         = useState("");
   const [kodeError, setKodeError]         = useState("");
+  const [confirmOpen, setConfirmOpen]     = useState(false);
 
   const aspekList   = tipe ? MATRIKS[tipe] : [];
   const allItems    = aspekList.flatMap(a => a.items);
@@ -849,13 +851,28 @@ export default function KesiapanGH() {
             </button>
           )}
           {step === 3 && (
-            <button onClick={handleSubmit} disabled={submitting}
+            <button onClick={() => setConfirmOpen(true)} disabled={submitting}
               style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: submitting ? "#e0e0e0" : !isOnline ? "linear-gradient(135deg,#1565C0,#1976D2)" : "linear-gradient(135deg,#004D40,#00695C)", color: submitting ? "#aaa" : "#fff", fontSize: 15, fontWeight: 700, cursor: submitting ? "not-allowed" : "pointer" }}>
               {submitting ? "⏳ Menyimpan..." : !isOnline ? "💾 Simpan Offline" : "Submit Penilaian ✓"}
             </button>
           )}
         </div>
       )}
+
+      <ConfirmSubmitModal
+        open={confirmOpen}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => { setConfirmOpen(false); handleSubmit(); }}
+        color="#00897B"
+        isOffline={!isOnline}
+        summary={[
+          { label: "Tanggal",  value: todayISO },
+          { label: "GH",       value: gh },
+          { label: "Tipe",     value: tipe },
+          { label: "Skor",     value: `${totalPct}% (${status?.label || ""})` },
+          { label: "Operator", value: user?.nama || "" },
+        ]}
+      />
 
       <style>{`* { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }`}</style>
     </div>

@@ -8,6 +8,8 @@ import Penyiraman from "./pages/Penyiraman";
 import SO from "./pages/SO";
 import Penyemprotan from "./pages/Penyemprotan";
 import FarmhillLogin from "./components/FarmhillLogin";
+import SOPModal, { isMenuSeen } from "./components/SOPModal";
+import InfoButton from "./components/InfoButton";
 import { useAuth } from "./hooks/useAuth";
 
 // Sub-menu HPT — key harus match kolom di REF OPERATOR
@@ -32,7 +34,17 @@ export default function App() {
   const { user, login, logout, isLoggedIn } = useAuth();
   const [activeTab, setActiveTab]     = useState(null);
   const [hptOpen, setHptOpen]         = useState(false);
+  const [sopMenuKey, setSopMenuKey]   = useState(null); // null = tidak tampil
   const hptRef                        = useRef(null);
+
+  // Tampilkan SOP saat tab berganti, hanya jika belum pernah dibaca
+  function switchTab(key) {
+    setActiveTab(key);
+    setHptOpen(false);
+    if (!isMenuSeen(key)) {
+      setSopMenuKey(key);
+    }
+  }
 
   // Tutup dropdown HPT saat klik di luar
   useEffect(() => {
@@ -124,9 +136,15 @@ export default function App() {
             <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", lineHeight: 1.2 }}>ID {user.id}</div>
           </div>
         </div>
-        <button onClick={logout} style={{ padding: "5px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.15)", background: "transparent", color: "rgba(255,255,255,0.45)", fontSize: 11, cursor: "pointer" }}>
-          Logout
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {/* Tombol "i" — panduan menu aktif */}
+          {resolvedTab && (
+            <InfoButton menuKey={resolvedTab} />
+          )}
+          <button onClick={logout} style={{ padding: "5px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.15)", background: "transparent", color: "rgba(255,255,255,0.45)", fontSize: 11, cursor: "pointer" }}>
+            Logout
+          </button>
+        </div>
       </div>
 
       {/* Halaman aktif */}
@@ -163,7 +181,7 @@ export default function App() {
                 {accessibleHPT.map(item => {
                   const isActive = resolvedTab === item.key;
                   return (
-                    <button key={item.key} onClick={() => { setActiveTab(item.key); setHptOpen(false); }}
+                    <button key={item.key} onClick={() => switchTab(item.key)}
                       style={{
                         width: "100%", padding: "12px 16px",
                         background: isActive ? "rgba(255,112,67,0.15)" : "transparent",
@@ -185,7 +203,7 @@ export default function App() {
             {/* HPT Tab Button */}
             <button onClick={() => {
                 if (accessibleHPT.length === 1) {
-                  setActiveTab(accessibleHPT[0].key);
+                  switchTab(accessibleHPT[0].key);
                 } else {
                   setHptOpen(o => !o);
                 }
@@ -213,7 +231,7 @@ export default function App() {
         {accessibleStandalone.map((tab) => {
           const isActive = resolvedTab === tab.key;
           return (
-            <button key={tab.key} onClick={() => { setActiveTab(tab.key); setHptOpen(false); }}
+            <button key={tab.key} onClick={() => switchTab(tab.key)}
               style={{
                 flex: 1, minWidth: 60, padding: "10px 4px 14px",
                 background: "transparent", border: "none", cursor: "pointer",
@@ -229,6 +247,14 @@ export default function App() {
           );
         })}
       </div>
+
+      {/* SOP Modal — muncul otomatis pertama kali buka menu */}
+      {sopMenuKey && (
+        <SOPModal
+          menuKey={sopMenuKey}
+          onClose={() => setSopMenuKey(null)}
+        />
+      )}
 
       <style>{`
         * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
