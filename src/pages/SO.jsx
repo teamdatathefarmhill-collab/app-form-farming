@@ -274,14 +274,16 @@ export default function SO() {
     const ghInfo    = ghData[selectedGH];
     const hst       = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : "";
     const ts        = todayTimestamp();
+    const client_timestamp = new Date().toISOString();
     return tableData
       .filter(r => r.populasi !== "")
       .map(r => ({
-        action:     "submitSO",
-        timestamp:  ts,
-        tanggal:    todayISO,
-        operator:   operator.trim(),
-        greenhouse: selectedGH,
+        action:           "submitSO",
+        client_timestamp: client_timestamp,
+        timestamp:        ts,
+        tanggal:          todayISO,
+        operator:         operator.trim(),
+        greenhouse:       selectedGH,
         periode:    ghInfo?.periode || "",
         hst:        hst ?? "",
         baris:      r.baris,

@@ -11,7 +11,30 @@
 import { useState, useEffect, useCallback } from "react";
 import { gasFetch } from "../utils/idb";
 
-const GHREF_URL = import.meta.env.VITE_GAS_GHREF_URL;
+const GHREF_URL    = import.meta.env.VITE_GAS_GHREF_URL;
+const LS_CACHE_KEY = "farmhill_ghdata_cache";
+const LS_CACHE_TTL = 1000 * 60 * 60 * 6; // 6 jam
+
+function saveCache(data, produksi, semai) {
+  try {
+    localStorage.setItem(LS_CACHE_KEY, JSON.stringify({
+      data, produksi, semai, savedAt: Date.now(),
+    }));
+  } catch { /* kuota penuh, abaikan */ }
+}
+
+function loadCache() {
+  try {
+    const raw = localStorage.getItem(LS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Cache masih valid jika belum lebih dari TTL
+    if (Date.now() - parsed.savedAt < LS_CACHE_TTL) return parsed;
+    return parsed; // tetap pakai meski kedaluwarsa (lebih baik dari mock)
+  } catch {
+    return null;
+  }
+}
 
 // ─── Demo / fallback data ────────────────────────────────────────────────────
 const buatBaris = (jumlah) => {
@@ -73,21 +96,32 @@ export function useGHData() {
       if (!json.success) throw new Error(json.error || "Response tidak sukses");
 
       const data = json.data || {};
-
-      // GAS sudah menghitung produksi/semai, gunakan langsung jika ada
       const { produksi, semai } = (json.produksi && json.semai)
         ? { produksi: json.produksi, semai: json.semai }
         : splitProduksiSemai(data);
+
+      // Simpan ke localStorage agar tersedia saat offline
+      saveCache(data, produksi, semai);
 
       setGhData(data);
       setProduksi(produksi);
       setSemai(semai);
     } catch {
-      setIsDemoMode(true);
-      const { produksi, semai } = splitProduksiSemai(MOCK_DATA);
-      setGhData(MOCK_DATA);
-      setProduksi(produksi);
-      setSemai(semai);
+      // Coba pakai cache localStorage dulu sebelum fallback ke mock
+      const cached = loadCache();
+      if (cached) {
+        setGhData(cached.data);
+        setProduksi(cached.produksi);
+        setSemai(cached.semai);
+        // isDemoMode tetap false → submit tetap jalan, bukan demo
+      } else {
+        // Tidak ada cache sama sekali → gunakan mock data
+        setIsDemoMode(true);
+        const { produksi, semai } = splitProduksiSemai(MOCK_DATA);
+        setGhData(MOCK_DATA);
+        setProduksi(produksi);
+        setSemai(semai);
+      }
     } finally {
       setLoading(false);
     }

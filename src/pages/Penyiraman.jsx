@@ -136,9 +136,11 @@ export default function Penyiraman() {
   };
 
   const buildPayloads = () => {
+    const client_timestamp = new Date().toISOString();
     if (isDB) {
       return [{
         action: "submitPenyiraman",
+        client_timestamp,
         tanggal: todayISO, operator: user?.nama || "", tipe, gh, varian: "",
         ecIn: "", ecOut: "", phIn: "", phOut: "", volume: "",
         volNutrisi: dbData.volNutrisi || "0", suhu: dbData.suhu || "0", rh: dbData.rh || "0",
@@ -153,6 +155,7 @@ export default function Penyiraman() {
       const rhVal   = multiSuhuRH ? d.rhArr.join(", ")   : (d.rh   || "0");
       return {
         action: "submitPenyiraman",
+        client_timestamp,
         tanggal: todayISO, operator: user?.nama || "", tipe, gh, varian: v,
         ecIn: d.ecIn || "0", ecOut: d.ecOut || "0",
         phIn: d.phIn || "0", phOut: d.phOut || "0",

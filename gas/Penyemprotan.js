@@ -101,7 +101,11 @@ function processSubmission(data) {
 
   // Gunakan cached spreadsheet — tidak openById() ulang tiap request
   const ss = getSpreadsheet();
-  const ts = Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
+
+  // Pakai waktu submit dari client jika ada (penting untuk data offline),
+  // fallback ke waktu server jika tidak tersedia.
+  const tsDate = data.client_timestamp ? new Date(data.client_timestamp) : new Date();
+  const ts     = Utilities.formatDate(tsDate, "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
 
   // ── OLES GSB ──────────────────────────────────────────────
   if (data.type === "oles_gsb") {

@@ -247,12 +247,14 @@ export default function Vigor() {
   const allFilled   = varianList.length > 0 && filledCount === varianList.length;
   const canSubmit   = allFilled && operator.trim().length > 0;
 
-  const buildPayloads = () =>
-    varianList.map(varian => {
+  const buildPayloads = () => {
+    const client_timestamp = new Date().toISOString();
+    return varianList.map(varian => {
       const d = varianData[varian] || {};
       return {
-        action:          "submitVigor",
-        tanggal:         todayISO,
+        action:           "submitVigor",
+        client_timestamp,
+        tanggal:          todayISO,
         gh:              selectedGH,
         periode:         ghInfo?.periode || "",
         hst_aktual:      hstAktual ?? "",
@@ -266,6 +268,7 @@ export default function Vigor() {
         volume_akar:     d.volumeAkar     || "",
       };
     });
+  };
 
   const handleSubmit = async () => {
     setSubmitting(true);

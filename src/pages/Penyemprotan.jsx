@@ -246,7 +246,7 @@ export default function Penyemprotan() {
 
   // ── Payload ──
   const buildPayload = () => {
-    const base = { action:"submitPenyemprotan", tanggal:todayISO, gh:selectedGH, operator, type:activity };
+    const base = { action:"submitPenyemprotan", tanggal:todayISO, gh:selectedGH, operator, type:activity, client_timestamp: new Date().toISOString() };
     if (activity === "oles_gsb") {
       return { ...base, pestisida:pestisidaGSB, konsentrasi:konsentrasiGSB, penggunaan_gram:penggunaanGram };
     }

@@ -169,11 +169,13 @@ export default function Gramasi() {
   const canSubmit   = allFilled && operator.trim().length > 0;
 
   // ── Build semua payload per baris ──
-  const buildPayloads = () =>
-    tableData.map(row => {
+  const buildPayloads = () => {
+    const client_timestamp = new Date().toISOString();
+    return tableData.map(row => {
       const avg = calcAvg(row.s1, row.s2, row.s3);
       return {
         action: "submitGramasi",
+        client_timestamp,
         tanggal: todayISO,
         gh: selectedGH,
         periode: ghInfo?.periode || "",
@@ -187,6 +189,7 @@ export default function Gramasi() {
         operator,
       };
     });
+  };
 
   const handleSubmit = async () => {
     setSyncing(true);

@@ -432,6 +432,7 @@ export default function KesiapanGH() {
   const buildPayload = () => {
     const payload = {
       action: "submitKesiapan",
+      client_timestamp: new Date().toISOString(),
       tanggal: todayISO,
       operator: user?.nama || "",
       tipe, gh,

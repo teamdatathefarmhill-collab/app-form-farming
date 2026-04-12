@@ -340,6 +340,7 @@ export default function Sanitasi() {
 
   // ── Buat array payload per varian (dipakai saat online dan offline) ──
   const buildPayloads = () => {
+    const client_timestamp = new Date().toISOString();
     return varianList.map((varian) => {
       const d = varianData[varian] || {};
       const subKetArr = [];
@@ -354,6 +355,7 @@ export default function Sanitasi() {
       const keteranganFinal = [d.keterangan, ...subKetArr].filter(Boolean).join(" | ");
       return {
         action: "submitSanitasi",
+        client_timestamp,
         tanggal: todayISO,
         gh: selectedGH,
         periode: ghInfo?.periode || "",

@@ -10,6 +10,7 @@ import Penyemprotan from "./pages/Penyemprotan";
 import FarmhillLogin from "./components/FarmhillLogin";
 import SOPModal, { isMenuSeen } from "./components/SOPModal";
 import InfoButton from "./components/InfoButton";
+import InstallPWA from "./components/InstallPWA";
 import { useAuth } from "./hooks/useAuth";
 
 // Sub-menu HPT — key harus match kolom di REF OPERATOR
@@ -34,8 +35,17 @@ export default function App() {
   const { user, login, logout, isLoggedIn } = useAuth();
   const [activeTab, setActiveTab]     = useState(null);
   const [hptOpen, setHptOpen]         = useState(false);
-  const [sopMenuKey, setSopMenuKey]   = useState(null); // null = tidak tampil
+  const [sopMenuKey, setSopMenuKey]   = useState(null);
+  const [isOnline, setIsOnline]       = useState(navigator.onLine);
   const hptRef                        = useRef(null);
+
+  useEffect(() => {
+    const on  = () => setIsOnline(true);
+    const off = () => setIsOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
+  }, []);
 
   // Tampilkan SOP saat tab berganti, hanya jika belum pernah dibaca
   function switchTab(key) {
@@ -134,14 +144,29 @@ export default function App() {
   return (
     <div style={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", position: "relative" }}>
 
+      {/* Offline banner */}
+      {!isOnline && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, zIndex: 200,
+          background: "linear-gradient(135deg, #1565C0, #1976D2)",
+          padding: "6px 16px",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          fontSize: 12, color: "#fff", fontWeight: 600,
+        }}>
+          <span>📵</span>
+          <span>Offline — isian tersimpan lokal & dikirim saat online kembali</span>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{
-        position: "fixed", top: 0, left: 0, right: 0, zIndex: 101,
+        position: "fixed", top: isOnline ? 0 : 30, left: 0, right: 0, zIndex: 101,
         background: "rgba(10,20,15,0.97)",
         borderBottom: "1px solid rgba(255,255,255,0.07)",
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "8px 16px",
         backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+        transition: "top 0.2s",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ width: 28, height: 28, borderRadius: 8, background: "linear-gradient(135deg, #2d7a4a, #4aaa6e)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🌿</div>
@@ -269,6 +294,9 @@ export default function App() {
           onClose={() => setSopMenuKey(null)}
         />
       )}
+
+      {/* PWA Install Banner */}
+      <InstallPWA />
 
       <style>{`
         * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }

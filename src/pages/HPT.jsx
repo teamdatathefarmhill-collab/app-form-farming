@@ -239,6 +239,7 @@ export default function HPT() {
 
   const buildPayload = () => ({
     action: "submitHPT",
+    client_timestamp: new Date().toISOString(),
     tipe: activeTab,
     tanggal: todayISO,
     gh: selectedGH,
