@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import SOPModal from "./SOPModal";
 import SOP from "../data/sopContent";
 
@@ -47,11 +48,12 @@ export default function InfoButton({ menuKey, color }) {
         i
       </button>
 
-      {open && (
+      {open && createPortal(
         <SOPModal
           menuKey={menuKey}
           onClose={() => setOpen(false)}
-        />
+        />,
+        document.body
       )}
     </>
   );
