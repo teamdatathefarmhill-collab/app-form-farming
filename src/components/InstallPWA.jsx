@@ -12,13 +12,17 @@ export default function InstallPWA() {
   const [installed, setInstalled]         = useState(false);
 
   useEffect(() => {
+    // Ambil event yang mungkin sudah ditangkap sebelum React mount
+    if (window.__pwaInstallPrompt) {
+      setInstallPrompt(window.__pwaInstallPrompt);
+    }
+
     const handler = (e) => {
-      e.preventDefault(); // cegah auto-prompt browser
+      e.preventDefault();
+      window.__pwaInstallPrompt = e;
       setInstallPrompt(e);
     };
     window.addEventListener("beforeinstallprompt", handler);
-
-    // Deteksi jika sudah diinstall
     window.addEventListener("appinstalled", () => setInstalled(true));
 
     return () => window.removeEventListener("beforeinstallprompt", handler);
