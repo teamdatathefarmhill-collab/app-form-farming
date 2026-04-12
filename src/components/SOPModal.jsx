@@ -30,12 +30,10 @@ export function resetAllSeen() {
 export default function SOPModal({ menuKey, onClose }) {
   const sop = SOP[menuKey];
   const [activeStep, setActiveStep] = useState(0);
-  const [dontShowAgain, setDontShowAgain] = useState(false);
 
   // Reset step saat ganti menu
   useEffect(() => {
     setActiveStep(0);
-    setDontShowAgain(false);
   }, [menuKey]);
 
   if (!sop) return null;
@@ -45,7 +43,9 @@ export default function SOPModal({ menuKey, onClose }) {
   const isNotesStep = activeStep === totalSteps; // step terakhir = notes
 
   function handleClose() {
-    if (dontShowAgain) markMenuSeen(menuKey);
+    // Selalu tandai sudah dibaca saat ditutup — agar tidak auto-muncul lagi.
+    // User tetap bisa buka kapan saja lewat tombol "i".
+    markMenuSeen(menuKey);
     onClose();
   }
 
@@ -232,28 +232,9 @@ export default function SOPModal({ menuKey, onClose }) {
           borderTop: "1px solid rgba(255,255,255,0.07)",
           flexShrink: 0,
         }}>
-          {/* Checkbox jangan tampilkan lagi */}
-          <button
-            onClick={() => setDontShowAgain(v => !v)}
-            style={{
-              display: "flex", alignItems: "center", gap: 8,
-              background: "transparent", border: "none", cursor: "pointer",
-              padding: "0 0 10px", width: "100%", textAlign: "left",
-            }}
-          >
-            <div style={{
-              width: 18, height: 18, borderRadius: 5,
-              border: `2px solid ${dontShowAgain ? sop.color : "rgba(255,255,255,0.2)"}`,
-              background: dontShowAgain ? `${sop.color}22` : "transparent",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              flexShrink: 0, transition: "all 0.2s",
-            }}>
-              {dontShowAgain && <span style={{ color: sop.color, fontSize: 11, fontWeight: 900 }}>✓</span>}
-            </div>
-            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
-              Jangan tampilkan lagi untuk menu ini
-            </span>
-          </button>
+          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.28)", margin: "0 0 10px", textAlign: "center" }}>
+            Buka kembali kapan saja lewat tombol <strong style={{ color: "rgba(255,255,255,0.45)" }}>ⓘ</strong> di pojok kanan atas
+          </p>
 
           <div style={{ display: "flex", gap: 10 }}>
             {activeStep > 0 && (
