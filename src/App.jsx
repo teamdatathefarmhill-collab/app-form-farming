@@ -57,6 +57,20 @@ export default function App() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  // Tampilkan SOP untuk tab awal saat pertama login
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const allTabs = [
+      ...STANDALONE_TABS.filter(t => user[t.key]?.toUpperCase() === "YES"),
+      ...HPT_SUBMENU.filter(t => user[t.key]?.toUpperCase() === "YES"),
+    ];
+    const firstTab = allTabs[0]?.key ?? null;
+    if (firstTab && !isMenuSeen(firstTab)) {
+      setSopMenuKey(firstTab);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn]);
+
   if (!isLoggedIn) {
     return (
       <FarmhillLogin
