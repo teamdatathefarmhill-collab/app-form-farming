@@ -690,23 +690,6 @@ export default function Vigor() {
                               })}
                             </div>
                           </div>
-                        )}                                return (
-                                  <button key={idx} onClick={() => updateVarian(varian, "simetriBuah", opt)}
-                                    style={{
-                                      padding: "10px 10px", textAlign: "center", borderRadius: 10, cursor: "pointer",
-                                      border: `1.5px solid ${active ? "#AD1457" : "#e0e0e0"}`,
-                                      background: active ? "#FCE4EC" : "#fff",
-                                      color: active ? "#AD1457" : "#555",
-                                      fontSize: 12, fontWeight: active ? 700 : 400,
-                                      transition: "all 0.15s", lineHeight: 1.4,
-                                    }}>
-                                    <div style={{ fontSize: 16, marginBottom: 4 }}>{active ? "●" : "○"}</div>
-                                    {opt}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
                         )}
 
                         {/* === ASPEK POLINASI (HST 18 saja) === */}
