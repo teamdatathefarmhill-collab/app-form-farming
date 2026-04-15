@@ -139,23 +139,24 @@ const todayISO   = new Date().toLocaleDateString("id-ID", { day: "2-digit", mont
 const todayLabel = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
 // ─── Komponen: Pilih Opsi (Radio style) ──────────────────────────────────────
-function PilihOpsi({ options, value, onChange, color = "#2e7d32" }) {
+function PilihOpsi({ options, value, onChange, color = "#2e7d32", cols = 1 }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+    <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 6 }}>
       {options.map((opt, i) => {
         const active = value === opt;
         return (
           <button key={i} onClick={() => onChange(opt)}
             style={{
-              padding: "9px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer",
+              padding: "9px 10px", textAlign: "left", borderRadius: 10, cursor: "pointer",
               border: `1.5px solid ${active ? color : "#e0e0e0"}`,
               background: active ? `${color}12` : "#fff",
               color: active ? color : "#555",
-              fontSize: 13, fontWeight: active ? 700 : 400,
-              transition: "all 0.15s",
+              fontSize: 12, fontWeight: active ? 700 : 400,
+              transition: "all 0.15s", lineHeight: 1.4,
+              display: "flex", alignItems: "flex-start", gap: 6,
             }}>
-            <span style={{ marginRight: 8 }}>{active ? "●" : "○"}</span>
-            {opt}
+            <span style={{ flexShrink: 0, marginTop: 1 }}>{active ? "●" : "○"}</span>
+            <span>{opt}</span>
           </button>
         );
       })}
@@ -559,19 +560,19 @@ export default function Vigor() {
                         {/* Lebar Daun */}
                         <div style={{ marginBottom: 14 }}>
                           <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>1. Lebar Daun (cm)</div>
-                          <PilihOpsi options={LEBAR_DAUN_OPTIONS} value={d.lebarDaun} onChange={val => updateVarian(varian, "lebarDaun", val)} color="#2e7d32" />
+                          <PilihOpsi options={LEBAR_DAUN_OPTIONS} value={d.lebarDaun} onChange={val => updateVarian(varian, "lebarDaun", val)} color="#2e7d32" cols={3} />
                         </div>
 
                         {/* Diameter Batang */}
                         <div style={{ marginBottom: 14 }}>
                           <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>2. Diameter Batang</div>
-                          <PilihOpsi options={DIAMETER_OPTIONS} value={d.diameterBatang} onChange={val => updateVarian(varian, "diameterBatang", val)} color="#1565C0" />
+                          <PilihOpsi options={DIAMETER_OPTIONS} value={d.diameterBatang} onChange={val => updateVarian(varian, "diameterBatang", val)} color="#1565C0" cols={2} />
                         </div>
 
                         {/* Warna Daun */}
                         <div style={{ marginBottom: 18 }}>
                           <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>3. Warna Daun</div>
-                          <PilihOpsi options={WARNA_DAUN_OPTIONS} value={d.warnaDaun} onChange={val => updateVarian(varian, "warnaDaun", val)} color="#f57f17" />
+                          <PilihOpsi options={WARNA_DAUN_OPTIONS} value={d.warnaDaun} onChange={val => updateVarian(varian, "warnaDaun", val)} color="#f57f17" cols={2} />
                         </div>
 
                         {/* === ASPEK PERAKARAN === */}
@@ -583,13 +584,13 @@ export default function Vigor() {
                         {/* Warna Akar */}
                         <div style={{ marginBottom: 14 }}>
                           <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>1. Warna Akar Serabut</div>
-                          <PilihOpsi options={WARNA_AKAR_OPTIONS} value={d.warnaAkar} onChange={val => updateVarian(varian, "warnaAkar", val)} color="#795548" />
+                          <PilihOpsi options={WARNA_AKAR_OPTIONS} value={d.warnaAkar} onChange={val => updateVarian(varian, "warnaAkar", val)} color="#795548" cols={2} />
                         </div>
 
                         {/* Volume Akar */}
                         <div style={{ marginBottom: showKualitas ? 18 : 6 }}>
                           <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>2. Volume Akar</div>
-                          <PilihOpsi options={VOLUME_AKAR_OPTIONS} value={d.volumeAkar} onChange={val => updateVarian(varian, "volumeAkar", val)} color="#795548" />
+                          <PilihOpsi options={VOLUME_AKAR_OPTIONS} value={d.volumeAkar} onChange={val => updateVarian(varian, "volumeAkar", val)} color="#795548" cols={3} />
                         </div>
 
                         {/* === ASPEK KUALITAS BUAH (HST > 30) === */}
