@@ -8,7 +8,7 @@ const SCRIPT_URL = import.meta.env.VITE_GAS_VIGOR_URL;
 
 const HST_MIN = 5;
 const HST_MAX = 60;
-const HST_CHECKPOINTS = [7, 14, 21, 33, 38, 45, 54];
+const HST_CHECKPOINTS = [7, 14, 18, 21, 33, 38, 45, 54];
 const HST_NEAR_RANGE  = 2; // hari sebelum checkpoint = reminder
 
 const TIPE_GH = [
@@ -90,6 +90,22 @@ const SIMETRI_BUAH_OPTIONS = [
   "Buah asimetris/peyang < 20 tanaman",
 ];
 
+// ─── Aspek Polinasi (HST 18 saja) ────────────────────────────────────────────
+const BUAH_BAJANG_OPTIONS = [
+  "Bunga menguning sebelum mekar / Bunga gagal polinasi (cabang 9 - 10)",
+  "Bakal buah berhasil polinasi di cabang 12 - 13 (cabang tengah)",
+  "Bakal buah berhasil polinasi di cabang 9 - 11 (cabang bawah)",
+  "3 - 4 Ruas",
+  "> 4 Ruas",
+];
+
+const PANJANG_TUNAS_AIR_OPTIONS = [
+  "1 Ruas",
+  "2 Ruas",
+  "3 - 4 Ruas",
+  "> 4 Ruas",
+];
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function hitungHST(tgl) {
   const [y, m, d] = tgl.split("-").map(Number);
@@ -108,22 +124,26 @@ function initVarianData(varianList) {
   const obj = {};
   varianList.forEach(v => {
     obj[v] = {
-      lebarDaun:      "",
-      diameterBatang: "",
-      warnaDaun:      "",
-      warnaAkar:      "",
-      volumeAkar:     "",
-      simetriBuah:    "",
+      lebarDaun:        "",
+      diameterBatang:   "",
+      warnaDaun:        "",
+      warnaAkar:        "",
+      volumeAkar:       "",
+      simetriBuah:      "",
+      buahBajang:       "",
+      panjangTunasAir:  "",
     };
   });
   return obj;
 }
 
-function isVarianFilled(d, showKualitas) {
+function isVarianFilled(d, showKualitas, showPolinasi) {
   const base = d.lebarDaun !== "" && d.diameterBatang !== "" && d.warnaDaun !== "" &&
                d.warnaAkar !== "" && d.volumeAkar !== "";
-  if (!showKualitas) return base;
-  return base && d.simetriBuah !== "";
+  if (!base) return false;
+  if (showKualitas && d.simetriBuah === "") return false;
+  if (showPolinasi && (d.buahBajang === "" || d.panjangTunasAir === "")) return false;
+  return true;
 }
 
 const LS_KEY = `vigor_${new Date().toLocaleDateString("id-ID")}`;
@@ -255,8 +275,9 @@ export default function Vigor() {
   const hstAktual  = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : null;
   const col        = hstAktual !== null ? hstColor(hstAktual) : hstColor(21);
   const showKualitas = selectedHST !== null && selectedHST > 30;
+  const showPolinasi = selectedHST === 18;
 
-  const filledCount = varianList.filter(v => isVarianFilled(varianData[v] || {}, showKualitas)).length;
+  const filledCount = varianList.filter(v => isVarianFilled(varianData[v] || {}, showKualitas, showPolinasi)).length;
   const allFilled   = varianList.length > 0 && filledCount === varianList.length;
   const canSubmit   = allFilled && operator.trim().length > 0;
 
@@ -265,21 +286,23 @@ export default function Vigor() {
     return varianList.map(varian => {
       const d = varianData[varian] || {};
       return {
-        action:           "submitVigor",
+        action:             "submitVigor",
         client_timestamp,
-        tanggal:          todayISO,
-        gh:               selectedGH,
-        periode:          ghInfo?.periode || "",
-        hst_aktual:       hstAktual ?? "",
-        hst_checkpoint:   selectedHST ?? "",
+        tanggal:            todayISO,
+        gh:                 selectedGH,
+        periode:            ghInfo?.periode || "",
+        hst_aktual:         hstAktual ?? "",
+        hst_checkpoint:     selectedHST ?? "",
         varian,
         operator,
-        lebar_daun:       d.lebarDaun      || "",
-        diameter_batang:  d.diameterBatang || "",
-        warna_daun:       d.warnaDaun      || "",
-        warna_akar:       d.warnaAkar      || "",
-        volume_akar:      d.volumeAkar     || "",
-        simetri_buah:     showKualitas ? (d.simetriBuah || "") : "",
+        lebar_daun:         d.lebarDaun      || "",
+        diameter_batang:    d.diameterBatang || "",
+        warna_daun:         d.warnaDaun      || "",
+        warna_akar:         d.warnaAkar      || "",
+        volume_akar:        d.volumeAkar     || "",
+        simetri_buah:       showKualitas ? (d.simetriBuah      || "") : "",
+        buah_bajang:        showPolinasi ? (d.buahBajang        || "") : "",
+        panjang_tunas_air:  showPolinasi ? (d.panjangTunasAir  || "") : "",
       };
     });
   };
@@ -531,7 +554,7 @@ export default function Vigor() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
               {varianList.map((varian, i) => {
                 const d      = varianData[varian] || {};
-                const filled = isVarianFilled(d, showKualitas);
+                const filled = isVarianFilled(d, showKualitas, showPolinasi);
                 const isOpen = activeVarian === varian;
 
                 return (
@@ -611,6 +634,58 @@ export default function Vigor() {
                                       border: `1.5px solid ${active ? "#AD1457" : "#e0e0e0"}`,
                                       background: active ? "#FCE4EC" : "#fff",
                                       color: active ? "#AD1457" : "#555",
+                                      fontSize: 12, fontWeight: active ? 700 : 400,
+                                      transition: "all 0.15s", lineHeight: 1.4,
+                                    }}>
+                                    <div style={{ fontSize: 16, marginBottom: 4 }}>{active ? "●" : "○"}</div>
+                                    {opt}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* === ASPEK POLINASI (HST 18 saja) === */}
+                        {showPolinasi && (
+                          <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginTop: showKualitas ? 14 : 0 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "#1565C0", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🌸 Aspek Penilaian Keberhasilan Polinasi</div>
+                            <div style={{ fontSize: 10, color: "#888", marginBottom: 12 }}>Pendataan pada 14 tanaman per varian, terdiri dari 7 tanaman baris depan dan 7 tanaman baris belakang</div>
+
+                            {/* Buah Bajang — 2 kolom */}
+                            <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>1. Buah Bajang</div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+                              {BUAH_BAJANG_OPTIONS.map((opt, idx) => {
+                                const active = d.buahBajang === opt;
+                                return (
+                                  <button key={idx} onClick={() => updateVarian(varian, "buahBajang", opt)}
+                                    style={{
+                                      padding: "10px 10px", textAlign: "center", borderRadius: 10, cursor: "pointer",
+                                      border: `1.5px solid ${active ? "#1565C0" : "#e0e0e0"}`,
+                                      background: active ? "#E3F2FD" : "#fff",
+                                      color: active ? "#1565C0" : "#555",
+                                      fontSize: 12, fontWeight: active ? 700 : 400,
+                                      transition: "all 0.15s", lineHeight: 1.4,
+                                    }}>
+                                    <div style={{ fontSize: 16, marginBottom: 4 }}>{active ? "●" : "○"}</div>
+                                    {opt}
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {/* Panjang Tunas Air — 4 kolom */}
+                            <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>2. Panjang Tunas Air</div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
+                              {PANJANG_TUNAS_AIR_OPTIONS.map((opt, idx) => {
+                                const active = d.panjangTunasAir === opt;
+                                return (
+                                  <button key={idx} onClick={() => updateVarian(varian, "panjangTunasAir", opt)}
+                                    style={{
+                                      padding: "10px 6px", textAlign: "center", borderRadius: 10, cursor: "pointer",
+                                      border: `1.5px solid ${active ? "#1565C0" : "#e0e0e0"}`,
+                                      background: active ? "#E3F2FD" : "#fff",
+                                      color: active ? "#1565C0" : "#555",
                                       fontSize: 12, fontWeight: active ? 700 : 400,
                                       transition: "all 0.15s", lineHeight: 1.4,
                                     }}>
