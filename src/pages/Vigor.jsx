@@ -8,8 +8,8 @@ const SCRIPT_URL = import.meta.env.VITE_GAS_VIGOR_URL;
 
 const HST_MIN = 5;
 const HST_MAX = 60;
-const HST_CHECKPOINTS = [7, 14, 18, 21, 33, 38, 45, 54];
-const HST_NEAR_RANGE  = 2; // hari sebelum checkpoint = reminder
+const HST_CHECKPOINTS = [7, 14, 18, 33, 38, 45, 54];
+const HST_NEAR_RANGE  = 2;
 
 const TIPE_GH = [
   {
@@ -106,6 +106,23 @@ const PANJANG_TUNAS_AIR_OPTIONS = [
   "> 4 Ruas",
 ];
 
+// ─── Aspek Vigor tambahan (HST 38, 45, 54) ───────────────────────────────────
+const KESEGARAN_OPTIONS = ["Layu", "Lemas", "Segar"];
+
+// ─── Aspek Kualitas Buah tambahan ────────────────────────────────────────────
+// HST 45 — Netting Buah (2 pilihan)
+const NETTING_BUAH_45_OPTIONS = [
+  "Varian MD, EL, SS < 20% tanaman sudah mulai netting SG, GR, dll sudah < 90% netting",
+  "Varian MD, EL, SS 20% tanaman sudah mulai netting SG, GR, dll sudah 90% - 100% netting",
+];
+
+// HST 54 — Netting Buah crack basah (3 pilihan)
+const NETTING_BUAH_54_OPTIONS = [
+  "Varian bernet crack terbuka (crack basah) > 40 tanaman",
+  "Varian bernet crack terbuka (crack basah) 20 - 40 tanaman",
+  "Varian bernet crack terbuka (crack basah) < 20 tanaman",
+];
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function hitungHST(tgl) {
   const [y, m, d] = tgl.split("-").map(Number);
@@ -132,17 +149,21 @@ function initVarianData(varianList) {
       simetriBuah:      "",
       buahBajang:       "",
       panjangTunasAir:  "",
+      kesegaran:        "",
+      nettingBuah:      "",
     };
   });
   return obj;
 }
 
-function isVarianFilled(d, showKualitas, showPolinasi) {
+function isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNetting) {
   const base = d.lebarDaun !== "" && d.diameterBatang !== "" && d.warnaDaun !== "" &&
                d.warnaAkar !== "" && d.volumeAkar !== "";
   if (!base) return false;
-  if (showKualitas && d.simetriBuah === "") return false;
-  if (showPolinasi && (d.buahBajang === "" || d.panjangTunasAir === "")) return false;
+  if (showKualitas  && d.simetriBuah === "") return false;
+  if (showPolinasi  && (d.buahBajang === "" || d.panjangTunasAir === "")) return false;
+  if (showKesegaran && d.kesegaran === "") return false;
+  if (showNetting   && d.nettingBuah === "") return false;
   return true;
 }
 
@@ -274,10 +295,12 @@ export default function Vigor() {
   const varianList = ghInfo?.varian || [];
   const hstAktual  = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : null;
   const col        = hstAktual !== null ? hstColor(hstAktual) : hstColor(21);
-  const showKualitas = selectedHST !== null && selectedHST > 30;
-  const showPolinasi = selectedHST === 18;
+  const showKualitas  = selectedHST !== null && selectedHST > 30;
+  const showPolinasi  = selectedHST === 18;
+  const showKesegaran = selectedHST === 38 || selectedHST === 45 || selectedHST === 54;
+  const showNetting   = selectedHST === 45 || selectedHST === 54;
 
-  const filledCount = varianList.filter(v => isVarianFilled(varianData[v] || {}, showKualitas, showPolinasi)).length;
+  const filledCount = varianList.filter(v => isVarianFilled(varianData[v] || {}, showKualitas, showPolinasi, showKesegaran, showNetting)).length;
   const allFilled   = varianList.length > 0 && filledCount === varianList.length;
   const canSubmit   = allFilled && operator.trim().length > 0;
 
@@ -300,9 +323,11 @@ export default function Vigor() {
         warna_daun:         d.warnaDaun      || "",
         warna_akar:         d.warnaAkar      || "",
         volume_akar:        d.volumeAkar     || "",
-        simetri_buah:       showKualitas ? (d.simetriBuah      || "") : "",
-        buah_bajang:        showPolinasi ? (d.buahBajang        || "") : "",
-        panjang_tunas_air:  showPolinasi ? (d.panjangTunasAir  || "") : "",
+        simetri_buah:       showKualitas  ? (d.simetriBuah     || "") : "",
+        buah_bajang:        showPolinasi  ? (d.buahBajang       || "") : "",
+        panjang_tunas_air:  showPolinasi  ? (d.panjangTunasAir || "") : "",
+        kesegaran:          showKesegaran ? (d.kesegaran        || "") : "",
+        netting_buah:       showNetting   ? (d.nettingBuah      || "") : "",
       };
     });
   };
@@ -659,14 +684,7 @@ export default function Vigor() {
                                 const active = d.buahBajang === opt;
                                 return (
                                   <button key={idx} onClick={() => updateVarian(varian, "buahBajang", opt)}
-                                    style={{
-                                      padding: "10px 10px", textAlign: "center", borderRadius: 10, cursor: "pointer",
-                                      border: `1.5px solid ${active ? "#1565C0" : "#e0e0e0"}`,
-                                      background: active ? "#E3F2FD" : "#fff",
-                                      color: active ? "#1565C0" : "#555",
-                                      fontSize: 12, fontWeight: active ? 700 : 400,
-                                      transition: "all 0.15s", lineHeight: 1.4,
-                                    }}>
+                                    style={{ padding: "10px 10px", textAlign: "center", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#1565C0" : "#e0e0e0"}`, background: active ? "#E3F2FD" : "#fff", color: active ? "#1565C0" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, transition: "all 0.15s", lineHeight: 1.4 }}>
                                     <div style={{ fontSize: 16, marginBottom: 4 }}>{active ? "●" : "○"}</div>
                                     {opt}
                                   </button>
@@ -681,16 +699,40 @@ export default function Vigor() {
                                 const active = d.panjangTunasAir === opt;
                                 return (
                                   <button key={idx} onClick={() => updateVarian(varian, "panjangTunasAir", opt)}
-                                    style={{
-                                      padding: "10px 6px", textAlign: "center", borderRadius: 10, cursor: "pointer",
-                                      border: `1.5px solid ${active ? "#1565C0" : "#e0e0e0"}`,
-                                      background: active ? "#E3F2FD" : "#fff",
-                                      color: active ? "#1565C0" : "#555",
-                                      fontSize: 12, fontWeight: active ? 700 : 400,
-                                      transition: "all 0.15s", lineHeight: 1.4,
-                                    }}>
+                                    style={{ padding: "10px 6px", textAlign: "center", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#1565C0" : "#e0e0e0"}`, background: active ? "#E3F2FD" : "#fff", color: active ? "#1565C0" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, transition: "all 0.15s", lineHeight: 1.4 }}>
                                     <div style={{ fontSize: 16, marginBottom: 4 }}>{active ? "●" : "○"}</div>
                                     {opt}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* === KESEGARAN TANAMAN (HST 38, 45, 54) === */}
+                        {showKesegaran && (
+                          <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginTop: 14 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "#2E7D32", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🌿 Aspek Vigor Tambahan</div>
+                            <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>Kesegaran Tanaman (Kelayuan)</div>
+                            <PilihOpsi options={KESEGARAN_OPTIONS} value={d.kesegaran} onChange={val => updateVarian(varian, "kesegaran", val)} color="#2E7D32" cols={3} />
+                          </div>
+                        )}
+
+                        {/* === NETTING BUAH (HST 45 dan 54) === */}
+                        {showNetting && (
+                          <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginTop: 14 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "#AD1457", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🍈 Kualitas Buah Tambahan</div>
+                            <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>
+                              {selectedHST === 54 ? "Netting Buah (Crack Basah)" : "Netting Buah"}
+                            </div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
+                              {(selectedHST === 54 ? NETTING_BUAH_54_OPTIONS : NETTING_BUAH_45_OPTIONS).map((opt, idx) => {
+                                const active = d.nettingBuah === opt;
+                                return (
+                                  <button key={idx} onClick={() => updateVarian(varian, "nettingBuah", opt)}
+                                    style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#AD1457" : "#e0e0e0"}`, background: active ? "#FCE4EC" : "#fff", color: active ? "#AD1457" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, transition: "all 0.15s", lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 8 }}>
+                                    <span style={{ flexShrink: 0, marginTop: 1 }}>{active ? "●" : "○"}</span>
+                                    <span>{opt}</span>
                                   </button>
                                 );
                               })}
