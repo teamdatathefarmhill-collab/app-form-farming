@@ -59,7 +59,7 @@ export async function idbCount(dbName) {
 }
 
 // ─── Fetch helper shared ──────────────────────────────────────────────────────
-export async function gasFetch(url, timeoutMs = 10000) {
+export async function gasFetch(url, timeoutMs = 30000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
