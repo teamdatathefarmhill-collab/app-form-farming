@@ -111,8 +111,6 @@ const BUAH_BAJANG_OPTIONS = [
   "Bunga menguning sebelum mekar / Bunga gagal polinasi (cabang 9 - 10)",
   "Bakal buah berhasil polinasi di cabang 12 - 13 (cabang tengah)",
   "Bakal buah berhasil polinasi di cabang 9 - 11 (cabang bawah)",
-  "3 - 4 Ruas",
-  "> 4 Ruas",
 ];
 
 const PANJANG_TUNAS_AIR_OPTIONS = [
