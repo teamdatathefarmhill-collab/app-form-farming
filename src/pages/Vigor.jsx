@@ -82,6 +82,14 @@ const WARNA_DAUN_OPTIONS = [
 const WARNA_AKAR_OPTIONS  = ["Akar Coklat", "Akar Putih Bersih"];
 const VOLUME_AKAR_OPTIONS = ["Tidak Ada Akar", "Volume Akar Sedikit", "Volume Akar Banyak"];
 
+// ─── Aspek Kualitas Buah (HST > 30) ──────────────────────────────────────────
+const SIMETRI_BUAH_OPTIONS = [
+  "Buah asimetris/peyang > 40 tanaman",
+  "Buah asimetris/peyang 31 - 40 tanaman",
+  "Buah asimetris/peyang 21 - 30 tanaman",
+  "Buah asimetris/peyang < 20 tanaman",
+];
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function hitungHST(tgl) {
   const [y, m, d] = tgl.split("-").map(Number);
@@ -100,19 +108,22 @@ function initVarianData(varianList) {
   const obj = {};
   varianList.forEach(v => {
     obj[v] = {
-      lebarDaun:   "",
+      lebarDaun:      "",
       diameterBatang: "",
-      warnaDaun:   "",
-      warnaAkar:   "",
-      volumeAkar:  "",
+      warnaDaun:      "",
+      warnaAkar:      "",
+      volumeAkar:     "",
+      simetriBuah:    "",
     };
   });
   return obj;
 }
 
-function isVarianFilled(d) {
-  return d.lebarDaun !== "" && d.diameterBatang !== "" && d.warnaDaun !== "" &&
-         d.warnaAkar !== "" && d.volumeAkar !== "";
+function isVarianFilled(d, showKualitas) {
+  const base = d.lebarDaun !== "" && d.diameterBatang !== "" && d.warnaDaun !== "" &&
+               d.warnaAkar !== "" && d.volumeAkar !== "";
+  if (!showKualitas) return base;
+  return base && d.simetriBuah !== "";
 }
 
 const LS_KEY = `vigor_${new Date().toLocaleDateString("id-ID")}`;
@@ -238,12 +249,13 @@ export default function Vigor() {
     setVarianData(prev => ({ ...prev, [varian]: { ...prev[varian], [field]: val } }));
   };
 
-  const ghInfo   = ghData[selectedGH];
+  const ghInfo     = ghData[selectedGH];
   const varianList = ghInfo?.varian || [];
   const hstAktual  = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : null;
   const col        = hstAktual !== null ? hstColor(hstAktual) : hstColor(21);
+  const showKualitas = selectedHST !== null && selectedHST > 30;
 
-  const filledCount = varianList.filter(v => isVarianFilled(varianData[v] || {})).length;
+  const filledCount = varianList.filter(v => isVarianFilled(varianData[v] || {}, showKualitas)).length;
   const allFilled   = varianList.length > 0 && filledCount === varianList.length;
   const canSubmit   = allFilled && operator.trim().length > 0;
 
@@ -255,17 +267,18 @@ export default function Vigor() {
         action:           "submitVigor",
         client_timestamp,
         tanggal:          todayISO,
-        gh:              selectedGH,
-        periode:         ghInfo?.periode || "",
-        hst_aktual:      hstAktual ?? "",
-        hst_checkpoint:  selectedHST ?? "",
+        gh:               selectedGH,
+        periode:          ghInfo?.periode || "",
+        hst_aktual:       hstAktual ?? "",
+        hst_checkpoint:   selectedHST ?? "",
         varian,
         operator,
-        lebar_daun:      d.lebarDaun      || "",
-        diameter_batang: d.diameterBatang || "",
-        warna_daun:      d.warnaDaun      || "",
-        warna_akar:      d.warnaAkar      || "",
-        volume_akar:     d.volumeAkar     || "",
+        lebar_daun:       d.lebarDaun      || "",
+        diameter_batang:  d.diameterBatang || "",
+        warna_daun:       d.warnaDaun      || "",
+        warna_akar:       d.warnaAkar      || "",
+        volume_akar:      d.volumeAkar     || "",
+        simetri_buah:     showKualitas ? (d.simetriBuah || "") : "",
       };
     });
   };
@@ -517,7 +530,7 @@ export default function Vigor() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
               {varianList.map((varian, i) => {
                 const d      = varianData[varian] || {};
-                const filled = isVarianFilled(d);
+                const filled = isVarianFilled(d, showKualitas);
                 const isOpen = activeVarian === varian;
 
                 return (
@@ -574,10 +587,40 @@ export default function Vigor() {
                         </div>
 
                         {/* Volume Akar */}
-                        <div style={{ marginBottom: 6 }}>
+                        <div style={{ marginBottom: showKualitas ? 18 : 6 }}>
                           <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>2. Volume Akar</div>
                           <PilihOpsi options={VOLUME_AKAR_OPTIONS} value={d.volumeAkar} onChange={val => updateVarian(varian, "volumeAkar", val)} color="#795548" />
                         </div>
+
+                        {/* === ASPEK KUALITAS BUAH (HST > 30) === */}
+                        {showKualitas && (
+                          <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "#AD1457", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🍈 Aspek Kualitas Buah</div>
+                            <div style={{ fontSize: 10, color: "#888", marginBottom: 12 }}>Per baris (± 198 tanaman) per varian</div>
+
+                            {/* Simetri Buah — 2 kolom */}
+                            <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>1. Simetri Buah</div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                              {SIMETRI_BUAH_OPTIONS.map((opt, idx) => {
+                                const active = d.simetriBuah === opt;
+                                return (
+                                  <button key={idx} onClick={() => updateVarian(varian, "simetriBuah", opt)}
+                                    style={{
+                                      padding: "10px 10px", textAlign: "center", borderRadius: 10, cursor: "pointer",
+                                      border: `1.5px solid ${active ? "#AD1457" : "#e0e0e0"}`,
+                                      background: active ? "#FCE4EC" : "#fff",
+                                      color: active ? "#AD1457" : "#555",
+                                      fontSize: 12, fontWeight: active ? 700 : 400,
+                                      transition: "all 0.15s", lineHeight: 1.4,
+                                    }}>
+                                    <div style={{ fontSize: 16, marginBottom: 4 }}>{active ? "●" : "○"}</div>
+                                    {opt}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
