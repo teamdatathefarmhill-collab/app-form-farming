@@ -63,14 +63,30 @@ function hstTerdekat(hst) {
   );
 }
 
-// ─── Aspek Vigor ──────────────────────────────────────────────────────────────
-const LEBAR_DAUN_OPTIONS = ["<7", "7–9,9", "10–12"];
-const DIAMETER_OPTIONS   = [
+// ─── Aspek Vigor — per HST ────────────────────────────────────────────────────
+// Lebar Daun
+const LEBAR_DAUN_7_OPTIONS  = ["<7", "7–9,9", "10–12"];
+const LEBAR_DAUN_14_OPTIONS = ["< 13 cm", "13.0 - 14.9 cm", "15.0 - 17.0 cm"];
+const LEBAR_DAUN_18_OPTIONS = ["< 16 cm", "16.0 - 17.9 cm", "18 - 20 cm"];
+const LEBAR_DAUN_33_OPTIONS = [
+  "Lebar daun atas dan daun bawah kecil",
+  "Lebar daun atas lebih kecil dengan daun tengah",
+  "Lebar daun atas sama dengan daun tengah",
+];
+
+// Diameter Batang
+const DIAMETER_7_14_OPTIONS = [
   "Tanaman kutilang",
   "Batang kecil, antar ruas pendek",
   "Batang besar, antar ruas panjang",
   "Batang besar, ruas pendek",
 ];
+const DIAMETER_33_OPTIONS = [
+  "Diaeter batang kecil",
+  "Diameter batang besar",
+];
+
+// Warna Daun (sama semua HST)
 const WARNA_DAUN_OPTIONS = [
   "> 8 tanaman menguning",
   "5–8 tanaman menguning",
@@ -156,11 +172,10 @@ function initVarianData(varianList) {
   return obj;
 }
 
-function isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNetting) {
-  const base = d.lebarDaun !== "" && d.diameterBatang !== "" && d.warnaDaun !== "" &&
-               d.warnaAkar !== "" && d.volumeAkar !== "";
-  if (!base) return false;
-  if (showKualitas  && d.simetriBuah === "") return false;
+function isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNetting, showLebarDiameter, showSimetri) {
+  if (showLebarDiameter && (d.lebarDaun === "" || d.diameterBatang === "")) return false;
+  if (d.warnaDaun === "" || d.warnaAkar === "" || d.volumeAkar === "") return false;
+  if (showKualitas && showSimetri && d.simetriBuah === "") return false;
   if (showPolinasi  && (d.buahBajang === "" || d.panjangTunasAir === "")) return false;
   if (showKesegaran && d.kesegaran === "") return false;
   if (showNetting   && d.nettingBuah === "") return false;
@@ -295,12 +310,23 @@ export default function Vigor() {
   const varianList = ghInfo?.varian || [];
   const hstAktual  = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : null;
   const col        = hstAktual !== null ? hstColor(hstAktual) : hstColor(21);
-  const showKualitas  = selectedHST !== null && selectedHST > 30;
-  const showPolinasi  = selectedHST === 18;
-  const showKesegaran = selectedHST === 38 || selectedHST === 45 || selectedHST === 54;
-  const showNetting   = selectedHST === 45 || selectedHST === 54;
 
-  const filledCount = varianList.filter(v => isVarianFilled(varianData[v] || {}, showKualitas, showPolinasi, showKesegaran, showNetting)).length;
+  // Kontrol kemunculan field per HST
+  const showLebarDiameter = selectedHST !== 38 && selectedHST !== 45 && selectedHST !== 54;
+  const showKualitas      = selectedHST !== null && selectedHST > 30;
+  const showSimetri       = selectedHST === 33; // hanya HST 33
+  const showPolinasi      = selectedHST === 18;
+  const showKesegaran     = selectedHST === 38 || selectedHST === 45 || selectedHST === 54;
+  const showNetting       = selectedHST === 45 || selectedHST === 54;
+
+  // Tentukan pilihan lebar daun dan diameter sesuai HST
+  const lebarDaunOptions = selectedHST === 14 ? LEBAR_DAUN_14_OPTIONS
+                         : selectedHST === 18 ? LEBAR_DAUN_18_OPTIONS
+                         : selectedHST === 33 ? LEBAR_DAUN_33_OPTIONS
+                         : LEBAR_DAUN_7_OPTIONS;
+  const diameterOptions  = selectedHST === 33 ? DIAMETER_33_OPTIONS : DIAMETER_7_14_OPTIONS;
+
+  const filledCount = varianList.filter(v => isVarianFilled(varianData[v] || {}, showKualitas, showPolinasi, showKesegaran, showNetting, showLebarDiameter, showSimetri)).length;
   const allFilled   = varianList.length > 0 && filledCount === varianList.length;
   const canSubmit   = allFilled && operator.trim().length > 0;
 
@@ -579,7 +605,7 @@ export default function Vigor() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
               {varianList.map((varian, i) => {
                 const d      = varianData[varian] || {};
-                const filled = isVarianFilled(d, showKualitas, showPolinasi);
+                const filled = isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNetting, showLebarDiameter, showSimetri);
                 const isOpen = activeVarian === varian;
 
                 return (
@@ -605,21 +631,25 @@ export default function Vigor() {
                         <div style={{ fontSize: 11, fontWeight: 700, color: "#388e3c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>🌿 Aspek Vigor Tanaman</div>
                         <div style={{ fontSize: 10, color: "#888", marginBottom: 4 }}>Pendataan 14 tanaman per varian (7 depan + 7 belakang)</div>
 
-                        {/* Lebar Daun */}
-                        <div style={{ marginBottom: 14 }}>
-                          <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>1. Lebar Daun (cm)</div>
-                          <PilihOpsi options={LEBAR_DAUN_OPTIONS} value={d.lebarDaun} onChange={val => updateVarian(varian, "lebarDaun", val)} color="#2e7d32" cols={3} />
-                        </div>
+                        {/* Lebar Daun — hanya HST 7, 14, 18, 33 */}
+                        {showLebarDiameter && (
+                          <div style={{ marginBottom: 14 }}>
+                            <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>1. Lebar Daun (cm)</div>
+                            <PilihOpsi options={lebarDaunOptions} value={d.lebarDaun} onChange={val => updateVarian(varian, "lebarDaun", val)} color="#2e7d32" cols={3} />
+                          </div>
+                        )}
 
-                        {/* Diameter Batang */}
-                        <div style={{ marginBottom: 14 }}>
-                          <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>2. Diameter Batang</div>
-                          <PilihOpsi options={DIAMETER_OPTIONS} value={d.diameterBatang} onChange={val => updateVarian(varian, "diameterBatang", val)} color="#1565C0" cols={2} />
-                        </div>
+                        {/* Diameter Batang — hanya HST 7, 14, 18, 33 */}
+                        {showLebarDiameter && (
+                          <div style={{ marginBottom: 14 }}>
+                            <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>{showLebarDiameter ? "2." : "1."} Diameter Batang</div>
+                            <PilihOpsi options={diameterOptions} value={d.diameterBatang} onChange={val => updateVarian(varian, "diameterBatang", val)} color="#1565C0" cols={diameterOptions.length === 2 ? 2 : 2} />
+                          </div>
+                        )}
 
                         {/* Warna Daun */}
                         <div style={{ marginBottom: 18 }}>
-                          <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>3. Warna Daun</div>
+                          <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>{showLebarDiameter ? "3." : "1."} Warna Daun</div>
                           <PilihOpsi options={WARNA_DAUN_OPTIONS} value={d.warnaDaun} onChange={val => updateVarian(varian, "warnaDaun", val)} color="#f57f17" cols={2} />
                         </div>
 
@@ -636,23 +666,31 @@ export default function Vigor() {
                         </div>
 
                         {/* Volume Akar */}
-                        <div style={{ marginBottom: showKualitas ? 18 : 6 }}>
+                        <div style={{ marginBottom: showKualitas || showKesegaran || showNetting ? 18 : 6 }}>
                           <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>2. Volume Akar</div>
                           <PilihOpsi options={VOLUME_AKAR_OPTIONS} value={d.volumeAkar} onChange={val => updateVarian(varian, "volumeAkar", val)} color="#795548" cols={3} />
                         </div>
 
-                        {/* === ASPEK KUALITAS BUAH (HST > 30) === */}
-                        {showKualitas && (
+                        {/* === ASPEK KUALITAS BUAH — Simetri (HST 33 saja) === */}
+                        {showSimetri && (
                           <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14 }}>
                             <div style={{ fontSize: 11, fontWeight: 700, color: "#AD1457", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🍈 Aspek Kualitas Buah</div>
                             <div style={{ fontSize: 10, color: "#888", marginBottom: 12 }}>Per baris (± 198 tanaman) per varian</div>
-
-                            {/* Simetri Buah — 2 kolom */}
                             <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>1. Simetri Buah</div>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                               {SIMETRI_BUAH_OPTIONS.map((opt, idx) => {
                                 const active = d.simetriBuah === opt;
                                 return (
+                                  <button key={idx} onClick={() => updateVarian(varian, "simetriBuah", opt)}
+                                    style={{ padding: "10px 10px", textAlign: "center", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#AD1457" : "#e0e0e0"}`, background: active ? "#FCE4EC" : "#fff", color: active ? "#AD1457" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, transition: "all 0.15s", lineHeight: 1.4 }}>
+                                    <div style={{ fontSize: 16, marginBottom: 4 }}>{active ? "●" : "○"}</div>
+                                    {opt}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}                                return (
                                   <button key={idx} onClick={() => updateVarian(varian, "simetriBuah", opt)}
                                     style={{
                                       padding: "10px 10px", textAlign: "center", borderRadius: 10, cursor: "pointer",
