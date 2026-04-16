@@ -37,10 +37,14 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Langsung aktif tanpa nunggu tab lama ditutup
+        skipWaiting: true,
+        clientsClaim: true,
+
         // Cache semua asset app (JS, CSS, HTML)
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+
         // Cache GAS fetch dengan strategi NetworkFirst
-        // (coba online dulu, fallback ke cache kalau offline)
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/script\.google\.com\/.*/i,
