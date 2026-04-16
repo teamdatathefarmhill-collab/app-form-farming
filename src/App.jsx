@@ -11,6 +11,7 @@ import FarmhillLogin from "./components/FarmhillLogin";
 import SOPModal, { isMenuSeen } from "./components/SOPModal";
 import InfoButton from "./components/InfoButton";
 import InstallPWA from "./components/InstallPWA";
+import PWAUpdatePrompt from "./components/PWAUpdatePrompt";
 import { useAuth } from "./hooks/useAuth";
 
 // Sub-menu HPT — key harus match kolom di REF OPERATOR
@@ -297,6 +298,9 @@ export default function App() {
 
       {/* PWA Install Banner */}
       <InstallPWA />
+
+      {/* PWA Update Prompt — muncul otomatis saat ada versi baru */}
+      <PWAUpdatePrompt />
 
       <style>{`
         * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
