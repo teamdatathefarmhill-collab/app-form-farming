@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
+import FotoSelfie from "../components/FotoSelfie";
 
 const DB_NAME = "SanitasiOfflineDB";
 
@@ -161,6 +162,10 @@ export default function Sanitasi() {
   const [fotoFile, setFotoFile]         = useState(null);
   const [fotoUrl, setFotoUrl]           = useState("");
   const [fotoUploading, setFotoUploading] = useState(false);
+
+  const [selfieFile, setSelfieFile]     = useState(null);
+  const [selfiePreview, setSelfiePreview] = useState(null);
+  const [selfieUrl, setSelfieUrl]       = useState("");
 
   const [syncing, setSyncing]           = useState(false);
   const [syncProgress, setSyncProgress] = useState({ done: 0, total: 0 });
@@ -442,7 +447,7 @@ export default function Sanitasi() {
     // ══ MODE ONLINE ═══════════════════════════════════════════════════════════
     setSavedOffline(false);
 
-    // Upload foto dulu
+    // Upload foto papan dulu
     let resolvedFotoUrl = fotoUrl;
     if (fotoFile && !fotoUrl) {
       setFotoUploading(true);
@@ -451,13 +456,35 @@ export default function Sanitasi() {
       setFotoUploading(false);
     }
 
+    // Upload selfie operator
+    let resolvedSelfieUrl = selfieUrl;
+    if (selfieFile && !selfieUrl) {
+      const selfiePayload = {
+        action: "uploadFoto",
+        fileName: `selfie_${selectedGH}_${todayISO.replace(/\//g, "-")}_${Date.now()}.jpg`,
+        mimeType: selfieFile.type || "image/jpeg",
+        base64Data: await new Promise((res) => {
+          const reader = new FileReader();
+          reader.onload = (ev) => res(ev.target.result.split(",")[1]);
+          reader.readAsDataURL(selfieFile);
+        }),
+        sessionKey: sessionKey + "_selfie",
+      };
+      try {
+        const r = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(selfiePayload), redirect: "follow" });
+        const result = await r.json();
+        resolvedSelfieUrl = result.url || "";
+        setSelfieUrl(resolvedSelfieUrl);
+      } catch { resolvedSelfieUrl = ""; }
+    }
+
     let done = 0;
     for (const payload of payloads) {
       try {
         await fetch(SCRIPT_URL, {
           method: "POST",
           headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify({ ...payload, fotoUrl: resolvedFotoUrl || "" }),
+          body: JSON.stringify({ ...payload, fotoUrl: resolvedFotoUrl || "", selfieUrl: resolvedSelfieUrl || "" }),
           redirect: "follow",
         });
         done++;
@@ -482,6 +509,9 @@ export default function Sanitasi() {
     setFotoFile(null);
     setFotoUrl("");
     setFotoUploading(false);
+    setSelfieFile(null);
+    setSelfiePreview(null);
+    setSelfieUrl("");
     setSyncing(false);
     setSyncProgress({ done: 0, total: 0 });
     setSubmitError(null);
@@ -681,6 +711,16 @@ export default function Sanitasi() {
               />
               {!operator.trim() && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 5 }}>Wajib diisi sebelum bisa lanjut</div>}
             </div>
+
+            {/* Selfie Operator */}
+            <FotoSelfie
+              fotoFile={selfieFile}
+              fotoPreview={selfiePreview}
+              onChange={(file, preview) => { setSelfieFile(file); setSelfiePreview(preview); setSelfieUrl(""); }}
+              onClear={() => { setSelfieFile(null); setSelfiePreview(null); setSelfieUrl(""); }}
+              isOffline={!isOnline}
+              darkMode={true}
+            />
           </div>
         )}
 
