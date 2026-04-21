@@ -312,7 +312,7 @@ export default function Vigor() {
   // Kontrol kemunculan field per HST
   const showLebarDiameter = selectedHST !== 38 && selectedHST !== 45 && selectedHST !== 54;
   const showKualitas      = selectedHST !== null && selectedHST > 30;
-  const showSimetri       = selectedHST === 33; // hanya HST 33
+  const showSimetri       = selectedHST === 33 || selectedHST === 38;
   const showPolinasi      = selectedHST === 18;
   const showKesegaran     = selectedHST === 38 || selectedHST === 45 || selectedHST === 54;
   const showNetting       = selectedHST === 45 || selectedHST === 54;
