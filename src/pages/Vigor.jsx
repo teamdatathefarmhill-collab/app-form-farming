@@ -18,6 +18,7 @@ const TIPE_GH = [
       const upper = gh.toUpperCase();
       if (upper.startsWith("BERGAS")) { const n = parseInt(upper.replace("BERGAS","").trim()); return n >= 1 && n <= 8 && n !== 6; }
       if (upper.startsWith("COLOMADU")) { const n = parseInt(upper.replace("COLOMADU","").trim()); return n >= 1 && n <= 4; }
+      if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return n === 12; }
       return false;
     },
   },
@@ -25,7 +26,7 @@ const TIPE_GH = [
     key: "kolam", label: "Kolam", icon: "🏊", color: "#00897B",
     pattern: (gh) => {
       const upper = gh.toUpperCase();
-      if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return (n >= 1 && n <= 14) || n === 22; }
+      if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return (n >= 1 && n <= 11) || n === 13 || n === 22; }
       if (upper.startsWith("SAWAHAN")) { const n = parseInt(upper.replace("SAWAHAN","").trim()); return n >= 1 && n <= 4; }
       return false;
     },
@@ -34,7 +35,7 @@ const TIPE_GH = [
     key: "dutch", label: "Dutch Bucket", icon: "🪣", color: "#FB8C00",
     pattern: (gh) => {
       const upper = gh.toUpperCase();
-      if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return n >= 15 && n <= 21; }
+      if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return n === 14 || (n >= 15 && n <= 21); }
       return false;
     },
   },
@@ -76,13 +77,13 @@ const LEBAR_DAUN_33_OPTIONS = [
 
 // Diameter Batang
 const DIAMETER_7_14_OPTIONS = [
-  "Tanaman kutilang",
+  "Tanaman Kutilang (Diameter batang kecil, antar ruas panjang)",
   "Batang kecil, antar ruas pendek",
   "Batang besar, antar ruas panjang",
   "Batang besar, ruas pendek",
 ];
 const DIAMETER_33_OPTIONS = [
-  "Diaeter batang kecil",
+  "Diameter batang kecil",
   "Diameter batang besar",
 ];
 
@@ -627,7 +628,7 @@ export default function Vigor() {
 
                         {/* === ASPEK VIGOR === */}
                         <div style={{ fontSize: 11, fontWeight: 700, color: "#388e3c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>🌿 Aspek Vigor Tanaman</div>
-                        <div style={{ fontSize: 10, color: "#888", marginBottom: 4 }}>Pendataan 14 tanaman per varian (7 depan + 7 belakang)</div>
+                        <div style={{ fontSize: 10, color: "#888", marginBottom: 4 }}>Ambil sampel setelah 10 tanaman depan dan 10 tanaman belakang, hindari tanaman yang terpengaruh variabel luar</div>
 
                         {/* Lebar Daun — hanya HST 7, 14, 18, 33 */}
                         {showLebarDiameter && (
@@ -640,7 +641,8 @@ export default function Vigor() {
                         {/* Diameter Batang — hanya HST 7, 14, 18, 33 */}
                         {showLebarDiameter && (
                           <div style={{ marginBottom: 14 }}>
-                            <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>{showLebarDiameter ? "2." : "1."} Diameter Batang</div>
+                            <div style={{ fontSize: 12, color: "#555", marginBottom: 4, fontWeight: 600 }}>{showLebarDiameter ? "2." : "1."} Diameter Batang</div>
+                            <div style={{ fontSize: 11, color: "#aaa", marginBottom: 8 }}>Penilaian DB pada ruas ke-3 hingga ke-5</div>
                             <PilihOpsi options={diameterOptions} value={d.diameterBatang} onChange={val => updateVarian(varian, "diameterBatang", val)} color="#1565C0" cols={diameterOptions.length === 2 ? 2 : 2} />
                           </div>
                         )}
