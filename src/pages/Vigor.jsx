@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
+import FotoSelfie from "../components/FotoSelfie";
 
 const DB_NAME    = "VigorOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_VIGOR_URL;
@@ -238,6 +239,10 @@ export default function Vigor() {
   const [submitError, setSubmitError] = useState(null);
   const [savedOffline, setSavedOffline] = useState(false);
 
+  const [selfieFile, setSelfieFile]     = useState(null);
+  const [selfiePreview, setSelfiePreview] = useState(null);
+  const [selfieUrl, setSelfieUrl]       = useState("");
+
   const [submittedToday, setSubmittedToday] = useState(getSubmittedToday);
   const [showWarning, setShowWarning] = useState(false);
   const [pendingGH, setPendingGH]     = useState("");
@@ -353,6 +358,7 @@ export default function Vigor() {
         panjang_tunas_air:  showPolinasi  ? (d.panjangTunasAir || "") : "",
         kesegaran:          showKesegaran ? (d.kesegaran        || "") : "",
         netting_buah:       showNetting   ? (d.nettingBuah      || "") : "",
+        selfie_url:         "",
       };
     });
   };
@@ -383,8 +389,30 @@ export default function Vigor() {
 
     setSavedOffline(false);
     try {
+      // Upload selfie dulu kalau ada
+      let resolvedSelfieUrl = selfieUrl;
+      if (selfieFile && !selfieUrl) {
+        const selfiePayload = {
+          action: "uploadFoto",
+          fileName: `${operator.trim().replace(/\s+/g, "_")}_${todayISO.replace(/\//g, "-")}.jpg`,
+          mimeType: selfieFile.type || "image/jpeg",
+          base64Data: await new Promise((res) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => res(ev.target.result.split(",")[1]);
+            reader.readAsDataURL(selfieFile);
+          }),
+          sessionKey: "vigor_selfie_" + Date.now(),
+        };
+        try {
+          const r = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(selfiePayload), redirect: "follow" });
+          const result = await r.json();
+          resolvedSelfieUrl = result.url || "";
+          setSelfieUrl(resolvedSelfieUrl);
+        } catch { resolvedSelfieUrl = ""; }
+      }
+
       for (const payload of payloads) {
-        const res  = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload), redirect: "follow" });
+        const res  = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ ...payload, selfie_url: resolvedSelfieUrl }), redirect: "follow" });
         const json = await res.json();
         if (!json.success) throw new Error(json.message || "Gagal menyimpan");
       }
@@ -399,6 +427,7 @@ export default function Vigor() {
     setStep(1); setSelectedGH(""); setOperator(""); setVarianData({});
     setSelectedHST(null); setSelectedTipe(""); setActiveVarian(null); setSubmitting(false);
     setSubmitError(null); setSavedOffline(false);
+    setSelfieFile(null); setSelfiePreview(null); setSelfieUrl("");
   };
 
   return (
@@ -775,6 +804,16 @@ export default function Vigor() {
               <input type="text" value={operator} onChange={e => setOperator(e.target.value)} placeholder="Tulis nama lengkap..."
                 style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: "#fff", border: `1.5px solid ${operator.trim() ? "#81c784" : "#e0e0e0"}`, borderRadius: 10, color: "#333", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
             </div>
+
+            {/* Selfie Operator */}
+            <FotoSelfie
+              fotoFile={selfieFile}
+              fotoPreview={selfiePreview}
+              onChange={(file, preview) => { setSelfieFile(file); setSelfiePreview(preview); setSelfieUrl(""); }}
+              onClear={() => { setSelfieFile(null); setSelfiePreview(null); setSelfieUrl(""); }}
+              isOffline={!isOnline}
+              darkMode={false}
+            />
 
             {!allFilled && varianList.length > 0 && (
               <div style={{ fontSize: 12, color: "#e65100", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
