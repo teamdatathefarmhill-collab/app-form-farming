@@ -9,6 +9,36 @@ const DB_NAME = "SanitasiOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_SANITASI_URL;
 const HST_MAKS = 65;
 
+const TIPE_GH = [
+  {
+    key: "drip", label: "Drip", icon: "💧", color: "#1E88E5",
+    pattern: (gh) => {
+      const upper = gh.toUpperCase();
+      if (upper.startsWith("BERGAS")) { const n = parseInt(upper.replace("BERGAS","").trim()); return n >= 1 && n <= 8 && n !== 6; }
+      if (upper.startsWith("COLOMADU")) { const n = parseInt(upper.replace("COLOMADU","").trim()); return n >= 1 && n <= 4; }
+      if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return n === 12; }
+      return false;
+    },
+  },
+  {
+    key: "kolam", label: "Kolam", icon: "🏊", color: "#00897B",
+    pattern: (gh) => {
+      const upper = gh.toUpperCase();
+      if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return (n >= 1 && n <= 11) || n === 13 || n === 22; }
+      if (upper.startsWith("SAWAHAN")) { const n = parseInt(upper.replace("SAWAHAN","").trim()); return n >= 1 && n <= 4; }
+      return false;
+    },
+  },
+  {
+    key: "dutch", label: "Dutch Bucket", icon: "🪣", color: "#FB8C00",
+    pattern: (gh) => {
+      const upper = gh.toUpperCase();
+      if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return n === 14 || (n >= 15 && n <= 21); }
+      return false;
+    },
+  },
+];
+
 // ─── Kategori sanitasi ────────────────────────────────────────────────────────
 const KATEGORI = [
   { key: "fisik",    label: "Fisik",    icon: "🌿", color: "#4CAF50", subkategori: ["Patah Tangkai", "Tanpa Pucuk"] },
@@ -156,6 +186,7 @@ export default function Sanitasi() {
   const { ghData, loading: loadingGH, isDemoMode } = useGHData();
 
   const [selectedGH, setSelectedGH]     = useState("");
+  const [selectedTipe, setSelectedTipe] = useState("");
   const [varianData, setVarianData]     = useState({});
   const [operator, setOperator]         = useState("");
   const [fotoPreview, setFotoPreview]   = useState(null);
@@ -461,7 +492,7 @@ export default function Sanitasi() {
     if (selfieFile && !selfieUrl) {
       const selfiePayload = {
         action: "uploadFoto",
-        fileName: `selfie_${selectedGH}_${todayISO.replace(/\//g, "-")}_${Date.now()}.jpg`,
+        fileName: `${operator.trim().replace(/\s+/g, "_")}_${todayISO.replace(/\//g, "-")}.jpg`,
         mimeType: selfieFile.type || "image/jpeg",
         base64Data: await new Promise((res) => {
           const reader = new FileReader();
@@ -503,6 +534,7 @@ export default function Sanitasi() {
   const resetForm = () => {
     setStep(1);
     setSelectedGH("");
+    setSelectedTipe("");
     setVarianData({});
     setOperator("");
     setFotoPreview(null);
@@ -601,45 +633,61 @@ export default function Sanitasi() {
                 <div style={{ fontSize: 28, marginBottom: 8 }}>🔄</div>
                 <div style={{ fontSize: 13 }}>Memuat data GH...</div>
               </div>
+            ) : ghAktif.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "32px 0", color: "rgba(255,255,255,0.3)", fontSize: 13 }}>
+                Tidak ada GH aktif (HST ≤ {HST_MAKS})
+              </div>
             ) : (
-              <>
-                <label style={{ fontSize: 11, color: "#81c784", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600 }}>
-                  Greenhouse Aktif ({ghAktif.length})
-                </label>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {TIPE_GH.map(tipe => {
+                  const ghDiTipe = ghAktif.filter(([gh]) => tipe.pattern(gh));
+                  const isOpen   = selectedTipe === tipe.key;
+                  return (
+                    <div key={tipe.key} style={{ border: `1.5px solid ${isOpen ? tipe.color + "55" : "rgba(255,255,255,0.1)"}`, borderRadius: 14, overflow: "hidden" }}>
+                      <button onClick={() => setSelectedTipe(isOpen ? "" : tipe.key)}
+                        style={{ width: "100%", padding: "13px 16px", background: isOpen ? `${tipe.color}15` : "rgba(255,255,255,0.03)", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <span style={{ fontSize: 20 }}>{tipe.icon}</span>
+                          <div style={{ textAlign: "left" }}>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: isOpen ? tipe.color : "#fff" }}>{tipe.label}</div>
+                            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 1 }}>{ghDiTipe.length} GH aktif</div>
+                          </div>
+                        </div>
+                        <span style={{ fontSize: 14, color: "rgba(255,255,255,0.3)", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "inline-block" }}>▼</span>
+                      </button>
 
-                {ghAktif.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: "32px 0", color: "rgba(255,255,255,0.3)", fontSize: 13 }}>
-                    Tidak ada GH aktif (HST ≤ {HST_MAKS})
-                  </div>
-                ) : (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10, marginBottom: 16 }}>
-                    {ghAktif.map(([gh, info]) => {
-                      const hstGH   = info.tanam ? hitungHST(info.tanam) : null;
-                      const col     = hstGH !== null ? hstColor(hstGH) : hstColor(0);
-                      const dipilih = selectedGH === gh;
-                      return (
-                        <button key={gh} onClick={() => handleSelectGH(gh)} style={{ padding: "10px 10px 8px", borderRadius: 12, cursor: "pointer", textAlign: "center", border: dipilih ? "2px solid #4CAF50" : "1px solid rgba(255,255,255,0.09)", background: dipilih ? "rgba(76,175,80,0.12)" : "rgba(255,255,255,0.03)", transition: "all 0.2s", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: dipilih ? "#4CAF50" : "#fff", lineHeight: 1.2 }}>{gh}</div>
-                          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>P{info.periode} · {info.varian?.length || 0} var</div>
-                          {hstGH !== null && (
-                            <div style={{ background: col.bg, border: `1px solid ${col.border}`, borderRadius: 8, padding: "4px 10px", textAlign: "center", width: "100%" }}>
-                              <span style={{ fontSize: 16, fontWeight: 800, color: col.text }}>{hstGH}</span>
-                              <span style={{ fontSize: 10, color: col.text, opacity: 0.8, marginLeft: 3 }}>HST</span>
+                      {isOpen && (
+                        <div style={{ padding: "10px 12px 14px", borderTop: `1px solid ${tipe.color}22` }}>
+                          {ghDiTipe.length === 0 ? (
+                            <div style={{ textAlign: "center", padding: 20, color: "rgba(255,255,255,0.3)", fontSize: 13 }}>Tidak ada GH aktif di tipe ini.</div>
+                          ) : (
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                              {ghDiTipe.map(([gh, info]) => {
+                                const hstGH   = info.tanam ? hitungHST(info.tanam) : null;
+                                const col     = hstGH !== null ? hstColor(hstGH) : hstColor(0);
+                                const dipilih = selectedGH === gh;
+                                return (
+                                  <button key={gh} onClick={() => handleSelectGH(gh)} style={{ padding: "10px 10px 8px", borderRadius: 12, cursor: "pointer", textAlign: "center", border: dipilih ? `2px solid ${tipe.color}` : "1px solid rgba(255,255,255,0.09)", background: dipilih ? `${tipe.color}18` : "rgba(255,255,255,0.03)", transition: "all 0.2s", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                                    <div style={{ fontSize: 13, fontWeight: 700, color: dipilih ? tipe.color : "#fff", lineHeight: 1.2 }}>{gh}</div>
+                                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>P{info.periode} · {info.varian?.length || 0} var</div>
+                                    {hstGH !== null && (
+                                      <div style={{ background: col.bg, border: `1px solid ${col.border}`, borderRadius: 8, padding: "4px 10px", textAlign: "center", width: "100%" }}>
+                                        <span style={{ fontSize: 16, fontWeight: 800, color: col.text }}>{hstGH}</span>
+                                        <span style={{ fontSize: 10, color: col.text, opacity: 0.8, marginLeft: 3 }}>HST</span>
+                                      </div>
+                                    )}
+                                    {dipilih && <div style={{ fontSize: 14 }}>✅</div>}
+                                  </button>
+                                );
+                              })}
                             </div>
                           )}
-                          {dipilih && <div style={{ fontSize: 14 }}>✅</div>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {ghDisembunyikan > 0 && (
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", textAlign: "center", marginTop: 4, fontStyle: "italic" }}>
-                    + {ghDisembunyikan} GH disembunyikan (HST &gt; {HST_MAKS})
-                  </div>
-                )}
-              </>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         )}
