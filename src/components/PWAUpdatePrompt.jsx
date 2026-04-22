@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 
 export default function PWAUpdatePrompt() {
@@ -7,10 +7,21 @@ export default function PWAUpdatePrompt() {
     updateServiceWorker,
   } = useRegisterSW({
     onRegistered(r) {
-      // Cek update setiap 60 detik saat app terbuka
-      if (r) {
-        setInterval(() => r.update(), 60 * 1000);
-      }
+      if (!r) return;
+
+      // Cek update setiap kali user buka app dari background
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          r.update();
+        }
+      });
+
+      // Cek update setiap kali online kembali
+      window.addEventListener("online", () => r.update());
+
+      // Tetap cek berkala setiap 3 menit (bukan 60 detik)
+      // SW akan wake up saat ada fetch, jadi interval ini lebih reliable
+      setInterval(() => r.update(), 3 * 60 * 1000);
     },
   });
 
@@ -19,25 +30,26 @@ export default function PWAUpdatePrompt() {
   return (
     <div style={{
       position: "fixed",
-      bottom: 72, // di atas bottom nav
+      bottom: 72,
       left: 12,
       right: 12,
       zIndex: 999,
-      background: "#1b5e20",
+      background: "linear-gradient(135deg, #1b5e20, #2e7d32)",
       borderRadius: 14,
       padding: "12px 16px",
       display: "flex",
       alignItems: "center",
       justifyContent: "space-between",
       gap: 12,
-      boxShadow: "0 4px 20px rgba(0,0,0,0.25)",
+      boxShadow: "0 4px 24px rgba(0,0,0,0.35)",
+      animation: "slideUp 0.3s ease",
     }}>
       <div>
         <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>
-          🔄 Update tersedia
+          🔄 Ada pembaruan!
         </div>
         <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginTop: 2 }}>
-          Versi baru app sudah siap
+          Tap update untuk versi terbaru
         </div>
       </div>
       <button
@@ -57,6 +69,12 @@ export default function PWAUpdatePrompt() {
       >
         Update
       </button>
+      <style>{`
+        @keyframes slideUp {
+          from { transform: translateY(20px); opacity: 0; }
+          to   { transform: translateY(0);    opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }
