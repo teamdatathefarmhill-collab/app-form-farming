@@ -16,18 +16,18 @@ import { useAuth } from "./hooks/useAuth";
 
 // Sub-menu HPT — key harus match kolom di REF OPERATOR
 const HPT_SUBMENU = [
-  { key: "so",           label: "SO",           icon: "📋", component: SO           },
-  { key: "penyemprotan", label: "Penyemprotan", icon: "💦", component: Penyemprotan },
-  { key: "sanitasi",     label: "Sanitasi",     icon: "🌿", component: Sanitasi     },
-  { key: "hpt",          label: "HPT",          icon: "🐛", component: HPT          },
+  { key: "so",           label: "SO",           icon: "📊", component: SO           },
+  { key: "penyemprotan", label: "Penyemprotan", icon: "💨", component: Penyemprotan },
+  { key: "sanitasi",     label: "Sanitasi",     icon: "🧹", component: Sanitasi     },
+  { key: "hpt",          label: "HPT",          icon: "🔍", component: HPT          },
 ];
 
 // Menu standalone (bukan bagian HPT)
 const STANDALONE_TABS = [
   { key: "gramasi",    label: "Gramasi",    icon: "⚖️",  color: "#1E88E5", component: Gramasi    },
   { key: "penyiraman", label: "Penyiraman", icon: "💧",  color: "#0277bd", component: Penyiraman },
-  { key: "vigor",      label: "Vigor",      icon: "🌱",  color: "#43A047", component: Vigor      },
-  { key: "kesiapan",   label: "Kesiapan",   icon: "🏗️",  color: "#00897B", component: KesiapanGH },
+  { key: "vigor",      label: "Vigor",      icon: "🌿",  color: "#43A047", component: Vigor      },
+  { key: "kesiapan",   label: "Kesiapan",   icon: "✅",  color: "#00897B", component: KesiapanGH },
 ];
 
 const HPT_COLOR = "#FF7043";
@@ -254,7 +254,7 @@ export default function App() {
                 display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
                 borderTop: isHPTActive ? `2px solid ${HPT_COLOR}` : "2px solid transparent",
               }}>
-              <span style={{ fontSize: 20, lineHeight: 1 }}>🐛</span>
+              <span style={{ fontSize: 20, lineHeight: 1 }}>🔍</span>
               <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
                 <span style={{ fontSize: 10, fontWeight: isHPTActive ? 700 : 500, color: isHPTActive ? HPT_COLOR : "rgba(255,255,255,0.35)", letterSpacing: 0.5, whiteSpace: "nowrap" }}>
                   {accessibleHPT.length === 1 ? accessibleHPT[0].label : "HPT"}
