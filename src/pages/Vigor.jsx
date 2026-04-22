@@ -110,9 +110,16 @@ const SIMETRI_BUAH_OPTIONS = [
 
 // ─── Aspek Polinasi (HST 18 saja) ────────────────────────────────────────────
 const BUAH_BAJANG_OPTIONS = [
-  "Bunga menguning sebelum mekar / Bunga gagal polinasi (cabang 9 - 10)",
-  "Bakal buah berhasil polinasi di cabang 12 - 13 (cabang tengah)",
-  "Bakal buah berhasil polinasi di cabang 9 - 11 (cabang bawah)",
+  "Bunga bajang/menguning sebelum mekar banyak (> 2 tunas/cabang)",
+  "Bunga bajang/menguning sebelum mekar sedikit (+- 2 tunas/cabang)",
+  "Tidak ada bunga bajang/menguning",
+];
+
+// ─── Aspek Kualitas Buah — Cabang Buah (HST 33) ─────────────────────────────
+const CABANG_BUAH_OPTIONS = [
+  "Buah jadi pada cabang > 13",
+  "Buah jadi pada cabang 12 - 13",
+  "Buah jadi pada cabang 9 - 11",
 ];
 
 const PANJANG_TUNAS_AIR_OPTIONS = [
@@ -163,6 +170,7 @@ function initVarianData(varianList) {
       warnaAkar:        "",
       volumeAkar:       "",
       simetriBuah:      "",
+      cabangBuah:       "",
       buahBajang:       "",
       panjangTunasAir:  "",
       kesegaran:        "",
@@ -176,6 +184,7 @@ function isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNettin
   if (showLebarDiameter && (d.lebarDaun === "" || d.diameterBatang === "")) return false;
   if (d.warnaDaun === "" || d.warnaAkar === "" || d.volumeAkar === "") return false;
   if (showKualitas && showSimetri && d.simetriBuah === "") return false;
+  if (showKualitas && showSimetri && d.cabangBuah === "") return false;
   if (showPolinasi  && (d.buahBajang === "" || d.panjangTunasAir === "")) return false;
   if (showKesegaran && d.kesegaran === "") return false;
   if (showNetting   && d.nettingBuah === "") return false;
@@ -354,6 +363,7 @@ export default function Vigor() {
         warna_akar:         d.warnaAkar      || "",
         volume_akar:        d.volumeAkar     || "",
         simetri_buah:       showKualitas  ? (d.simetriBuah     || "") : "",
+        cabang_buah:        showSimetri   ? (d.cabangBuah       || "") : "",
         buah_bajang:        showPolinasi  ? (d.buahBajang       || "") : "",
         panjang_tunas_air:  showPolinasi  ? (d.panjangTunasAir || "") : "",
         kesegaran:          showKesegaran ? (d.kesegaran        || "") : "",
@@ -662,7 +672,8 @@ export default function Vigor() {
                         {/* Lebar Daun — hanya HST 7, 14, 18, 33 */}
                         {showLebarDiameter && (
                           <div style={{ marginBottom: 14 }}>
-                            <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>1. Lebar Daun (cm)</div>
+                            <div style={{ fontSize: 12, color: "#555", marginBottom: 4, fontWeight: 600 }}>1. Lebar Daun (cm)</div>
+                            <div style={{ fontSize: 11, color: "#aaa", marginBottom: 8 }}>Dilakukan pada daun ke-4</div>
                             <PilihOpsi options={lebarDaunOptions} value={d.lebarDaun} onChange={val => updateVarian(varian, "lebarDaun", val)} color="#2e7d32" cols={3} />
                           </div>
                         )}
@@ -721,22 +732,46 @@ export default function Vigor() {
                           </div>
                         )}
 
+                        {/* === CABANG BUAH (HST 33 saja, bagian Kualitas Buah) === */}
+                        {showSimetri && (
+                          <div style={{ marginTop: 14 }}>
+                            <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>2. Cabang Buah</div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                              {CABANG_BUAH_OPTIONS.map((opt, idx) => {
+                                const active = d.cabangBuah === opt;
+                                return (
+                                  <button key={idx} onClick={() => updateVarian(varian, "cabangBuah", opt)}
+                                    style={{ padding: "10px 10px", textAlign: "center", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#AD1457" : "#e0e0e0"}`, background: active ? "#FCE4EC" : "#fff", color: active ? "#AD1457" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, transition: "all 0.15s", lineHeight: 1.4 }}>
+                                    <div style={{ fontSize: 16, marginBottom: 4 }}>{active ? "●" : "○"}</div>
+                                    {opt}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
                         {/* === ASPEK POLINASI (HST 18 saja) === */}
                         {showPolinasi && (
                           <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginTop: showKualitas ? 14 : 0 }}>
                             <div style={{ fontSize: 11, fontWeight: 700, color: "#1565C0", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🌸 Aspek Penilaian Keberhasilan Polinasi</div>
                             <div style={{ fontSize: 10, color: "#888", marginBottom: 12 }}>Ambil sampel setelah 10 tanaman depan dan 10 tanaman belakang, hindari tanaman yang terpengaruh variabel luar</div>
 
-                            {/* Buah Bajang — 2 kolom */}
+                            {/* Catatan HST 18 */}
+                            <div style={{ marginBottom: 12, padding: "9px 12px", background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 8, fontSize: 11, color: "#7a6000", lineHeight: 1.5 }}>
+                              ⚠️ Umur 18 HST belum selesai dilakukan polinasi, untuk itu penilaian keberhasilan cabang polinasi belum dapat dilakukan.
+                            </div>
+
+                            {/* Buah Bajang — 1 kolom */}
                             <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>1. Buah Bajang</div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
                               {BUAH_BAJANG_OPTIONS.map((opt, idx) => {
                                 const active = d.buahBajang === opt;
                                 return (
                                   <button key={idx} onClick={() => updateVarian(varian, "buahBajang", opt)}
-                                    style={{ padding: "10px 10px", textAlign: "center", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#1565C0" : "#e0e0e0"}`, background: active ? "#E3F2FD" : "#fff", color: active ? "#1565C0" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, transition: "all 0.15s", lineHeight: 1.4 }}>
-                                    <div style={{ fontSize: 16, marginBottom: 4 }}>{active ? "●" : "○"}</div>
-                                    {opt}
+                                    style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#1565C0" : "#e0e0e0"}`, background: active ? "#E3F2FD" : "#fff", color: active ? "#1565C0" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, transition: "all 0.15s", lineHeight: 1.4, display: "flex", alignItems: "center", gap: 8 }}>
+                                    <span style={{ flexShrink: 0 }}>{active ? "●" : "○"}</span>
+                                    <span>{opt}</span>
                                   </button>
                                 );
                               })}
