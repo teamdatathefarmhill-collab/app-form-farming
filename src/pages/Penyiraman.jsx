@@ -115,36 +115,62 @@ export default function Penyiraman() {
   const updateRhArr   = (v, idx, val) => setVarianData(prev => { const a = [...(prev[v]?.rhArr  ||["","","",""])]; a[idx]=val; return { ...prev, [v]: { ...prev[v], rhArr:   a } }; });
   const updateDb      = (key, val)    => setDbData(prev => ({ ...prev, [key]: val }));
 
-  // Auto-fill field ke semua varian lain saat varian pertama diisi
+  // Auto-fill: varian pertama selalu sebar ke semua varian lain tiap keystroke
+  // Varian lain bebas diedit sendiri tanpa mempengaruhi siapapun
   const autoFillFields = ["ecIn", "phIn", "volume", "volNutrisi", "suhu", "rh"];
+
   const handleVarianChange = (v, key, val) => {
-    updateVarian(v, key, val);
-    // Kalau varian pertama yang diisi, sebar ke varian lain yang masih kosong
     if (v === varianList[0] && autoFillFields.includes(key)) {
-      varianList.slice(1).forEach(other => {
-        const d = varianData[other] || initVarianData();
-        if (d[key] === "") updateVarian(other, key, val);
+      // Update varian pertama + sebar ke semua varian lain sekaligus
+      setVarianData(prev => {
+        const next = { ...prev };
+        next[v] = { ...prev[v], [key]: val };
+        varianList.slice(1).forEach(other => {
+          next[other] = { ...(prev[other] || initVarianData()), [key]: val };
+        });
+        return next;
       });
+    } else {
+      // Varian lain: update diri sendiri saja
+      updateVarian(v, key, val);
     }
   };
 
   const handleSuhuArrChange = (v, idx, val) => {
-    updateSuhuArr(v, idx, val);
     if (v === varianList[0]) {
-      varianList.slice(1).forEach(other => {
-        const d = varianData[other] || initVarianData();
-        if ((d.suhuArr || ["","","",""])[idx] === "") updateSuhuArr(other, idx, val);
+      setVarianData(prev => {
+        const next = { ...prev };
+        const arr0 = [...(prev[v]?.suhuArr || ["","","",""])];
+        arr0[idx] = val;
+        next[v] = { ...(prev[v] || initVarianData()), suhuArr: arr0 };
+        varianList.slice(1).forEach(other => {
+          const arrO = [...(prev[other]?.suhuArr || ["","","",""])];
+          arrO[idx] = val;
+          next[other] = { ...(prev[other] || initVarianData()), suhuArr: arrO };
+        });
+        return next;
       });
+    } else {
+      updateSuhuArr(v, idx, val);
     }
   };
 
   const handleRhArrChange = (v, idx, val) => {
-    updateRhArr(v, idx, val);
     if (v === varianList[0]) {
-      varianList.slice(1).forEach(other => {
-        const d = varianData[other] || initVarianData();
-        if ((d.rhArr || ["","","",""])[idx] === "") updateRhArr(other, idx, val);
+      setVarianData(prev => {
+        const next = { ...prev };
+        const arr0 = [...(prev[v]?.rhArr || ["","","",""])];
+        arr0[idx] = val;
+        next[v] = { ...(prev[v] || initVarianData()), rhArr: arr0 };
+        varianList.slice(1).forEach(other => {
+          const arrO = [...(prev[other]?.rhArr || ["","","",""])];
+          arrO[idx] = val;
+          next[other] = { ...(prev[other] || initVarianData()), rhArr: arrO };
+        });
+        return next;
       });
+    } else {
+      updateRhArr(v, idx, val);
     }
   };
 
