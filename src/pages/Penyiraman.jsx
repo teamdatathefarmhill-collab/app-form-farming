@@ -78,6 +78,7 @@ export default function Penyiraman() {
   const [step, setStep]         = useState(1);
   const [tipe, setTipe]         = useState("");
   const [gh, setGh]             = useState("");
+  const [operator, setOperator]     = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitProgress, setSubmitProgress] = useState({ done: 0, total: 0 });
@@ -115,7 +116,7 @@ export default function Penyiraman() {
   const updateDb      = (key, val)    => setDbData(prev => ({ ...prev, [key]: val }));
 
   const resetForm = () => {
-    setStep(1); setTipe(""); setGh(""); setSubmitError(null);
+    setStep(1); setTipe(""); setGh(""); setSubmitError(null); setOperator("");
     setVarianData({}); setSubmitProgress({ done: 0, total: 0 });
     setDbData({ ecTandon: "", ecBucket: "", phTandon: "", phBucket: "", doTandon: "", doBucket: "", suhu: "", rh: "", volNutrisi: "" });
   };
@@ -132,6 +133,7 @@ export default function Penyiraman() {
         return base && d.suhu !== "" && d.rh !== "";
       });
     }
+    if (step === 3) return operator.trim().length >= 2;
     return true;
   };
 
@@ -141,7 +143,7 @@ export default function Penyiraman() {
       return [{
         action: "submitPenyiraman",
         client_timestamp,
-        tanggal: todayISO, operator: user?.nama || "", tipe, gh, varian: "",
+        tanggal: todayISO, operator: operator || user?.nama || "", tipe, gh, varian: "",
         ecIn: "", ecOut: "", phIn: "", phOut: "", volume: "",
         volNutrisi: dbData.volNutrisi || "0", suhu: dbData.suhu || "0", rh: dbData.rh || "0",
         ecTandon: dbData.ecTandon || "0", ecBucket: dbData.ecBucket || "0",
@@ -156,7 +158,7 @@ export default function Penyiraman() {
       return {
         action: "submitPenyiraman",
         client_timestamp,
-        tanggal: todayISO, operator: user?.nama || "", tipe, gh, varian: v,
+        tanggal: todayISO, operator: operator || user?.nama || "", tipe, gh, varian: v,
         ecIn: d.ecIn || "0", ecOut: d.ecOut || "0",
         phIn: d.phIn || "0", phOut: d.phOut || "0",
         volume: d.volume || "0", volNutrisi: d.volNutrisi || "0",
@@ -363,7 +365,7 @@ export default function Penyiraman() {
             <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 12 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: "#0277bd", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>📋 Informasi Umum</div>
               <RekapRow label="Tanggal"  value={todayISO} />
-              <RekapRow label="Operator" value={user?.nama} />
+              <RekapRow label="Operator" value={operator || user?.nama} />
               <RekapRow label="Tipe GH"  value={tipe} />
               <RekapRow label="GH"       value={gh} />
               {!isDB && <RekapRow label="Jumlah Varian" value={`${varianList.length} varian`} />}
@@ -410,6 +412,28 @@ export default function Penyiraman() {
               </div>
             )}
 
+            {/* Input Nama Operator */}
+            <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#0277bd", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>👤 Nama Operator</div>
+              <input
+                type="text"
+                value={operator}
+                onChange={e => setOperator(e.target.value)}
+                placeholder="Tulis nama lengkap operator..."
+                style={{
+                  width: "100%", padding: "11px 14px",
+                  border: `1.5px solid ${operator.trim().length >= 2 ? "#81c784" : "#e0e0e0"}`,
+                  borderRadius: 10, fontSize: 14, fontWeight: 600,
+                  color: operator.trim().length >= 2 ? "#2e7d32" : "#bbb",
+                  outline: "none", background: "#fff",
+                  boxSizing: "border-box", fontFamily: "inherit",
+                }}
+              />
+              {operator.trim().length > 0 && operator.trim().length < 2 && (
+                <div style={{ fontSize: 11, color: "#e65100", marginTop: 4 }}>Nama minimal 2 karakter</div>
+              )}
+            </div>
+
             {submitting && (
               <div style={{ marginBottom: 8 }}>
                 <div style={{ fontSize: 12, color: "#666", marginBottom: 6 }}>Mengirim {submitProgress.done}/{submitProgress.total} varian...</div>
@@ -441,7 +465,7 @@ export default function Penyiraman() {
                   ))}
                 </div>
               )}
-              <div style={{ fontSize: 13, color: "#666", marginTop: 8 }}>Operator: {user?.nama} · {todayISO}</div>
+              <div style={{ fontSize: 13, color: "#666", marginTop: 8 }}>Operator: {operator || user?.nama} · {todayISO}</div>
             </div>
             <button onClick={resetForm} style={{ width: "100%", padding: 15, background: "#e1f5fe", border: "2px solid #81d4fa", borderRadius: 12, color: "#0277bd", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
               + Input Penyiraman Berikutnya
@@ -486,7 +510,7 @@ export default function Penyiraman() {
           { label: "GH",       value: gh },
           { label: "Tipe",     value: tipe },
           { label: "Varian",   value: isDB ? "Dutch Bucket" : `${varianList.length} varian` },
-          { label: "Operator", value: user?.nama || "" },
+          { label: "Operator", value: operator || user?.nama || "" },
         ]}
       />
 
