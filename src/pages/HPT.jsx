@@ -7,6 +7,23 @@ const DB_NAME = "HPTOfflineDB";
 
 const SCRIPT_URL = import.meta.env.VITE_GAS_HPT_URL;
 
+const LS_SEMAI_CACHE_KEY = "farmhill_semairef_cache";
+const LS_SEMAI_CACHE_TTL = 1000 * 60 * 30; // 30 menit
+
+function saveSemaiCache(data) {
+  try { localStorage.setItem(LS_SEMAI_CACHE_KEY, JSON.stringify({ data, savedAt: Date.now() })); }
+  catch { /* abaikan */ }
+}
+function loadSemaiCache() {
+  try {
+    const raw = localStorage.getItem(LS_SEMAI_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (Date.now() - parsed.savedAt < LS_SEMAI_CACHE_TTL) return parsed.data;
+    return parsed.data;
+  } catch { return null; }
+}
+
 
 const LS_KEY = `hpt_${new Date().toLocaleDateString("id-ID")}`;
 function getSubmittedToday() {
@@ -135,7 +152,32 @@ export default function HPT() {
   const [step, setStep]       = useState(1);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
-  const { produksiData, semaiData, loading: loadingGH, isDemoMode, refetch: fetchGHData } = useGHData();
+  const { produksiData, loading: loadingGH, isDemoMode, refetch: fetchGHData } = useGHData();
+
+  // Semai data di-fetch langsung dari VITE_GAS_HPT_URL, terpisah dari useGHData
+  const [semaiData,      setSemaiData]      = useState({});
+  const [loadingSemai,   setLoadingSemai]   = useState(false);
+
+  const fetchSemaiRef = useCallback(async () => {
+    setLoadingSemai(true);
+    try {
+      const json = await gasFetch(`${SCRIPT_URL}?action=getSemaiRef`);
+      if (json?.semai) {
+        setSemaiData(json.semai);
+        saveSemaiCache(json.semai);
+      } else {
+        throw new Error("Response semai kosong");
+      }
+    } catch {
+      // Fallback ke cache kalau fetch gagal
+      const cached = loadSemaiCache();
+      if (cached) setSemaiData(cached);
+    } finally {
+      setLoadingSemai(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchSemaiRef(); }, [fetchSemaiRef]);
 
   const [selectedGH, setSelectedGH] = useState("");
   const [activeTab, setActiveTab]   = useState("produksi");
@@ -485,8 +527,10 @@ export default function HPT() {
 
               {activeTab === "semai" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {semaiAktif.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.3)", fontSize: 13 }}>Tidak ada data semai.</div>
+                  {loadingSemai ? (
+                    <div style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.3)", fontSize: 13 }}>⏳ Memuat data semai...</div>
+                  ) : semaiAktif.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.3)", fontSize: 13 }}>Tidak ada data semai aktif.</div>
                   ) : semaiAktif.map(([nama, info]) => {
                     const done = submittedToday.includes(nama);
                     const selected = selectedGH === nama;
