@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../hooks/useAuth";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 
@@ -115,62 +115,67 @@ export default function Penyiraman() {
   const updateRhArr   = (v, idx, val) => setVarianData(prev => { const a = [...(prev[v]?.rhArr  ||["","","",""])]; a[idx]=val; return { ...prev, [v]: { ...prev[v], rhArr:   a } }; });
   const updateDb      = (key, val)    => setDbData(prev => ({ ...prev, [key]: val }));
 
-  // Auto-fill: varian pertama selalu sebar ke semua varian lain tiap keystroke
+  // Auto-fill: varian pertama sebar ke semua varian lain setelah berhenti ketik 400ms
   // Varian lain bebas diedit sendiri tanpa mempengaruhi siapapun
   const autoFillFields = ["ecIn", "phIn", "volume", "volNutrisi", "suhu", "rh"];
+  const autoFillTimer = useRef({});
 
   const handleVarianChange = (v, key, val) => {
+    // Selalu update varian yang sedang diisi dulu (langsung, tanpa delay)
+    updateVarian(v, key, val);
+
     if (v === varianList[0] && autoFillFields.includes(key)) {
-      // Update varian pertama + sebar ke semua varian lain sekaligus
-      setVarianData(prev => {
-        const next = { ...prev };
-        next[v] = { ...prev[v], [key]: val };
-        varianList.slice(1).forEach(other => {
-          next[other] = { ...(prev[other] || initVarianData()), [key]: val };
+      // Debounce — sebar ke varian lain setelah 400ms berhenti ketik
+      clearTimeout(autoFillTimer.current[key]);
+      autoFillTimer.current[key] = setTimeout(() => {
+        setVarianData(prev => {
+          const next = { ...prev };
+          varianList.slice(1).forEach(other => {
+            next[other] = { ...(prev[other] || initVarianData()), [key]: prev[varianList[0]]?.[key] ?? val };
+          });
+          return next;
         });
-        return next;
-      });
-    } else {
-      // Varian lain: update diri sendiri saja
-      updateVarian(v, key, val);
+      }, 400);
     }
   };
 
   const handleSuhuArrChange = (v, idx, val) => {
+    updateSuhuArr(v, idx, val);
     if (v === varianList[0]) {
-      setVarianData(prev => {
-        const next = { ...prev };
-        const arr0 = [...(prev[v]?.suhuArr || ["","","",""])];
-        arr0[idx] = val;
-        next[v] = { ...(prev[v] || initVarianData()), suhuArr: arr0 };
-        varianList.slice(1).forEach(other => {
-          const arrO = [...(prev[other]?.suhuArr || ["","","",""])];
-          arrO[idx] = val;
-          next[other] = { ...(prev[other] || initVarianData()), suhuArr: arrO };
+      const timerKey = `suhu_${idx}`;
+      clearTimeout(autoFillTimer.current[timerKey]);
+      autoFillTimer.current[timerKey] = setTimeout(() => {
+        setVarianData(prev => {
+          const next = { ...prev };
+          const latestVal = (prev[varianList[0]]?.suhuArr || ["","","",""])[idx];
+          varianList.slice(1).forEach(other => {
+            const arrO = [...(prev[other]?.suhuArr || ["","","",""])];
+            arrO[idx] = latestVal;
+            next[other] = { ...(prev[other] || initVarianData()), suhuArr: arrO };
+          });
+          return next;
         });
-        return next;
-      });
-    } else {
-      updateSuhuArr(v, idx, val);
+      }, 400);
     }
   };
 
   const handleRhArrChange = (v, idx, val) => {
+    updateRhArr(v, idx, val);
     if (v === varianList[0]) {
-      setVarianData(prev => {
-        const next = { ...prev };
-        const arr0 = [...(prev[v]?.rhArr || ["","","",""])];
-        arr0[idx] = val;
-        next[v] = { ...(prev[v] || initVarianData()), rhArr: arr0 };
-        varianList.slice(1).forEach(other => {
-          const arrO = [...(prev[other]?.rhArr || ["","","",""])];
-          arrO[idx] = val;
-          next[other] = { ...(prev[other] || initVarianData()), rhArr: arrO };
+      const timerKey = `rh_${idx}`;
+      clearTimeout(autoFillTimer.current[timerKey]);
+      autoFillTimer.current[timerKey] = setTimeout(() => {
+        setVarianData(prev => {
+          const next = { ...prev };
+          const latestVal = (prev[varianList[0]]?.rhArr || ["","","",""])[idx];
+          varianList.slice(1).forEach(other => {
+            const arrO = [...(prev[other]?.rhArr || ["","","",""])];
+            arrO[idx] = latestVal;
+            next[other] = { ...(prev[other] || initVarianData()), rhArr: arrO };
+          });
+          return next;
         });
-        return next;
-      });
-    } else {
-      updateRhArr(v, idx, val);
+      }, 400);
     }
   };
 
