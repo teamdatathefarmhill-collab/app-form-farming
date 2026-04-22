@@ -115,6 +115,39 @@ export default function Penyiraman() {
   const updateRhArr   = (v, idx, val) => setVarianData(prev => { const a = [...(prev[v]?.rhArr  ||["","","",""])]; a[idx]=val; return { ...prev, [v]: { ...prev[v], rhArr:   a } }; });
   const updateDb      = (key, val)    => setDbData(prev => ({ ...prev, [key]: val }));
 
+  // Auto-fill field ke semua varian lain saat varian pertama diisi
+  const autoFillFields = ["ecIn", "phIn", "volume", "volNutrisi", "suhu", "rh"];
+  const handleVarianChange = (v, key, val) => {
+    updateVarian(v, key, val);
+    // Kalau varian pertama yang diisi, sebar ke varian lain yang masih kosong
+    if (v === varianList[0] && autoFillFields.includes(key)) {
+      varianList.slice(1).forEach(other => {
+        const d = varianData[other] || initVarianData();
+        if (d[key] === "") updateVarian(other, key, val);
+      });
+    }
+  };
+
+  const handleSuhuArrChange = (v, idx, val) => {
+    updateSuhuArr(v, idx, val);
+    if (v === varianList[0]) {
+      varianList.slice(1).forEach(other => {
+        const d = varianData[other] || initVarianData();
+        if ((d.suhuArr || ["","","",""])[idx] === "") updateSuhuArr(other, idx, val);
+      });
+    }
+  };
+
+  const handleRhArrChange = (v, idx, val) => {
+    updateRhArr(v, idx, val);
+    if (v === varianList[0]) {
+      varianList.slice(1).forEach(other => {
+        const d = varianData[other] || initVarianData();
+        if ((d.rhArr || ["","","",""])[idx] === "") updateRhArr(other, idx, val);
+      });
+    }
+  };
+
   const resetForm = () => {
     setStep(1); setTipe(""); setGh(""); setSubmitError(null); setOperator("");
     setVarianData({}); setSubmitProgress({ done: 0, total: 0 });
@@ -124,6 +157,7 @@ export default function Penyiraman() {
   const canNext = () => {
     if (step === 1) return tipe !== "" && gh !== "";
     if (step === 2) {
+      if (operator.trim().length < 2) return false;
       if (isDB) return Object.values(dbData).every(v => v !== "");
       return varianList.every(v => {
         const d = varianData[v];
@@ -133,7 +167,7 @@ export default function Penyiraman() {
         return base && d.suhu !== "" && d.rh !== "";
       });
     }
-    if (step === 3) return operator.trim().length >= 2;
+    if (step === 3) return true;
     return true;
   };
 
@@ -283,6 +317,28 @@ export default function Penyiraman() {
         {/* ══ STEP 2 ══ */}
         {step === 2 && (
           <div>
+            {/* Nama Operator — di paling atas step 2 */}
+            <div style={{ background: "#fff", borderRadius: 12, border: `1.5px solid ${operator.trim().length >= 2 ? "#a5d6a7" : "#e0e0e0"}`, padding: 14, marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#0277bd", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>👤 Nama Operator</div>
+              <input
+                type="text"
+                value={operator}
+                onChange={e => setOperator(e.target.value)}
+                placeholder="Tulis nama lengkap operator..."
+                style={{
+                  width: "100%", padding: "11px 14px",
+                  border: `1.5px solid ${operator.trim().length >= 2 ? "#81c784" : "#e0e0e0"}`,
+                  borderRadius: 10, fontSize: 14, fontWeight: 600,
+                  color: operator.trim().length >= 2 ? "#2e7d32" : "#bbb",
+                  outline: "none", background: "#fff",
+                  boxSizing: "border-box", fontFamily: "inherit",
+                }}
+              />
+              {operator.trim().length > 0 && operator.trim().length < 2 && (
+                <div style={{ fontSize: 11, color: "#e65100", marginTop: 4 }}>Nama minimal 2 karakter</div>
+              )}
+            </div>
+
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
               <div style={{ background: "#e1f5fe", border: "1px solid #81d4fa", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#0277bd", fontWeight: 700 }}>{gh}</div>
               <div style={{ background: "#f5f5f5", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#666" }}>{tipe}</div>
@@ -319,20 +375,25 @@ export default function Penyiraman() {
               return (
                 <div key={v} style={{ background: "#fff", borderRadius: 12, border: `1.5px solid ${ok ? "#a5d6a7" : "#e0e0e0"}`, overflow: "hidden" }}>
                   <div style={{ background: ok ? "#f1f8e9" : "#fafafa", padding: "8px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: ok ? "#2e7d32" : "#0277bd" }}>🌱 {v}</span>
+                    <div>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: ok ? "#2e7d32" : "#0277bd" }}>🌱 {v}</span>
+                      {v === varianList[0] && varianList.length > 1 && (
+                        <span style={{ fontSize: 9, color: "#0277bd", background: "#e1f5fe", border: "1px solid #81d4fa", borderRadius: 20, padding: "1px 6px", marginLeft: 6 }}>auto-fill</span>
+                      )}
+                    </div>
                     {ok ? <span style={{ fontSize: 11 }}>✅</span> : <span style={{ fontSize: 9, color: "#e65100", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 6px" }}>Belum</span>}
                   </div>
                   <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
-                    <Field label="EC In"        value={d.ecIn}       onChange={val => updateVarian(v,"ecIn",val)}       satuan="mS/cm" />
-                    <Field label="EC Out"       value={d.ecOut}      onChange={val => updateVarian(v,"ecOut",val)}      satuan="mS/cm" />
-                    <Field label="pH In"        value={d.phIn}       onChange={val => updateVarian(v,"phIn",val)} />
+                    <Field label="EC In"        value={d.ecIn}       onChange={val => handleVarianChange(v,"ecIn",val)}       satuan="mS/cm" />
+                    <Field label="EC Out"       value={d.ecOut}      onChange={val => updateVarian(v,"ecOut",val)}             satuan="mS/cm" />
+                    <Field label="pH In"        value={d.phIn}       onChange={val => handleVarianChange(v,"phIn",val)} />
                     <Field label="pH Out"       value={d.phOut}      onChange={val => updateVarian(v,"phOut",val)} />
-                    <Field label="Volume"       value={d.volume}     onChange={val => updateVarian(v,"volume",val)}     satuan="ml/tan" />
-                    <Field label="Vol.Nutrisi"  value={d.volNutrisi} onChange={val => updateVarian(v,"volNutrisi",val)} satuan="L" />
+                    <Field label="Volume"       value={d.volume}     onChange={val => handleVarianChange(v,"volume",val)}      satuan="ml/tan" />
+                    <Field label="Vol.Nutrisi"  value={d.volNutrisi} onChange={val => handleVarianChange(v,"volNutrisi",val)}  satuan="L" />
                     {!multiSuhuRH && (
                       <>
-                        <Field label="Suhu" value={d.suhu} onChange={val => updateVarian(v,"suhu",val)} satuan="°C" />
-                        <Field label="RH"   value={d.rh}   onChange={val => updateVarian(v,"rh",val)}   satuan="%" />
+                        <Field label="Suhu" value={d.suhu} onChange={val => handleVarianChange(v,"suhu",val)} satuan="°C" />
+                        <Field label="RH"   value={d.rh}   onChange={val => handleVarianChange(v,"rh",val)}   satuan="%" />
                       </>
                     )}
                     {multiSuhuRH && (
@@ -341,8 +402,8 @@ export default function Penyiraman() {
                         {[0,1,2,3].map(idx => (
                           <div key={idx} style={{ background: "#f9fbe7", border: "1px solid #dce775", borderRadius: 6, padding: "6px 8px", marginBottom: 4 }}>
                             <div style={{ fontSize: 10, fontWeight: 700, color: "#558b2f", marginBottom: 4 }}>Alat {idx+1}</div>
-                            <Field label="Suhu" value={d.suhuArr[idx]} onChange={val => updateSuhuArr(v,idx,val)} satuan="°C" />
-                            <Field label="RH"   value={d.rhArr[idx]}   onChange={val => updateRhArr(v,idx,val)}   satuan="%" />
+                            <Field label="Suhu" value={d.suhuArr[idx]} onChange={val => handleSuhuArrChange(v,idx,val)} satuan="°C" />
+                            <Field label="RH"   value={d.rhArr[idx]}   onChange={val => handleRhArrChange(v,idx,val)}   satuan="%" />
                           </div>
                         ))}
                       </div>
@@ -412,27 +473,7 @@ export default function Penyiraman() {
               </div>
             )}
 
-            {/* Input Nama Operator */}
-            <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#0277bd", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>👤 Nama Operator</div>
-              <input
-                type="text"
-                value={operator}
-                onChange={e => setOperator(e.target.value)}
-                placeholder="Tulis nama lengkap operator..."
-                style={{
-                  width: "100%", padding: "11px 14px",
-                  border: `1.5px solid ${operator.trim().length >= 2 ? "#81c784" : "#e0e0e0"}`,
-                  borderRadius: 10, fontSize: 14, fontWeight: 600,
-                  color: operator.trim().length >= 2 ? "#2e7d32" : "#bbb",
-                  outline: "none", background: "#fff",
-                  boxSizing: "border-box", fontFamily: "inherit",
-                }}
-              />
-              {operator.trim().length > 0 && operator.trim().length < 2 && (
-                <div style={{ fontSize: 11, color: "#e65100", marginTop: 4 }}>Nama minimal 2 karakter</div>
-              )}
-            </div>
+
 
             {submitting && (
               <div style={{ marginBottom: 8 }}>
