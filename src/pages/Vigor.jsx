@@ -725,7 +725,7 @@ export default function Vigor() {
                         {showPolinasi && (
                           <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginTop: showKualitas ? 14 : 0 }}>
                             <div style={{ fontSize: 11, fontWeight: 700, color: "#1565C0", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🌸 Aspek Penilaian Keberhasilan Polinasi</div>
-                            <div style={{ fontSize: 10, color: "#888", marginBottom: 12 }}>Pendataan pada 14 tanaman per varian, terdiri dari 7 tanaman baris depan dan 7 tanaman baris belakang</div>
+                            <div style={{ fontSize: 10, color: "#888", marginBottom: 12 }}>Ambil sampel setelah 10 tanaman depan dan 10 tanaman belakang, hindari tanaman yang terpengaruh variabel luar</div>
 
                             {/* Buah Bajang — 2 kolom */}
                             <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>1. Buah Bajang</div>
