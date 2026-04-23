@@ -1,16 +1,17 @@
 import { useState, useEffect, useRef } from "react";
+import { useDraft } from "../hooks/useDraft";
 import { useAuth } from "../hooks/useAuth";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 
 const SCRIPT_URL = import.meta.env.VITE_GAS_PENYIRAMAN_URL;
 
 const GH_PER_TIPE = {
-  "Drip/Kolam (Tohudan)": [
+  "Kolam (Tohudan)": [
     "TOHUDAN 1","TOHUDAN 2","TOHUDAN 3","TOHUDAN 4","TOHUDAN 5","TOHUDAN 6",
-    "TOHUDAN 7","TOHUDAN 8","TOHUDAN 9","TOHUDAN 10","TOHUDAN 11","TOHUDAN 12",
-    "COLOMADU 1","COLOMADU 2","COLOMADU 3","COLOMADU 4","TOHUDAN 13"
+    "TOHUDAN 7","TOHUDAN 8","TOHUDAN 9","TOHUDAN 10","TOHUDAN 11","TOHUDAN 12","TOHUDAN 13"
   ],
-  "Drip (Bergas)": [
+  "Drip (Tohudan/Bergas)": [
+    "COLOMADU 1","COLOMADU 2","COLOMADU 3","COLOMADU 4",
     "BERGAS 1","BERGAS 2","BERGAS 3","BERGAS 4","BERGAS 5","BERGAS 7","BERGAS 8",
   ],
   "Kolam (Sawahan)": [
@@ -75,10 +76,13 @@ function RekapRow({ label, value, satuan }) {
 export default function Penyiraman() {
   const { user } = useAuth();
 
-  const [step, setStep]         = useState(1);
-  const [tipe, setTipe]         = useState("");
-  const [gh, setGh]             = useState("");
-  const [operator, setOperator]     = useState("");
+  const { getDraft, saveDraft, clearDraft } = useDraft("penyiraman");
+  const _draft = getDraft();
+
+  const [step, setStep]         = useState(_draft?.step     || 1);
+  const [tipe, setTipe]         = useState(_draft?.tipe     || "");
+  const [gh, setGh]             = useState(_draft?.gh       || "");
+  const [operator, setOperator]     = useState(_draft?.operator || "");
   const [submitting, setSubmitting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitProgress, setSubmitProgress] = useState({ done: 0, total: 0 });
@@ -87,8 +91,8 @@ export default function Penyiraman() {
 
   const [refData, setRefData]   = useState({});
   const [loadingRef, setLoadingRef] = useState(true);
-  const [varianData, setVarianData] = useState({});
-  const [dbData, setDbData]     = useState({ ecTandon: "", ecBucket: "", phTandon: "", phBucket: "", doTandon: "", doBucket: "", suhu: "", rh: "", volNutrisi: "" });
+  const [varianData, setVarianData] = useState(_draft?.varianData || {});
+  const [dbData, setDbData]     = useState(_draft?.dbData || { ecTandon: "", ecBucket: "", phTandon: "", phBucket: "", doTandon: "", doBucket: "", suhu: "", rh: "", volNutrisi: "" });
 
   useEffect(() => {
     fetch(`${SCRIPT_URL}?action=getREF`)
@@ -97,6 +101,11 @@ export default function Penyiraman() {
       .catch(() => {})
       .finally(() => setLoadingRef(false));
   }, []);
+
+  useEffect(() => {
+    if (step === 4) return;
+    saveDraft({ step, tipe, gh, operator, varianData, dbData });
+  }, [step, tipe, gh, operator, varianData, dbData]);
 
   const isDB        = isDutchBucket(tipe);
   const multiSuhuRH = isMultiSuhuRH(gh);
@@ -180,6 +189,7 @@ export default function Penyiraman() {
   };
 
   const resetForm = () => {
+    clearDraft();
     setStep(1); setTipe(""); setGh(""); setSubmitError(null); setOperator("");
     setVarianData({}); setSubmitProgress({ done: 0, total: 0 });
     setDbData({ ecTandon: "", ecBucket: "", phTandon: "", phBucket: "", doTandon: "", doBucket: "", suhu: "", rh: "", volNutrisi: "" });
@@ -252,7 +262,7 @@ export default function Penyiraman() {
         return;
       }
     }
-    setStep(4);
+    clearDraft(); setStep(4);
     setSubmitting(false);
   };
 
