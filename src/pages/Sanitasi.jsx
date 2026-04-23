@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useDraft } from "../hooks/useDraft";
 import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
@@ -181,14 +182,17 @@ function VarianBlock({ varian, data, onChange }) {
 
 // ─── App utama ────────────────────────────────────────────────────────────────
 export default function Sanitasi() {
-  const [step, setStep] = useState(1);
+  const { getDraft, saveDraft, clearDraft } = useDraft("sanitasi");
+  const _draft = getDraft();
+
+  const [step, setStep] = useState(_draft?.step || 1);
 
   const { ghData, loading: loadingGH, isDemoMode } = useGHData();
 
-  const [selectedGH, setSelectedGH]     = useState("");
-  const [selectedTipe, setSelectedTipe] = useState("");
-  const [varianData, setVarianData]     = useState({});
-  const [operator, setOperator]         = useState("");
+  const [selectedGH, setSelectedGH]     = useState(_draft?.selectedGH   || "");
+  const [selectedTipe, setSelectedTipe] = useState(_draft?.selectedTipe || "");
+  const [varianData, setVarianData]     = useState(_draft?.varianData   || {});
+  const [operator, setOperator]         = useState(_draft?.operator     || "");
   const [fotoPreview, setFotoPreview]   = useState(null);
   const [fotoFile, setFotoFile]         = useState(null);
   const [fotoUrl, setFotoUrl]           = useState("");
@@ -214,6 +218,11 @@ export default function Sanitasi() {
   );
 
   // ── Load pending count dari IndexedDB ──
+  useEffect(() => {
+    if (step === 4) return;
+    saveDraft({ step, selectedGH, selectedTipe, varianData, operator });
+  }, [step, selectedGH, selectedTipe, varianData, operator]);
+
   const refreshPendingCount = useCallback(async () => {
     try {
       const count = await idbCount(DB_NAME);
@@ -532,6 +541,7 @@ export default function Sanitasi() {
   };
 
   const resetForm = () => {
+    clearDraft();
     setStep(1);
     setSelectedGH("");
     setSelectedTipe("");
