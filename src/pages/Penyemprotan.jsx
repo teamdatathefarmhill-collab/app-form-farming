@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useDraft } from "../hooks/useDraft";
 import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
@@ -163,17 +164,20 @@ function Field({ type="text", value, onChange, placeholder, active, ...rest }) {
 
 // ─── App utama ─────────────────────────────────────────────────────────────────
 export default function Penyemprotan() {
-  const [step, setStep]             = useState("start");
-  const [navHistory, setNavHistory] = useState([]);
+  const { getDraft, saveDraft, clearDraft } = useDraft("penyemprotan");
+  const _draft = getDraft();
 
-  const [activity, setActivity]     = useState("");
-  const [selectedGH, setSelectedGH] = useState("");
-  const [operator, setOperator]     = useState("");
+  const [step, setStep]             = useState(_draft?.step       || "start");
+  const [navHistory, setNavHistory] = useState(_draft?.navHistory || []);
+
+  const [activity, setActivity]     = useState(_draft?.activity   || "");
+  const [selectedGH, setSelectedGH] = useState(_draft?.selectedGH || "");
+  const [operator, setOperator]     = useState(_draft?.operator   || "");
 
   // ── Oles GSB ──
-  const [pestisidaGSB, setPestisidaGSB]     = useState("");
-  const [konsentrasiGSB, setKonsentrasiGSB] = useState("");
-  const [penggunaanGram, setPenggunaanGram] = useState("");
+  const [pestisidaGSB, setPestisidaGSB]     = useState(_draft?.pestisidaGSB   || "");
+  const [konsentrasiGSB, setKonsentrasiGSB] = useState(_draft?.konsentrasiGSB || "");
+  const [penggunaanGram, setPenggunaanGram] = useState(_draft?.penggunaanGram || "");
 
   // ── Pengambilan Pestisida ──
   const [adaPengambilan, setAdaPengambilan] = useState(null);
@@ -189,6 +193,11 @@ export default function Penyemprotan() {
   });
 
   // ── Offline ──
+  useEffect(() => {
+    if (step === "sukses") return;
+    saveDraft({ step, navHistory, activity, selectedGH, operator, pestisidaGSB, konsentrasiGSB, penggunaanGram });
+  }, [step, navHistory, activity, selectedGH, operator, pestisidaGSB, konsentrasiGSB, penggunaanGram]);
+
   const [isOnline, setIsOnline]                 = useState(navigator.onLine);
   const [pendingCount, setPendingCount]         = useState(0);
   const [syncing, setSyncing]                   = useState(false);
@@ -293,6 +302,7 @@ export default function Penyemprotan() {
   };
 
   const resetForm = () => {
+    clearDraft();
     setStep("start"); setNavHistory([]);
     setActivity(""); setSelectedGH(""); setOperator("");
     setPestisidaGSB(""); setKonsentrasiGSB(""); setPenggunaanGram("");
