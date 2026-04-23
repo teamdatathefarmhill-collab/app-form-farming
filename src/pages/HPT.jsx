@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useDraft } from "../hooks/useDraft";
 import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
@@ -154,6 +155,9 @@ export default function HPT() {
 
   const { produksiData, loading: loadingGH, isDemoMode, refetch: fetchGHData } = useGHData();
 
+  // ── Draft persistence ──
+  const { getDraft, saveDraft, clearDraft } = useDraft("hpt");
+
   // Semai data di-fetch langsung dari VITE_GAS_HPT_URL, terpisah dari useGHData
   const [semaiData,      setSemaiData]      = useState({});
   const [loadingSemai,   setLoadingSemai]   = useState(false);
@@ -179,11 +183,12 @@ export default function HPT() {
 
   useEffect(() => { fetchSemaiRef(); }, [fetchSemaiRef]);
 
-  const [selectedGH, setSelectedGH] = useState("");
-  const [activeTab, setActiveTab]   = useState("produksi");
-  const [selectedTipe, setSelectedTipe] = useState("");
-  const [operator, setOperator]     = useState("");
-  const [hptData, setHptData]       = useState(initHPTData());
+  const _draft = getDraft();
+  const [selectedGH, setSelectedGH] = useState(_draft?.selectedGH || "");
+  const [activeTab, setActiveTab]   = useState(_draft?.activeTab   || "produksi");
+  const [selectedTipe, setSelectedTipe] = useState(_draft?.selectedTipe || "");
+  const [operator, setOperator]     = useState(_draft?.operator    || "");
+  const [hptData, setHptData]       = useState(_draft?.hptData     || initHPTData());
   const [syncing, setSyncing]       = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitError, setSubmitError] = useState(null);
@@ -286,9 +291,16 @@ export default function HPT() {
       setHptData(d => ({ ...d, gejalaSemai: { ...d.gejalaSemai, [key]: val } }));
   };
 
+  // Auto-save draft
+  useEffect(() => {
+    if (step === 3) return;
+    saveDraft({ step, selectedGH, activeTab, selectedTipe, operator, hptData });
+  }, [step, selectedGH, activeTab, selectedTipe, operator, hptData]);
+
   const semuaGejalaSemai0 = GEJALA_SEMAI.every(g => !hptData.gejalaSemai[g.key] || hptData.gejalaSemai[g.key] === "0" || hptData.gejalaSemai[g.key] === "");
 
   const resetForm = () => {
+    clearDraft();
     setStep(1); setSelectedGH(""); setOperator(""); setActiveTab("produksi");
     setSelectedTipe("");
     setHptData(initHPTData()); setSyncing(false);
@@ -341,7 +353,7 @@ export default function HPT() {
         await idbAdd(DB_NAME, { gh: selectedGH, tanggal: todayISO, createdAt: Date.now(), payload });
         await refreshPendingCount();
         markSubmitted(selectedGH);
-        setSubmittedToday(getSubmittedToday());
+        clearDraft(); setSubmittedToday(getSubmittedToday());
         setSavedOffline(true);
         setStep(3);
       } catch {
@@ -359,7 +371,7 @@ export default function HPT() {
       const result = await gasFetch(`${SCRIPT_URL}?${params}`);
       if (result?.status === "ok" || result?.success) {
         markSubmitted(selectedGH);
-        setSubmittedToday(getSubmittedToday());
+        clearDraft(); setSubmittedToday(getSubmittedToday());
         setStep(3);
       } else {
         throw new Error(result?.message || "Gagal menyimpan");
