@@ -2,7 +2,7 @@
 // Tombol WhatsApp untuk laporan kesalahan input
 // Taruh di: src/components/WAButton.jsx
 
-const WA_NUMBER = "+6285599322224";
+const WA_NUMBER = import.meta.env.VITE_WA_ADMIN;
 
 export default function WAButton({ operatorName = "", gh = "", tanggal = "" }) {
   const handleClick = () => {
