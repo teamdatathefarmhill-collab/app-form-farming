@@ -10,6 +10,7 @@ import Penyemprotan from "./pages/Penyemprotan";
 import FarmhillLogin from "./components/FarmhillLogin";
 import SOPModal, { isMenuSeen } from "./components/SOPModal";
 import InfoButton from "./components/InfoButton";
+import WAButton from "./components/WAButton";
 import InstallPWA from "./components/InstallPWA";
 import PWAUpdatePrompt from "./components/PWAUpdatePrompt";
 import { useAuth } from "./hooks/useAuth";
@@ -181,6 +182,8 @@ export default function App() {
           {resolvedTab && (
             <InfoButton menuKey={resolvedTab} />
           )}
+          {/* Tombol WA — laporan kesalahan input */}
+          <WAButton />
           <button onClick={logout} style={{ padding: "5px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.15)", background: "transparent", color: "rgba(255,255,255,0.45)", fontSize: 11, cursor: "pointer" }}>
             Logout
           </button>
