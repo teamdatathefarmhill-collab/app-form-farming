@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useDraft } from "../hooks/useDraft";
 import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
@@ -123,15 +124,18 @@ const todayTimestamp = () => new Date().toLocaleString("id-ID");
 
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
 export default function SO() {
-  const [step, setStep]       = useState(1); // 1=pilih GH (accordion), 2=form, 3=sukses
+  const { getDraft, saveDraft, clearDraft } = useDraft("so");
+  const _draft = getDraft();
+
+  const [step, setStep]       = useState(_draft?.step || 1);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const { ghData, loading: loadingRef, isDemoMode, refetch: fetchRefData } = useGHData();
 
   const [openTipe, setOpenTipe] = useState(null); // accordion
-  const [selectedGH, setSelectedGH]     = useState("");
-  const [tableData, setTableData]       = useState([]); // [{baris, varian, populasi, isManual}]
-  const [operator, setOperator]         = useState("");
+  const [selectedGH, setSelectedGH]     = useState(_draft?.selectedGH || "");
+  const [tableData, setTableData]       = useState(_draft?.tableData  || []);
+  const [operator, setOperator]         = useState(_draft?.operator   || "");
 
   const [syncing, setSyncing]           = useState(false);
   const [syncProgress, setSyncProgress] = useState({ done: 0, total: 0 });
@@ -154,6 +158,11 @@ export default function SO() {
     window.addEventListener("offline", off);
     return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
   }, []);
+
+  useEffect(() => {
+    if (step === 3) return;
+    saveDraft({ step, selectedGH, tableData, operator });
+  }, [step, selectedGH, tableData, operator]);
 
   const refreshPendingCount = useCallback(async () => {
     try { setPendingCount(await idbCount(DB_NAME)); } catch { setPendingCount(0); }
@@ -317,7 +326,7 @@ export default function SO() {
         await refreshPendingCount();
         markSubmitted(selectedGH);
         setSubmittedToday(getSubmittedToday());
-        setSavedOffline(true); setStep(3);
+        clearDraft(); setSavedOffline(true); setStep(3);
       } catch { setSubmitError("Gagal menyimpan data offline. Coba lagi."); }
       finally { setSyncing(false); }
       return;
@@ -347,6 +356,7 @@ export default function SO() {
   };
 
   const resetForm = () => {
+    clearDraft();
     setStep(1); setOpenTipe(null); setSelectedGH(""); setTableData([]);
     setOperator(""); setSyncing(false); setSyncProgress({ done: 0, total: 0 });
     setSubmitError(null); setSavedOffline(false);
