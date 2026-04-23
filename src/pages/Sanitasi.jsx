@@ -42,14 +42,14 @@ const TIPE_GH = [
 
 // ─── Kategori sanitasi ────────────────────────────────────────────────────────
 const KATEGORI = [
-  { key: "fisik",    label: "Fisik",    icon: "🌿", color: "#4CAF50", subkategori: ["Patah Tangkai", "Tanpa Pucuk"] },
+  { key: "fisik",    label: "Fisik",    icon: "🌿", color: "#4CAF50", subkategori: ["Patah Tangkai", "Tanpa Pucuk", "Abnormal"] },
   { key: "hama",     label: "Hama",     icon: "🐛", color: "#FF7043", subkategori: [] },
   { key: "keriting", label: "Keriting", icon: "🍃", color: "#FFB300", subkategori: [] },
   { key: "mozaik",   label: "Mozaik",   icon: "🦠", color: "#AB47BC", subkategori: [] },
   { key: "dm",       label: "DM",       icon: "💧", color: "#1E88E5", subkategori: [] },
   { key: "gsb",      label: "GSB",      icon: "⚠️", color: "#E53935", subkategori: [] },
-  { key: "semai",    label: "Semai",    icon: "🌱", color: "#00897B", subkategori: ["Busuk Pangkal Batang", "Layu", "Stunting"] },
-  { key: "buah",     label: "Buah",     icon: "🍅", color: "#F4511E", subkategori: ["Buah Tidak Produktif", "Crack", "Buah Cacar/Peyang"] },
+  { key: "semai",    label: "Semai",    icon: "🌱", color: "#00897B", subkategori: ["Layu", "Stunting"] },
+  { key: "buah",     label: "Buah",     icon: "🍅", color: "#F4511E", subkategori: ["Buah Tidak Produktif", "Crack", "Buah Cacar/Peyang", "Busuk Buah"] },
 ];
 
 const todayLabel = new Date().toLocaleDateString("id-ID", {
