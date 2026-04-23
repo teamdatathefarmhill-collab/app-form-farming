@@ -7,7 +7,22 @@ import FotoSelfie from "../components/FotoSelfie";
 
 const DB_NAME = "SanitasiOfflineDB";
 
-const SCRIPT_URL = import.meta.env.VITE_GAS_SANITASI_URL;
+const SCRIPT_URL     = import.meta.env.VITE_GAS_SANITASI_URL;
+const SCRIPT_HPT_URL = import.meta.env.VITE_GAS_HPT_URL;
+
+const LS_SEMAI_CACHE_KEY = "farmhill_semairef_cache";
+const LS_SEMAI_CACHE_TTL = 1000 * 60 * 30;
+function saveSemaiCache(data) {
+  try { localStorage.setItem(LS_SEMAI_CACHE_KEY, JSON.stringify({ data, savedAt: Date.now() })); } catch {}
+}
+function loadSemaiCache() {
+  try {
+    const raw = localStorage.getItem(LS_SEMAI_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Date.now() - parsed.savedAt < LS_SEMAI_CACHE_TTL ? parsed.data : parsed.data;
+  } catch { return null; }
+}
 const HST_MAKS = 65;
 
 const TIPE_GH = [
@@ -38,9 +53,21 @@ const TIPE_GH = [
       return false;
     },
   },
+  {
+    key: "semai", label: "GH Semai", icon: "🌱", color: "#00897B",
+    pattern: () => false, // ditangani terpisah via semaiData
+  },
 ];
 
 // ─── Kategori sanitasi ────────────────────────────────────────────────────────
+const KATEGORI_SEMAI = [
+  { key: "keriting", label: "Keriting", icon: "🍃", color: "#FFB300", subkategori: [] },
+  { key: "mozaik",   label: "Mozaik",   icon: "🦠", color: "#AB47BC", subkategori: [] },
+  { key: "gsb",      label: "GSB",      icon: "⚠️", color: "#E53935", subkategori: [] },
+  { key: "hama",     label: "Hama",     icon: "🐛", color: "#FF7043", subkategori: [] },
+  { key: "fisik",    label: "Fisik",    icon: "🌿", color: "#4CAF50", subkategori: ["Patah Tangkai", "Tanpa Pucuk", "Abnormal"] },
+];
+
 const KATEGORI = [
   { key: "fisik",    label: "Fisik",    icon: "🌿", color: "#4CAF50", subkategori: ["Patah Tangkai", "Tanpa Pucuk", "Abnormal"] },
   { key: "hama",     label: "Hama",     icon: "🐛", color: "#FF7043", subkategori: [] },
@@ -72,6 +99,18 @@ function totalPerVarian(d = {}) {
   return KATEGORI.reduce((s, k) => s + (parseInt(d[k.key]) || 0), 0);
 }
 
+function initSemaiVarianData(varianList) {
+  const obj = {};
+  varianList.forEach((v) => {
+    obj[v] = { keriting: "", mozaik: "", gsb: "", hama: "", fisik: "", keterangan: "", sub: {} };
+  });
+  return obj;
+}
+
+function totalPerVarianSemai(d = {}) {
+  return KATEGORI_SEMAI.reduce((s, k) => s + (parseInt(d[k.key]) || 0), 0);
+}
+
 function initVarianData(varianList) {
   const obj = {};
   varianList.forEach((v) => {
@@ -87,8 +126,8 @@ function hstColor(hst) {
 }
 
 // ─── Komponen: Block input satu varian ───────────────────────────────────────
-function VarianBlock({ varian, data, onChange }) {
-  const total = totalPerVarian(data);
+function VarianBlock({ varian, data, onChange, kategori = KATEGORI, totalFn = totalPerVarian }) {
+  const total = totalFn(data);
   const needsKet = total === 0 || total > 50;
 
   const handleNum = (key, val) => {
@@ -116,7 +155,7 @@ function VarianBlock({ varian, data, onChange }) {
       {/* Grid angka */}
       <div style={{ padding: "12px 14px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, marginBottom: 12 }}>
-          {KATEGORI.map((k) => (
+          {kategori.map((k) => (
             <div key={k.key}>
               <div style={{ background: data[k.key] > 0 ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.025)", border: `1px solid ${data[k.key] > 0 ? k.color + "55" : "rgba(255,255,255,0.07)"}`, borderRadius: data[k.key] > 0 && k.subkategori.length > 0 ? "9px 9px 0 0" : 9, padding: "7px 10px", display: "flex", alignItems: "center", gap: 7, transition: "all 0.2s" }}>
                 <span style={{ fontSize: 15 }}>{k.icon}</span>
@@ -220,7 +259,7 @@ export default function Sanitasi() {
   // ── Load pending count dari IndexedDB ──
   useEffect(() => {
     if (step === 4) return;
-    saveDraft({ step, selectedGH, selectedTipe, varianData, operator });
+    saveDraft({ step, selectedGH, selectedTipe, varianData, operator, isSemai, selectedRuangSemai });
   }, [step, selectedGH, selectedTipe, varianData, operator]);
 
   const refreshPendingCount = useCallback(async () => {
@@ -316,6 +355,37 @@ export default function Sanitasi() {
     setIsSyncingPending(false);
   }, [sessionKey, refreshPendingCount]);
 
+  // ── Semai ref data ──
+  const [semaiData,    setSemaiData]    = useState({});
+  const [loadingSemai, setLoadingSemai] = useState(false);
+  const [isSemai,      setIsSemai]      = useState(_draft?.isSemai || false);
+  const [selectedRuangSemai, setSelectedRuangSemai] = useState(_draft?.selectedRuangSemai || "");
+
+  const fetchSemaiRef = useCallback(async () => {
+    setLoadingSemai(true);
+    try {
+      const res  = await fetch(`${SCRIPT_HPT_URL}?action=getSemaiRef`);
+      const json = await res.json();
+      if (json?.semai) { setSemaiData(json.semai); saveSemaiCache(json.semai); }
+      else throw new Error("kosong");
+    } catch {
+      const cached = loadSemaiCache();
+      if (cached) setSemaiData(cached);
+    } finally { setLoadingSemai(false); }
+  }, []);
+
+  useEffect(() => { fetchSemaiRef(); }, [fetchSemaiRef]);
+
+  // Ruang semai aktif — key adalah "GH|RuangSemai", value berisi gh, periode, namaSemai, varian[]
+  const semaiAktif = Object.entries(semaiData).map(([gh, info]) => ({
+    key: gh,
+    gh,
+    periode: info.periode,
+    namaSemai: info.namaSemai || "",
+    varian: info.varian || [],
+    tanam: info.tanam,
+  }));
+
   const ghAktif = Object.entries(ghData).filter(([, info]) => {
     if (!info.tanam) return true;
     return hitungHST(info.tanam) <= HST_MAKS;
@@ -323,8 +393,17 @@ export default function Sanitasi() {
   const ghDisembunyikan = Object.keys(ghData).length - ghAktif.length;
 
   const handleSelectGH = (gh) => {
+    setIsSemai(false);
+    setSelectedRuangSemai("");
     setSelectedGH(gh);
     setVarianData(initVarianData(ghData[gh]?.varian || []));
+  };
+
+  const handleSelectSemai = (item) => {
+    setIsSemai(true);
+    setSelectedGH(item.gh);
+    setSelectedRuangSemai(item.key);
+    setVarianData(initSemaiVarianData(item.varian));
   };
 
   const handleVarianChange = (varian, field, val) => {
@@ -332,17 +411,24 @@ export default function Sanitasi() {
   };
 
   const ghInfo     = ghData[selectedGH];
-  const varianList = ghInfo?.varian || [];
-  const hst        = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : null;
+  const semaiInfo  = semaiData[selectedGH];
+  const varianList = isSemai
+    ? (semaiData[selectedGH]?.varian || [])
+    : (ghInfo?.varian || []);
+  const hst        = isSemai
+    ? (semaiInfo?.tanam ? hitungHST(semaiInfo.tanam) : null)
+    : (ghInfo?.tanam ? hitungHST(ghInfo.tanam) : null);
+  const activeKategori = isSemai ? KATEGORI_SEMAI : KATEGORI;
+  const activeTotalFn  = isSemai ? totalPerVarianSemai : totalPerVarian;
 
   const allVarianValid = varianList.every((v) => {
     const d = varianData[v] || {};
-    const total = totalPerVarian(d);
+    const total = activeTotalFn(d);
     const needsKet = total === 0 || total > 50;
     return !needsKet || (d.keterangan || "").trim().length > 0;
   });
   const canProceedStep2  = allVarianValid && operator.trim().length > 0;
-  const totalSemuaVarian = varianList.reduce((s, v) => s + totalPerVarian(varianData[v] || {}), 0);
+  const totalSemuaVarian = varianList.reduce((s, v) => s + activeTotalFn(varianData[v] || {}), 0);
 
   const handleFoto = (e) => {
     const file = e.target.files[0];
@@ -389,7 +475,7 @@ export default function Sanitasi() {
     return varianList.map((varian) => {
       const d = varianData[varian] || {};
       const subKetArr = [];
-      KATEGORI.forEach((k) => {
+      activeKategori.forEach((k) => {
         if (k.subkategori.length > 0 && parseInt(d[k.key]) > 0) {
           k.subkategori.forEach((sub) => {
             const subVal = (d.sub || {})[`${k.key}_${sub}`];
@@ -398,26 +484,24 @@ export default function Sanitasi() {
         }
       });
       const keteranganFinal = [d.keterangan, ...subKetArr].filter(Boolean).join(" | ");
-      return {
+      const basePayload = {
         action: "submitSanitasi",
         client_timestamp,
         tanggal: todayISO,
         gh: selectedGH,
-        periode: ghInfo?.periode || "",
+        tipe: isSemai ? "semai" : "produksi",
+        ruang_semai: isSemai ? selectedRuangSemai : "",
+        periode: isSemai ? (semaiInfo?.periode || "") : (ghInfo?.periode || ""),
         hst: hst ?? "",
         varian,
-        fisik:     d.fisik     || 0,
-        hama:      d.hama      || 0,
-        keriting:  d.keriting  || 0,
-        mozaik:    d.mozaik    || 0,
-        dm:        d.dm        || 0,
-        gsb:       d.gsb       || 0,
-        semai:     d.semai     || 0,
-        buah:      d.buah      || 0,
+        operator: operator || "",
         keterangan: keteranganFinal,
         fotoUrl: "",
-        operator: operator || "",
       };
+      if (isSemai) {
+        return { ...basePayload, keriting: d.keriting || 0, mozaik: d.mozaik || 0, gsb: d.gsb || 0, hama: d.hama || 0, fisik: d.fisik || 0 };
+      }
+      return { ...basePayload, fisik: d.fisik || 0, hama: d.hama || 0, keriting: d.keriting || 0, mozaik: d.mozaik || 0, dm: d.dm || 0, gsb: d.gsb || 0, semai: d.semai || 0, buah: d.buah || 0 };
     });
   };
 
@@ -545,6 +629,8 @@ export default function Sanitasi() {
     setStep(1);
     setSelectedGH("");
     setSelectedTipe("");
+    setIsSemai(false);
+    setSelectedRuangSemai("");
     setVarianData({});
     setOperator("");
     setFotoPreview(null);
@@ -649,7 +735,8 @@ export default function Sanitasi() {
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {TIPE_GH.map(tipe => {
+                {/* Tipe produksi — drip, kolam, dutch */}
+                {TIPE_GH.filter(t => t.key !== "semai").map(tipe => {
                   const ghDiTipe = ghAktif.filter(([gh]) => tipe.pattern(gh));
                   const isOpen   = selectedTipe === tipe.key;
                   return (
@@ -665,7 +752,6 @@ export default function Sanitasi() {
                         </div>
                         <span style={{ fontSize: 14, color: "rgba(255,255,255,0.3)", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "inline-block" }}>▼</span>
                       </button>
-
                       {isOpen && (
                         <div style={{ padding: "10px 12px 14px", borderTop: `1px solid ${tipe.color}22` }}>
                           {ghDiTipe.length === 0 ? (
@@ -675,7 +761,7 @@ export default function Sanitasi() {
                               {ghDiTipe.map(([gh, info]) => {
                                 const hstGH   = info.tanam ? hitungHST(info.tanam) : null;
                                 const col     = hstGH !== null ? hstColor(hstGH) : hstColor(0);
-                                const dipilih = selectedGH === gh;
+                                const dipilih = selectedGH === gh && !isSemai;
                                 return (
                                   <button key={gh} onClick={() => handleSelectGH(gh)} style={{ padding: "10px 10px 8px", borderRadius: 12, cursor: "pointer", textAlign: "center", border: dipilih ? `2px solid ${tipe.color}` : "1px solid rgba(255,255,255,0.09)", background: dipilih ? `${tipe.color}18` : "rgba(255,255,255,0.03)", transition: "all 0.2s", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
                                     <div style={{ fontSize: 13, fontWeight: 700, color: dipilih ? tipe.color : "#fff", lineHeight: 1.2 }}>{gh}</div>
@@ -697,6 +783,56 @@ export default function Sanitasi() {
                     </div>
                   );
                 })}
+
+                {/* Tipe GH Semai — dari semaiData */}
+                {(() => {
+                  const semaiColor = "#00897B";
+                  const isOpen = selectedTipe === "semai";
+                  return (
+                    <div style={{ border: `1.5px solid ${isOpen ? semaiColor + "55" : "rgba(255,255,255,0.1)"}`, borderRadius: 14, overflow: "hidden" }}>
+                      <button onClick={() => setSelectedTipe(isOpen ? "" : "semai")}
+                        style={{ width: "100%", padding: "13px 16px", background: isOpen ? `${semaiColor}15` : "rgba(255,255,255,0.03)", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <span style={{ fontSize: 20 }}>🌱</span>
+                          <div style={{ textAlign: "left" }}>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: isOpen ? semaiColor : "#fff" }}>GH Semai</div>
+                            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 1 }}>
+                              {loadingSemai ? "Memuat..." : `${semaiAktif.length} ruang semai aktif`}
+                            </div>
+                          </div>
+                        </div>
+                        <span style={{ fontSize: 14, color: "rgba(255,255,255,0.3)", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "inline-block" }}>▼</span>
+                      </button>
+                      {isOpen && (
+                        <div style={{ padding: "10px 12px 14px", borderTop: `1px solid ${semaiColor}22` }}>
+                          {loadingSemai ? (
+                            <div style={{ textAlign: "center", padding: 20, color: "rgba(255,255,255,0.3)", fontSize: 13 }}>⏳ Memuat data semai...</div>
+                          ) : semaiAktif.length === 0 ? (
+                            <div style={{ textAlign: "center", padding: 20, color: "rgba(255,255,255,0.3)", fontSize: 13 }}>Tidak ada ruang semai aktif.</div>
+                          ) : (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                              {semaiAktif.map((item) => {
+                                const dipilih = isSemai && selectedRuangSemai === item.key;
+                                return (
+                                  <button key={item.key} onClick={() => handleSelectSemai(item)}
+                                    style={{ padding: "12px 14px", borderRadius: 12, cursor: "pointer", textAlign: "left", border: dipilih ? `2px solid ${semaiColor}` : "1px solid rgba(255,255,255,0.09)", background: dipilih ? `${semaiColor}18` : "rgba(255,255,255,0.03)", transition: "all 0.2s", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                    <div>
+                                      <div style={{ fontSize: 13, fontWeight: 700, color: dipilih ? semaiColor : "#fff" }}>{item.gh}</div>
+                                      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>P{item.periode} · {item.varian?.length || 0} varian</div>
+                                    </div>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                      {dipilih && <span style={{ fontSize: 14 }}>✅</span>}
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -706,15 +842,18 @@ export default function Sanitasi() {
         {step === 2 && (
           <div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+              {isSemai && <div style={{ background: "rgba(0,137,123,0.2)", border: "1px solid rgba(0,137,123,0.4)", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#4DB6AC", fontWeight: 600 }}>🌱 GH Semai</div>}
               <div style={{ background: "rgba(76,175,80,0.2)", border: "1px solid rgba(76,175,80,0.4)", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#81c784", fontWeight: 600 }}>{selectedGH}</div>
-              <div style={{ background: "rgba(255,255,255,0.07)", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "rgba(255,255,255,0.6)" }}>Periode {ghInfo?.periode}</div>
+              <div style={{ background: "rgba(255,255,255,0.07)", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "rgba(255,255,255,0.6)" }}>
+                Periode {isSemai ? semaiInfo?.periode : ghInfo?.periode}
+              </div>
               {hst !== null && (() => {
                 const col = hstColor(hst);
-                return <div style={{ background: col.bg, border: `1px solid ${col.border}`, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: col.text, fontWeight: 700 }}>{hst} HST</div>;
+                return <div style={{ background: col.bg, border: `1px solid ${col.border}`, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: col.text, fontWeight: 700 }}>{hst} HSS</div>;
               })()}
             </div>
 
-            <h2 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px", color: "#fff" }}>Input Sanitasi</h2>
+            <h2 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px", color: "#fff" }}>Input Sanitasi {isSemai ? "Semai" : ""}</h2>
             <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginBottom: 16 }}>Isi data untuk semua {varianList.length} varian sekaligus.</p>
 
             {varianList.map((v) => (
@@ -723,6 +862,8 @@ export default function Sanitasi() {
                 varian={v}
                 data={varianData[v] || {}}
                 onChange={(field, val) => handleVarianChange(v, field, val)}
+                kategori={activeKategori}
+                totalFn={activeTotalFn}
               />
             ))}
 
