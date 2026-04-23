@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useDraft } from "../hooks/useDraft";
 import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
@@ -236,11 +237,15 @@ export default function Vigor() {
 
   const { ghData, loading: loadingGH, isDemoMode } = useGHData();
 
-  const [selectedGH, setSelectedGH]   = useState("");
-  const [selectedHST, setSelectedHST] = useState(null);
-  const [selectedTipe, setSelectedTipe] = useState("");
-  const [varianData, setVarianData]   = useState({});
-  const [operator, setOperator]       = useState("");
+  // ── Draft persistence ──
+  const { getDraft, saveDraft, clearDraft } = useDraft("vigor");
+
+  const _draft = getDraft();
+  const [selectedGH, setSelectedGH]   = useState(_draft?.selectedGH   || "");
+  const [selectedHST, setSelectedHST] = useState(_draft?.selectedHST  || null);
+  const [selectedTipe, setSelectedTipe] = useState(_draft?.selectedTipe || "");
+  const [varianData, setVarianData]   = useState(_draft?.varianData   || {});
+  const [operator, setOperator]       = useState(_draft?.operator     || "");
   const [activeVarian, setActiveVarian] = useState(null);
 
   const [submitting, setSubmitting]   = useState(false);
@@ -257,6 +262,12 @@ export default function Vigor() {
   const [pendingGH, setPendingGH]     = useState("");
   const [pendingCount, setPendingCount]     = useState(0);
   const [isSyncingPending, setIsSyncingPending] = useState(false);
+
+  // Auto-save draft setiap kali state form berubah
+  useEffect(() => {
+    if (step === 3) return; // jangan save state sukses
+    saveDraft({ step, selectedGH, selectedHST, selectedTipe, varianData, operator });
+  }, [step, selectedGH, selectedHST, selectedTipe, varianData, operator]);
 
   const refreshPendingCount = useCallback(async () => {
     try { setPendingCount(await idbCount(DB_NAME)); } catch { setPendingCount(0); }
@@ -381,7 +392,7 @@ export default function Vigor() {
     if (isDemoMode) {
       await new Promise(r => setTimeout(r, 600));
       markSubmitted(selectedGH); setSubmittedToday(getSubmittedToday());
-      setStep(3); setSubmitting(false);
+      clearDraft(); setStep(3); setSubmitting(false);
       return;
     }
 
@@ -390,7 +401,7 @@ export default function Vigor() {
         await idbAdd(DB_NAME, { gh: selectedGH, tanggal: todayISO, createdAt: Date.now(), payloads });
         await refreshPendingCount();
         markSubmitted(selectedGH); setSubmittedToday(getSubmittedToday());
-        setSavedOffline(true); setStep(3);
+        clearDraft(); setSavedOffline(true); setStep(3);
       } catch {
         setSubmitError("Gagal menyimpan data offline. Coba lagi.");
       } finally { setSubmitting(false); }
@@ -427,13 +438,14 @@ export default function Vigor() {
         if (!json.success) throw new Error(json.message || "Gagal menyimpan");
       }
       markSubmitted(selectedGH); setSubmittedToday(getSubmittedToday());
-      setStep(3);
+      clearDraft(); setStep(3);
     } catch (e) {
       setSubmitError(e.message || "Terjadi kesalahan, coba lagi.");
     } finally { setSubmitting(false); }
   };
 
   const resetForm = () => {
+    clearDraft();
     setStep(1); setSelectedGH(""); setOperator(""); setVarianData({});
     setSelectedHST(null); setSelectedTipe(""); setActiveVarian(null); setSubmitting(false);
     setSubmitError(null); setSavedOffline(false);
