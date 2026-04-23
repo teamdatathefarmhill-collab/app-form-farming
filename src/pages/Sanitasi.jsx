@@ -10,7 +10,8 @@ const DB_NAME = "SanitasiOfflineDB";
 const SCRIPT_URL     = import.meta.env.VITE_GAS_SANITASI_URL;
 const SCRIPT_HPT_URL = import.meta.env.VITE_GAS_HPT_URL;
 
-const LS_SEMAI_CACHE_KEY = "farmhill_semairef_cache";
+// v2 — cache key diupdate agar invalidate data lama yang belum ada varian
+const LS_SEMAI_CACHE_KEY = "farmhill_semairef_cache_v2";
 const LS_SEMAI_CACHE_TTL = 1000 * 60 * 30;
 function saveSemaiCache(data) {
   try { localStorage.setItem(LS_SEMAI_CACHE_KEY, JSON.stringify({ data, savedAt: Date.now() })); } catch {}
@@ -20,7 +21,8 @@ function loadSemaiCache() {
     const raw = localStorage.getItem(LS_SEMAI_CACHE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    return Date.now() - parsed.savedAt < LS_SEMAI_CACHE_TTL ? parsed.data : parsed.data;
+    if (Date.now() - parsed.savedAt > LS_SEMAI_CACHE_TTL) return null; // expired → fetch ulang
+    return parsed.data;
   } catch { return null; }
 }
 const HST_MAKS = 65;
