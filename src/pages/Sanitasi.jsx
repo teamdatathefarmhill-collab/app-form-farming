@@ -7,8 +7,7 @@ import FotoSelfie from "../components/FotoSelfie";
 
 const DB_NAME = "SanitasiOfflineDB";
 
-const SCRIPT_URL     = import.meta.env.VITE_GAS_SANITASI_URL;
-const SCRIPT_HPT_URL = import.meta.env.VITE_GAS_HPT_URL;
+const SCRIPT_URL = import.meta.env.VITE_GAS_SANITASI_URL;
 
 // v2 — cache key diupdate agar invalidate data lama yang belum ada varian
 const LS_SEMAI_CACHE_KEY = "farmhill_semairef_cache_v2";
@@ -366,7 +365,7 @@ export default function Sanitasi() {
   const fetchSemaiRef = useCallback(async () => {
     setLoadingSemai(true);
     try {
-      const res  = await fetch(`${SCRIPT_HPT_URL}?action=getSemaiRef`);
+      const res  = await fetch(`${SCRIPT_URL}?action=getSemaiRef`);
       const json = await res.json();
       if (json?.semai) { setSemaiData(json.semai); saveSemaiCache(json.semai); }
       else throw new Error("kosong");
