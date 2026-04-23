@@ -65,11 +65,11 @@ const KATEGORI_SEMAI = [
   { key: "mozaik",   label: "Mozaik",   icon: "🦠", color: "#AB47BC", subkategori: [] },
   { key: "gsb",      label: "GSB",      icon: "⚠️", color: "#E53935", subkategori: [] },
   { key: "hama",     label: "Hama",     icon: "🐛", color: "#FF7043", subkategori: [] },
-  { key: "fisik",    label: "Fisik",    icon: "🌿", color: "#4CAF50", subkategori: ["Patah Tangkai", "Tanpa Pucuk", "Abnormal"] },
+  { key: "fisik",    label: "Fisik",    icon: "🌿", color: "#4CAF50", subkategori: ["Patah Tangkai", "Tanpa Pucuk", "Abnormal","Busuk pangkal & Layu"] },
 ];
 
 const KATEGORI = [
-  { key: "fisik",    label: "Fisik",    icon: "🌿", color: "#4CAF50", subkategori: ["Patah Tangkai", "Tanpa Pucuk", "Abnormal"] },
+  { key: "fisik",    label: "Fisik",    icon: "🌿", color: "#4CAF50", subkategori: ["Patah Tangkai", "Tanpa Pucuk", "Abnormal","Busuk pangkal & Layu"] },
   { key: "hama",     label: "Hama",     icon: "🐛", color: "#FF7043", subkategori: [] },
   { key: "keriting", label: "Keriting", icon: "🍃", color: "#FFB300", subkategori: [] },
   { key: "mozaik",   label: "Mozaik",   icon: "🦠", color: "#AB47BC", subkategori: [] },
