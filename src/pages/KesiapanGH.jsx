@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useDraft } from "../hooks/useDraft";
 import { useAuth } from "../hooks/useAuth";
 import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 import html2canvas from "html2canvas";
@@ -324,10 +325,13 @@ function markSubmittedLocal(key) {
 export default function KesiapanGH() {
   const { user } = useAuth();
 
-  const [step, setStep]           = useState(1);
-  const [tipe, setTipe]           = useState("");
-  const [gh, setGh]               = useState("");
-  const [scores, setScores]       = useState({});
+  const { getDraft, saveDraft, clearDraft } = useDraft("kesiapan");
+  const _draft = getDraft();
+
+  const [step, setStep]           = useState(_draft?.step   || 1);
+  const [tipe, setTipe]           = useState(_draft?.tipe   || "");
+  const [gh, setGh]               = useState(_draft?.gh     || "");
+  const [scores, setScores]       = useState(_draft?.scores || {});
   const [activeAspek, setActiveAspek] = useState("");
   const [submitting, setSubmitting]   = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -355,6 +359,11 @@ export default function KesiapanGH() {
   const totalPct    = maxTotal > 0 ? Math.round((totalBobot / maxTotal) * 100) : 0;
   const status      = statusDariPersen(totalPct);
   const submittedKey = tipe && gh ? `${tipe}__${gh}` : "";
+
+  useEffect(() => {
+    if (step === 4) return;
+    saveDraft({ step, tipe, gh, scores });
+  }, [step, tipe, gh, scores]);
 
   const refreshPendingCount = useCallback(async () => {
     try { setPendingCount(await idbCount(DB_NAME)); } catch { setPendingCount(0); }
@@ -483,7 +492,7 @@ export default function KesiapanGH() {
         await refreshPendingCount();
         markSubmittedLocal(submittedKey);
         setSubmittedToday(prev => [...new Set([...prev, submittedKey])]);
-        setSavedOffline(true); setStep(4);
+        clearDraft(); setSavedOffline(true); setStep(4);
       } catch { setSubmitError("Gagal menyimpan offline. Coba lagi."); }
       finally { setSubmitting(false); }
       return;
@@ -495,7 +504,7 @@ export default function KesiapanGH() {
       if (!json.success) throw new Error(json.error || "GAS error");
       markSubmittedLocal(submittedKey);
       setSubmittedToday(prev => [...new Set([...prev, submittedKey])]);
-      setSavedOffline(false); setStep(4);
+      clearDraft(); setSavedOffline(false); setStep(4);
     } catch (err) {
       setSubmitError("Gagal kirim data. " + err.message);
     } finally {
@@ -504,6 +513,7 @@ export default function KesiapanGH() {
   };
 
   const resetForm = () => {
+    clearDraft();
     setStep(1); setTipe(""); setGh(""); setScores({});
     setActiveAspek(""); setSubmitError(null); setSavedOffline(false);
   };
