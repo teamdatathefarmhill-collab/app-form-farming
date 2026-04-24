@@ -316,16 +316,19 @@ export default function App() {
               <div style={{ fontSize: 17, fontWeight: 800, color: "#1b5e20", marginBottom: 4 }}>Ada Pembaruan Aplikasi!</div>
               <div style={{ fontSize: 12, color: "#aaa" }}>Ada perubahan sejak terakhir kamu buka</div>
             </div>
-            <div style={{ background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 10, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#e65100", lineHeight: 1.5 }}>
-              ⚠️ Pastikan sudah <strong>reload halaman</strong> atau <strong>logout lalu login ulang</strong> supaya semua perubahan aktif dengan benar.
+            <div style={{ background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 10, padding: "10px 14px", marginBottom: 12, fontSize: 12, color: "#e65100", lineHeight: 1.5 }}>
+              ⚠️ Aplikasi akan <strong>reload otomatis</strong> untuk menerapkan perubahan terbaru.
+            </div>
+            <div style={{ background: "#f5f5f5", borderRadius: 10, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#666", lineHeight: 1.6 }}>
+              Jika setelah reload tidak ada perubahan, hubungi team melalui icon <strong>WhatsApp 💬</strong> di pojok kanan atas.
             </div>
             <button
               onClick={() => {
                 localStorage.setItem(APP_VERSION_KEY, BUILD_ID);
-                setShowUpdateNotif(false);
+                window.location.reload();
               }}
               style={{ width: "100%", padding: 13, border: "none", borderRadius: 12, background: "linear-gradient(135deg,#1b5e20,#2e7d32)", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-              Oke, Sudah Paham ✓
+              Reload Sekarang 🔄
             </button>
           </div>
         </div>
