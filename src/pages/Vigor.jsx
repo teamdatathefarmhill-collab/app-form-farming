@@ -8,16 +8,6 @@ import FotoSelfie from "../components/FotoSelfie";
 const DB_NAME    = "VigorOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_VIGOR_URL;
 
-// ─── Versi App — naikkan setiap ada perubahan form/menu ───────────────────────
-const APP_VERSION     = "1.1.0";
-const APP_VERSION_KEY = "vigor_app_version";
-const APP_CHANGELOG   = [
-  "Revisi label Warna Akar: sekarang lebih deskriptif (Mati/Busuk & Sehat)",
-  "Revisi opsi Netting Buah HST 45: persentase diperbarui sesuai standar baru",
-  "Teks panduan sampling disesuaikan per tipe GH (Kolam & Dutch Bucket)",
-  "Keterangan lebar daun kini dinamis sesuai HST (daun ke-4, ke-7, ke-11)",
-];
-
 const HST_MIN = 5;
 const HST_MAX = 60;
 const HST_CHECKPOINTS = [7, 14, 18, 33, 38, 45, 54];
@@ -272,21 +262,12 @@ export default function Vigor() {
   const [pendingGH, setPendingGH]     = useState("");
   const [pendingCount, setPendingCount]     = useState(0);
   const [isSyncingPending, setIsSyncingPending] = useState(false);
-  const [showUpdateNotif, setShowUpdateNotif] = useState(false);
 
   // Auto-save draft setiap kali state form berubah
   useEffect(() => {
     if (step === 3) return; // jangan save state sukses
     saveDraft({ step, selectedGH, selectedHST, selectedTipe, varianData, operator });
   }, [step, selectedGH, selectedHST, selectedTipe, varianData, operator]);
-
-  // Cek versi app — tampilkan notif kalau ada update
-  useEffect(() => {
-    const savedVersion = localStorage.getItem(APP_VERSION_KEY);
-    if (savedVersion !== APP_VERSION) {
-      setShowUpdateNotif(true);
-    }
-  }, []);
 
   const refreshPendingCount = useCallback(async () => {
     try { setPendingCount(await idbCount(DB_NAME)); } catch { setPendingCount(0); }
@@ -507,39 +488,6 @@ export default function Vigor() {
           })}
         </div>
       </div>
-
-      {/* Update Notification Modal */}
-      {showUpdateNotif && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <div style={{ background: "#fff", borderRadius: 20, padding: 24, maxWidth: 360, width: "100%", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
-            <div style={{ textAlign: "center", marginBottom: 16 }}>
-              <div style={{ fontSize: 40, marginBottom: 8 }}>🔔</div>
-              <div style={{ fontSize: 17, fontWeight: 800, color: "#1b5e20", marginBottom: 4 }}>Ada Pembaruan Aplikasi!</div>
-              <div style={{ fontSize: 12, color: "#aaa", marginBottom: 16 }}>Versi {APP_VERSION}</div>
-            </div>
-            <div style={{ background: "#f4f7f4", borderRadius: 12, padding: "12px 14px", marginBottom: 18 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#388e3c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Yang berubah:</div>
-              {APP_CHANGELOG.map((item, i) => (
-                <div key={i} style={{ display: "flex", gap: 8, marginBottom: i < APP_CHANGELOG.length - 1 ? 6 : 0, alignItems: "flex-start" }}>
-                  <span style={{ color: "#4CAF50", fontWeight: 700, flexShrink: 0, marginTop: 1 }}>•</span>
-                  <span style={{ fontSize: 12, color: "#555", lineHeight: 1.5 }}>{item}</span>
-                </div>
-              ))}
-            </div>
-            <div style={{ fontSize: 12, color: "#888", textAlign: "center", marginBottom: 16, lineHeight: 1.5 }}>
-              Pastikan lu sudah <strong>reload halaman</strong> atau <strong>logout lalu login ulang</strong> supaya perubahan ini aktif.
-            </div>
-            <button
-              onClick={() => {
-                localStorage.setItem(APP_VERSION_KEY, APP_VERSION);
-                setShowUpdateNotif(false);
-              }}
-              style={{ width: "100%", padding: 13, border: "none", borderRadius: 12, background: "linear-gradient(135deg,#1b5e20,#2e7d32)", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-              Oke, Sudah Reload ✓
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Warning modal */}
       {showWarning && (
