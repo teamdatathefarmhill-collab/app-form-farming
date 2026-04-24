@@ -98,7 +98,7 @@ const WARNA_DAUN_OPTIONS = [
 ];
 
 // ─── Aspek Perakaran ──────────────────────────────────────────────────────────
-const WARNA_AKAR_OPTIONS  = ["Akar Coklat", "Akar Putih Bersih"];
+const WARNA_AKAR_OPTIONS  = ["Akar Coklat (Mati/Busuk)", "Akar Putih Bersih / Akar Coklat Sehat"];
 const VOLUME_AKAR_OPTIONS = ["Tidak Ada Akar", "Volume Akar Sedikit", "Volume Akar Banyak"];
 
 // ─── Aspek Kualitas Buah (HST > 30) ──────────────────────────────────────────
@@ -136,8 +136,8 @@ const KESEGARAN_OPTIONS = ["Layu", "Lemas", "Segar"];
 // ─── Aspek Kualitas Buah tambahan ────────────────────────────────────────────
 // HST 45 — Netting Buah (2 pilihan)
 const NETTING_BUAH_45_OPTIONS = [
-  "Varian MD, EL, SS < 20% tanaman sudah mulai netting SG, GR, dll sudah < 90% netting",
-  "Varian MD, EL, SS 20% tanaman sudah mulai netting SG, GR, dll sudah 90% - 100% netting",
+  "Varian MD, EL, SS <10% tanaman mulai netting ; SG, GR, dll <80% netting",
+  "Varian MD, EL, SS 10% tanaman sudah mulai netting ; SG, GR, dll 80% - 100% netting",
 ];
 
 // HST 54 — Netting Buah crack basah (3 pilihan)
@@ -679,13 +679,26 @@ export default function Vigor() {
 
                         {/* === ASPEK VIGOR === */}
                         <div style={{ fontSize: 11, fontWeight: 700, color: "#388e3c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>🌿 Aspek Vigor Tanaman</div>
-                        <div style={{ fontSize: 10, color: "#888", marginBottom: 4 }}>Ambil sampel setelah 10 tanaman depan dan 10 tanaman belakang, hindari tanaman yang terpengaruh variabel luar</div>
+                        {(() => {
+                          const tipeGH = TIPE_GH.find(t => t.pattern(selectedGH));
+                          let samplingText = "";
+                          if (tipeGH?.key === "kolam") {
+                            samplingText = "Sistem Kolam: ambil mulai dari tanaman ke-16 dari baris depan sejumlah 7 tanaman, dan ke-16 dari baris belakang sejumlah 7 tanaman (total 14 tanaman)";
+                          } else if (tipeGH?.key === "dutch") {
+                            samplingText = "Sistem DB: ambil mulai dari bucket/polybag ke-16 dari baris depan sejumlah 7 tanaman, dan ke-16 dari baris belakang sejumlah 7 tanaman (total 14 tanaman)";
+                          } else {
+                            samplingText = "Ambil sampel setelah 10 tanaman depan dan 10 tanaman belakang, hindari tanaman yang terpengaruh variabel luar";
+                          }
+                          return <div style={{ fontSize: 10, color: "#888", marginBottom: 4 }}>{samplingText}</div>;
+                        })()}
 
                         {/* Lebar Daun — hanya HST 7, 14, 18, 33 */}
                         {showLebarDiameter && (
                           <div style={{ marginBottom: 14 }}>
                             <div style={{ fontSize: 12, color: "#555", marginBottom: 4, fontWeight: 600 }}>1. Lebar Daun (cm)</div>
-                            <div style={{ fontSize: 11, color: "#aaa", marginBottom: 8 }}>Dilakukan pada daun ke-4</div>
+                            <div style={{ fontSize: 11, color: "#aaa", marginBottom: 8 }}>
+                              {selectedHST === 7 ? "Dilakukan pada daun ke-4" : selectedHST === 14 ? "Dilakukan pada daun ke-7" : selectedHST === 18 ? "Dilakukan pada daun ke-11" : "Dilakukan pada daun ke-4"}
+                            </div>
                             <PilihOpsi options={lebarDaunOptions} value={d.lebarDaun} onChange={val => updateVarian(varian, "lebarDaun", val)} color="#2e7d32" cols={3} />
                           </div>
                         )}
