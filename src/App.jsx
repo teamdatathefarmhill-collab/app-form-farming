@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import Sanitasi from "./pages/Sanitasi";
-import HPT from "./pages/HPT";
-import Gramasi from "./pages/Gramasi";
-import Vigor from "./pages/Vigor";
-import KesiapanGH from "./pages/KesiapanGH";
-import Penyiraman from "./pages/Penyiraman";
-import SO from "./pages/SO";
+import Sanitasi     from "./pages/Sanitasi";
+import HPT          from "./pages/HPT";
+import Gramasi      from "./pages/Gramasi";
+import Vigor        from "./pages/Vigor";
+import KesiapanGH   from "./pages/KesiapanGH";
+import Penyiraman   from "./pages/Penyiraman";
+import SO           from "./pages/SO";
 import Penyemprotan from "./pages/Penyemprotan";
 import FarmhillLogin from "./components/FarmhillLogin";
 import SOPModal, { isMenuSeen } from "./components/SOPModal";
@@ -14,6 +14,12 @@ import WAButton from "./components/WAButton";
 import InstallPWA from "./components/InstallPWA";
 import PWAUpdatePrompt from "./components/PWAUpdatePrompt";
 import { useAuth } from "./hooks/useAuth";
+
+// ─── Build ID — di-inject otomatis oleh Vite saat build ──────────────────────
+// Setiap ada file yang berubah dan di-build ulang, BUILD_ID otomatis berubah.
+// Operator akan dapat notif "ada pembaruan" tanpa perlu nulis apapun manual.
+const BUILD_ID        = import.meta.env.VITE_APP_BUILD_ID ?? "dev";
+const APP_VERSION_KEY = "farmhill_build_id";
 
 // Sub-menu HPT — key harus match kolom di REF OPERATOR
 const HPT_SUBMENU = [
@@ -39,6 +45,7 @@ export default function App() {
   const [hptOpen, setHptOpen]         = useState(false);
   const [sopMenuKey, setSopMenuKey]   = useState(null);
   const [isOnline, setIsOnline]       = useState(navigator.onLine);
+  const [showUpdateNotif, setShowUpdateNotif] = useState(false);
   const hptRef                        = useRef(null);
 
   useEffect(() => {
@@ -81,6 +88,15 @@ export default function App() {
       setSopMenuKey(firstTab);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn]);
+
+  // Cek build ID setelah login — tampilkan notif kalau ada update sejak terakhir buka
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const savedBuildId = localStorage.getItem(APP_VERSION_KEY);
+    if (savedBuildId !== BUILD_ID) {
+      setShowUpdateNotif(true);
+    }
   }, [isLoggedIn]);
 
   if (!isLoggedIn) {
@@ -290,6 +306,30 @@ export default function App() {
           );
         })}
       </div>
+
+      {/* Update Notification Modal */}
+      {showUpdateNotif && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div style={{ background: "#fff", borderRadius: 20, padding: 24, maxWidth: 360, width: "100%", boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}>
+            <div style={{ textAlign: "center", marginBottom: 16 }}>
+              <div style={{ fontSize: 40, marginBottom: 8 }}>🔔</div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: "#1b5e20", marginBottom: 4 }}>Ada Pembaruan Aplikasi!</div>
+              <div style={{ fontSize: 12, color: "#aaa" }}>Ada perubahan sejak terakhir kamu buka</div>
+            </div>
+            <div style={{ background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 10, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#e65100", lineHeight: 1.5 }}>
+              ⚠️ Pastikan sudah <strong>reload halaman</strong> atau <strong>logout lalu login ulang</strong> supaya semua perubahan aktif dengan benar.
+            </div>
+            <button
+              onClick={() => {
+                localStorage.setItem(APP_VERSION_KEY, BUILD_ID);
+                setShowUpdateNotif(false);
+              }}
+              style={{ width: "100%", padding: 13, border: "none", borderRadius: 12, background: "linear-gradient(135deg,#1b5e20,#2e7d32)", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+              Oke, Sudah Paham ✓
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* SOP Modal — muncul otomatis pertama kali buka menu */}
       {sopMenuKey && (
