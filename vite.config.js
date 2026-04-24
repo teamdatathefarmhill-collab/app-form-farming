@@ -1,8 +1,34 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+import { createHash } from "crypto";
+import { readFileSync, readdirSync } from "fs";
+import { join } from "path";
+
+// Baca semua file di folder secara rekursif pakai Node built-in — tanpa package tambahan
+function getFilesRecursive(dir) {
+  const entries = readdirSync(dir, { withFileTypes: true });
+  return entries.flatMap(e =>
+    e.isDirectory()
+      ? getFilesRecursive(join(dir, e.name))
+      : join(dir, e.name)
+  ).filter(f => /\.(jsx|js|ts|tsx)$/.test(f)).sort();
+}
+
+// Hash semua file di src/pages — otomatis berubah setiap ada file yang diubah & di-build
+function getBuildId() {
+  const files = getFilesRecursive("src/pages");
+  const hash  = createHash("md5");
+  for (const file of files) {
+    hash.update(readFileSync(file));
+  }
+  return hash.digest("hex").slice(0, 10);
+}
 
 export default defineConfig({
+  define: {
+    "import.meta.env.VITE_APP_BUILD_ID": JSON.stringify(getBuildId()),
+  },
   plugins: [
     react(),
     VitePWA({
