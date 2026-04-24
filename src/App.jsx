@@ -23,18 +23,18 @@ const APP_VERSION_KEY = "farmhill_build_id";
 
 // Sub-menu HPT — key harus match kolom di REF OPERATOR
 const HPT_SUBMENU = [
-  { key: "so",           label: "SO",           icon: "clipboard-list", component: SO           },
-  { key: "penyemprotan", label: "Penyemprotan", icon: "spray-can", component: Penyemprotan },
-  { key: "sanitasi",     label: "Sanitasi",     icon: "shield-check", component: Sanitasi     },
-  { key: "hpt",          label: "HPT",          icon: "bug", component: HPT          },
+  { key: "so",           label: "SO",           icon: "📑", component: SO           },
+  { key: "penyemprotan", label: "Penyemprotan", icon: "🧴", component: Penyemprotan },
+  { key: "sanitasi",     label: "Sanitasi",     icon: "🛡️", component: Sanitasi     },
+  { key: "hpt",          label: "HPT",          icon: "🐛", component: HPT          },
 ];
 
 // Menu standalone (bukan bagian HPT)
 const STANDALONE_TABS = [
-  { key: "gramasi",    label: "Gramasi",    icon: "scale",  color: "#1E88E5", component: Gramasi    },
-  { key: "penyiraman", label: "Penyiraman", icon: "droplets",  color: "#0277bd", component: Penyiraman },
-  { key: "vigor",      label: "Vigor",      icon: "leaf",  color: "#43A047", component: Vigor      },
-  { key: "kesiapan",   label: "Kesiapan",   icon: "check-circle",  color: "#00897B", component: KesiapanGH },
+  { key: "gramasi",    label: "Gramasi",    icon: "⚖️",  color: "#1E88E5", component: Gramasi    },
+  { key: "penyiraman", label: "Penyiraman", icon: "💧",  color: "#0277bd", component: Penyiraman },
+  { key: "vigor",      label: "Vigor",      icon: "🌿",  color: "#43A047", component: Vigor      },
+  { key: "kesiapan",   label: "Kesiapan",   icon: "✅",  color: "#00897B", component: KesiapanGH },
 ];
 
 const HPT_COLOR = "#FF7043";
