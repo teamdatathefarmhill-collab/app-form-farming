@@ -8,6 +8,14 @@ import FotoSelfie from "../components/FotoSelfie";
 const DB_NAME    = "VigorOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_VIGOR_URL;
 
+// ─── Changelog — tambah item baru di sini setiap ada revisi ──────────────────
+export const CHANGELOG = [
+  "Revisi label Warna Akar: sekarang lebih deskriptif (Mati/Busuk & Sehat)",
+  "Revisi opsi Netting Buah HST 45: persentase diperbarui sesuai standar baru",
+  "Panduan sampling: teks disesuaikan per tipe GH (Kolam & Dutch Bucket)",
+  "Keterangan lebar daun: kini dinamis sesuai HST (daun ke-4, ke-7, ke-11)",
+];
+
 const HST_MIN = 5;
 const HST_MAX = 60;
 const HST_CHECKPOINTS = [7, 14, 18, 33, 38, 45, 54];
@@ -147,6 +155,12 @@ const NETTING_BUAH_54_OPTIONS = [
   "Varian bernet crack terbuka (crack basah) < 20 tanaman",
 ];
 
+// HST 54 — Netting 50% (2 pilihan tambahan)
+const NETTING_50_54_OPTIONS = [
+  "Varian MD, EL, SS < 80% tanaman sudah mencapai netting 50%",
+  "Varian MD, EL, SS 80% atau 150 tanaman sudah mencapai netting 50%",
+];
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function hitungHST(tgl) {
   const [y, m, d] = tgl.split("-").map(Number);
@@ -176,12 +190,13 @@ function initVarianData(varianList) {
       panjangTunasAir:  "",
       kesegaran:        "",
       nettingBuah:      "",
+      netting50:        "",
     };
   });
   return obj;
 }
 
-function isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNetting, showLebarDiameter, showSimetri) {
+function isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNetting, showNetting50, showLebarDiameter, showSimetri) {
   if (showLebarDiameter && (d.lebarDaun === "" || d.diameterBatang === "")) return false;
   if (d.warnaDaun === "" || d.warnaAkar === "" || d.volumeAkar === "") return false;
   if (showKualitas && showSimetri && d.simetriBuah === "") return false;
@@ -189,6 +204,7 @@ function isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNettin
   if (showPolinasi  && (d.buahBajang === "" || d.panjangTunasAir === "")) return false;
   if (showKesegaran && d.kesegaran === "") return false;
   if (showNetting   && d.nettingBuah === "") return false;
+  if (showNetting50 && d.netting50 === "") return false;
   return true;
 }
 
@@ -342,6 +358,7 @@ export default function Vigor() {
   const showPolinasi      = selectedHST === 18;
   const showKesegaran     = selectedHST === 38 || selectedHST === 45 || selectedHST === 54;
   const showNetting       = selectedHST === 45 || selectedHST === 54;
+  const showNetting50     = selectedHST === 54;
 
   // Tentukan pilihan lebar daun dan diameter sesuai HST
   const lebarDaunOptions = selectedHST === 14 ? LEBAR_DAUN_14_OPTIONS
@@ -350,7 +367,7 @@ export default function Vigor() {
                          : LEBAR_DAUN_7_OPTIONS;
   const diameterOptions  = selectedHST === 33 ? DIAMETER_33_OPTIONS : DIAMETER_7_14_OPTIONS;
 
-  const filledCount = varianList.filter(v => isVarianFilled(varianData[v] || {}, showKualitas, showPolinasi, showKesegaran, showNetting, showLebarDiameter, showSimetri)).length;
+  const filledCount = varianList.filter(v => isVarianFilled(varianData[v] || {}, showKualitas, showPolinasi, showKesegaran, showNetting, showNetting50, showLebarDiameter, showSimetri)).length;
   const allFilled   = varianList.length > 0 && filledCount === varianList.length;
   const canSubmit   = allFilled && operator.trim().length > 0;
 
@@ -377,8 +394,9 @@ export default function Vigor() {
         cabang_buah:        showSimetri   ? (d.cabangBuah       || "") : "",
         buah_bajang:        showPolinasi  ? (d.buahBajang       || "") : "",
         panjang_tunas_air:  showPolinasi  ? (d.panjangTunasAir || "") : "",
-        kesegaran:          showKesegaran ? (d.kesegaran        || "") : "",
-        netting_buah:       showNetting   ? (d.nettingBuah      || "") : "",
+        kesegaran:          showKesegaran  ? (d.kesegaran        || "") : "",
+        netting_buah:       showNetting    ? (d.nettingBuah      || "") : "",
+        netting_50:         showNetting50  ? (d.netting50        || "") : "",
         selfie_url:         "",
       };
     });
@@ -655,7 +673,7 @@ export default function Vigor() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
               {varianList.map((varian, i) => {
                 const d      = varianData[varian] || {};
-                const filled = isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNetting, showLebarDiameter, showSimetri);
+                const filled = isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNetting, showNetting50, showLebarDiameter, showSimetri);
                 const isOpen = activeVarian === varian;
 
                 return (
@@ -841,6 +859,26 @@ export default function Vigor() {
                                 return (
                                   <button key={idx} onClick={() => updateVarian(varian, "nettingBuah", opt)}
                                     style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#AD1457" : "#e0e0e0"}`, background: active ? "#FCE4EC" : "#fff", color: active ? "#AD1457" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, transition: "all 0.15s", lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 8 }}>
+                                    <span style={{ flexShrink: 0, marginTop: 1 }}>{active ? "●" : "○"}</span>
+                                    <span>{opt}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* === NETTING 50% (HST 54 saja) === */}
+                        {showNetting50 && (
+                          <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginTop: 14 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "#6A1B9A", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🍈 Netting 50%</div>
+                            <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>Pencapaian Netting 50%</div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
+                              {NETTING_50_54_OPTIONS.map((opt, idx) => {
+                                const active = d.netting50 === opt;
+                                return (
+                                  <button key={idx} onClick={() => updateVarian(varian, "netting50", opt)}
+                                    style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#6A1B9A" : "#e0e0e0"}`, background: active ? "#F3E5F5" : "#fff", color: active ? "#6A1B9A" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, transition: "all 0.15s", lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 8 }}>
                                     <span style={{ flexShrink: 0, marginTop: 1 }}>{active ? "●" : "○"}</span>
                                     <span>{opt}</span>
                                   </button>
