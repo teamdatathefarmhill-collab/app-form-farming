@@ -11,7 +11,7 @@ const HST_MIN = 30;
 const HST_MAX = 55;
 
 
-// ─── localStorage helpers ─────────────────────────────────────────────────────
+// ─── localStorage helpers (cache lokal, fallback offline) ─────────────────────
 const LS_KEY = `gramasi_${new Date().toLocaleDateString("id-ID")}`;
 function getSubmittedToday() {
   try { return JSON.parse(localStorage.getItem(LS_KEY) || "[]"); }
@@ -20,6 +20,13 @@ function getSubmittedToday() {
 function markSubmitted(gh) {
   const list = getSubmittedToday();
   if (!list.includes(gh)) localStorage.setItem(LS_KEY, JSON.stringify([...list, gh]));
+}
+function mergeSubmitted(serverList) {
+  // Gabungin data server + cache lokal, simpan balik ke localStorage
+  const local = getSubmittedToday();
+  const merged = [...new Set([...serverList, ...local])];
+  localStorage.setItem(LS_KEY, JSON.stringify(merged));
+  return merged;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -71,6 +78,25 @@ export default function Gramasi() {
   const [submittedToday, setSubmittedToday] = useState(getSubmittedToday());
   const [showWarning, setShowWarning]       = useState(false);
   const [pendingGH, setPendingGH]           = useState("");
+  const [loadingSubmitted, setLoadingSubmitted] = useState(false);
+
+  // ── Fetch GH yang sudah disubmit hari ini dari server (cross-device) ──
+  const fetchSubmittedToday = useCallback(async () => {
+    if (!isOnline || isDemoMode) return;
+    setLoadingSubmitted(true);
+    try {
+      const res = await fetch(`${SCRIPT_URL}?action=getSubmittedToday`, { redirect: "follow" });
+      const data = await res.json();
+      if (Array.isArray(data.submitted)) {
+        const merged = mergeSubmitted(data.submitted);
+        setSubmittedToday(merged);
+      }
+    } catch {
+      // Gagal fetch — pakai cache lokal saja, nggak perlu error
+    } finally {
+      setLoadingSubmitted(false);
+    }
+  }, [isOnline, isDemoMode]);
 
   // ── Offline state ──
   const [pendingCount, setPendingCount]         = useState(0);
@@ -91,6 +117,11 @@ export default function Gramasi() {
   }, []);
 
   useEffect(() => { refreshPendingCount(); }, [refreshPendingCount]);
+
+  // ── Fetch submitted hari ini dari server saat step 1 & saat online ──
+  useEffect(() => {
+    if (step === 1) fetchSubmittedToday();
+  }, [step, fetchSubmittedToday]);
 
   useEffect(() => {
     const on  = () => setIsOnline(true);
@@ -349,7 +380,12 @@ export default function Gramasi() {
         {step === 1 && (
           <div>
             <div style={{ fontWeight: 700, fontSize: 18, color: "#1b5e20", marginBottom: 4 }}>Pilih Greenhouse</div>
-            <div style={{ fontSize: 12, color: "#888", marginBottom: 14 }}>GH aktif dengan HST {HST_MIN}–{HST_MAX} hari</div>
+            <div style={{ fontSize: 12, color: "#888", marginBottom: 14, display: "flex", alignItems: "center", gap: 6 }}>
+              GH aktif dengan HST {HST_MIN}–{HST_MAX} hari
+              {loadingSubmitted && (
+                <span style={{ fontSize: 10, color: "#aaa", background: "#f5f5f5", borderRadius: 20, padding: "2px 8px" }}>🔄 cek status GH...</span>
+              )}
+            </div>
 
             {isDemoMode && (
               <div style={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 10, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
