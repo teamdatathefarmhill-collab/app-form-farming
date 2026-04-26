@@ -424,7 +424,7 @@ export default function Gramasi() {
               <div style={{ height: "100%", borderRadius: 4, background: "#4CAF50", width: `${tableData.length > 0 ? (filledCount / tableData.length) * 100 : 0}%`, transition: "width 0.3s" }} />
             </div>
 
-            {/* Operator — dipindah ke atas */}
+            {/* Operator — di atas tabel */}
             <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 11, color: "#388e3c", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
                 👤 Nama Operator <span style={{ color: "#e53935" }}>*</span>
@@ -434,19 +434,6 @@ export default function Gramasi() {
                 onChange={e => setOperator(e.target.value)}
                 placeholder="Tulis nama lengkap..."
                 style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: "#fff", border: `1.5px solid ${operator.trim() ? "#81c784" : "#e0e0e0"}`, borderRadius: 10, color: "#333", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
-              />
-            </div>
-
-            {/* Keterangan (opsional) */}
-            <div style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 11, color: "#388e3c", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
-                📝 Keterangan <span style={{ fontSize: 10, color: "#aaa", textTransform: "none", letterSpacing: 0, fontWeight: 400 }}>— opsional</span>
-              </label>
-              <input
-                type="text" value={keterangan}
-                onChange={e => setKeterangan(e.target.value)}
-                placeholder="Contoh: ganti sampel dari kemarin, baris C rusak..."
-                style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: "#fff", border: `1.5px solid ${keterangan.trim() ? "#81c784" : "#e0e0e0"}`, borderRadius: 10, color: "#333", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
               />
             </div>
 
@@ -493,6 +480,19 @@ export default function Gramasi() {
                 ⚠️ {tableData.length - filledCount} baris belum lengkap (perlu 3 sampel)
               </div>
             )}
+
+            {/* Keterangan (opsional) — di bawah tabel */}
+            <div style={{ marginBottom: 12, marginTop: 4 }}>
+              <label style={{ fontSize: 11, color: "#388e3c", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
+                📝 Keterangan <span style={{ fontSize: 10, color: "#aaa", textTransform: "none", letterSpacing: 0, fontWeight: 400 }}>— opsional</span>
+              </label>
+              <input
+                type="text" value={keterangan}
+                onChange={e => setKeterangan(e.target.value)}
+                placeholder="Contoh: ganti sampel dari kemarin, baris C rusak..."
+                style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: "#fff", border: `1.5px solid ${keterangan.trim() ? "#81c784" : "#e0e0e0"}`, borderRadius: 10, color: "#333", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+              />
+            </div>
 
             {submitError && (
               <div style={{ fontSize: 12, color: "#c62828", background: "#ffebee", border: "1px solid #ef9a9a", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
