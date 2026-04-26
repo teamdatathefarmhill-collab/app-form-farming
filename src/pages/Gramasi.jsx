@@ -61,6 +61,7 @@ export default function Gramasi() {
   const [selectedGH, setSelectedGH]     = useState(_draft?.selectedGH || "");
   const [tableData, setTableData]       = useState(_draft?.tableData  || []);
   const [operator, setOperator]         = useState(_draft?.operator   || "");
+  const [keterangan, setKeterangan]     = useState(_draft?.keterangan || "");
   const [syncing, setSyncing]           = useState(false);
   const [syncProgress, setSyncProgress] = useState({ done: 0, total: 0 });
   const [submitError, setSubmitError]   = useState(null);
@@ -77,7 +78,7 @@ export default function Gramasi() {
 
   useEffect(() => {
     if (step === 3) return;
-    saveDraft({ step, selectedGH, tableData, operator });
+    saveDraft({ step, selectedGH, tableData, operator, keterangan });
   }, [step, selectedGH, tableData, operator]);
 
   const refreshPendingCount = useCallback(async () => {
@@ -163,6 +164,9 @@ export default function Gramasi() {
 
   const updateCell = (i, field, val) => {
     if (val !== "" && !/^\d*\.?\d*$/.test(val)) return;
+    // Max 4 digit (angka sebelum titik desimal)
+    const intPart = val.split(".")[0];
+    if (intPart.length > 4) return;
     setTableData(prev => {
       const d = [...prev];
       d[i] = { ...d[i], [field]: val };
@@ -196,6 +200,7 @@ export default function Gramasi() {
         s3: row.s3 || 0,
         avg: avg || 0,
         operator,
+        keterangan: keterangan.trim() || "",
       };
     });
   };
@@ -264,7 +269,7 @@ export default function Gramasi() {
 
   const resetForm = () => {
     clearDraft();
-    setStep(1); setSelectedGH(""); setTableData([]); setOperator("");
+    setStep(1); setSelectedGH(""); setTableData([]); setOperator(""); setKeterangan("");
     setSyncing(false); setSyncProgress({ done: 0, total: 0 });
     setSubmitError(null); setSavedOffline(false);
   };
@@ -419,6 +424,32 @@ export default function Gramasi() {
               <div style={{ height: "100%", borderRadius: 4, background: "#4CAF50", width: `${tableData.length > 0 ? (filledCount / tableData.length) * 100 : 0}%`, transition: "width 0.3s" }} />
             </div>
 
+            {/* Operator — dipindah ke atas */}
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 11, color: "#388e3c", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
+                👤 Nama Operator <span style={{ color: "#e53935" }}>*</span>
+              </label>
+              <input
+                type="text" value={operator}
+                onChange={e => setOperator(e.target.value)}
+                placeholder="Tulis nama lengkap..."
+                style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: "#fff", border: `1.5px solid ${operator.trim() ? "#81c784" : "#e0e0e0"}`, borderRadius: 10, color: "#333", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+              />
+            </div>
+
+            {/* Keterangan (opsional) */}
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 11, color: "#388e3c", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
+                📝 Keterangan <span style={{ fontSize: 10, color: "#aaa", textTransform: "none", letterSpacing: 0, fontWeight: 400 }}>— opsional</span>
+              </label>
+              <input
+                type="text" value={keterangan}
+                onChange={e => setKeterangan(e.target.value)}
+                placeholder="Contoh: ganti sampel dari kemarin, baris C rusak..."
+                style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: "#fff", border: `1.5px solid ${keterangan.trim() ? "#81c784" : "#e0e0e0"}`, borderRadius: 10, color: "#333", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+              />
+            </div>
+
             <div style={{ overflowX: "auto", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.08)", marginBottom: 16 }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
@@ -455,19 +486,6 @@ export default function Gramasi() {
                   })}
                 </tbody>
               </table>
-            </div>
-
-            {/* Operator */}
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, color: "#388e3c", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
-                👤 Nama Operator <span style={{ color: "#e53935" }}>*</span>
-              </label>
-              <input
-                type="text" value={operator}
-                onChange={e => setOperator(e.target.value)}
-                placeholder="Tulis nama lengkap..."
-                style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: "#fff", border: `1.5px solid ${operator.trim() ? "#81c784" : "#e0e0e0"}`, borderRadius: 10, color: "#333", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
-              />
             </div>
 
             {!allFilled && tableData.length > 0 && (
@@ -523,6 +541,9 @@ export default function Gramasi() {
               <div style={{ fontSize: 14, fontWeight: 700, color: "#333" }}>{selectedGH} · Periode {ghInfo?.periode} · {hst} HST</div>
               <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>Operator: {operator}</div>
               <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>Tanggal: {todayISO}</div>
+              {keterangan.trim() && (
+                <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>Keterangan: {keterangan}</div>
+              )}
               <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(0,0,0,0.06)", fontSize: 13, fontWeight: 700, color: isDemoMode ? "#f57f17" : savedOffline ? "#1565C0" : "#2e7d32" }}>
                 Avg keseluruhan: {(() => {
                   const avgs = tableData.map(r => parseFloat(calcAvg(r.s1, r.s2, r.s3))).filter(v => v > 0);
@@ -572,6 +593,7 @@ export default function Gramasi() {
           { label: "GH",        value: selectedGH },
           { label: "Jml Baris", value: `${tableData.length} baris` },
           { label: "Operator",  value: operator },
+          ...(keterangan.trim() ? [{ label: "Keterangan", value: keterangan }] : []),
         ]}
       />
 
