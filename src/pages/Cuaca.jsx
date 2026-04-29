@@ -24,8 +24,9 @@ function getTodayISO() {
 }
 
 function jamToString(jamStr) {
-  // "07.00" → "07", "13.00" → "13"  (string, biar Sheets nggak auto-format jadi time)
-  return jamStr.split(".")[0];
+  // "07.00" → "07:00:00", "16.00" → "16:00:00"  (format time biar match kolom Sheets)
+  const h = jamStr.split(".")[0].padStart(2, "0");
+  return `${h}:00:00`;
 }
 
 export const CHANGELOG = [
