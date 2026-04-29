@@ -7,6 +7,7 @@ import KesiapanGH   from "./pages/KesiapanGH";
 import Penyiraman   from "./pages/Penyiraman";
 import SO           from "./pages/SO";
 import Penyemprotan from "./pages/Penyemprotan";
+import Cuaca from "./pages/Cuaca";
 import FarmhillLogin from "./components/FarmhillLogin";
 import SOPModal, { isMenuSeen } from "./components/SOPModal";
 import InfoButton from "./components/InfoButton";
@@ -35,6 +36,7 @@ const STANDALONE_TABS = [
   { key: "penyiraman", label: "Penyiraman", icon: "💧",  color: "#0277bd", component: Penyiraman },
   { key: "vigor",      label: "Vigor",      icon: "🌿",  color: "#43A047", component: Vigor      },
   { key: "kesiapan",   label: "Kesiapan",   icon: "✅",  color: "#00897B", component: KesiapanGH },
+  { key: "cuaca", label: "Cuaca", icon: "🌤️", color: "#0d47a1", component: Cuaca },
 ];
 
 const HPT_COLOR = "#FF7043";
