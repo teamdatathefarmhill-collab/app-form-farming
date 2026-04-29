@@ -23,9 +23,9 @@ function getTodayISO() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function jamToNumber(jamStr) {
-  // "07.00" → 7, "13.00" → 13
-  return parseInt(jamStr.split(".")[0], 10);
+function jamToString(jamStr) {
+  // "07.00" → "07", "13.00" → "13"  (string, biar Sheets nggak auto-format jadi time)
+  return jamStr.split(".")[0];
 }
 
 export const CHANGELOG = [
@@ -57,7 +57,7 @@ export default function Cuaca() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tanggal: todayISO,
-          jam: jamToNumber(jam),
+          jam: jamToString(jam),
           cuaca: selectedCuaca.label,
           skoring: selectedCuaca.skor,
         }),
