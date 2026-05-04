@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const WEBHOOK = "https://script.google.com/macros/s/AKfycbzBndG0bEIxKN2RJ7zvI571vRk9EOq5iuN-OzObBU6LHZDvG2GKb6ptXRqHdMj1Z7K2Dw/exec";
 
@@ -24,26 +24,65 @@ function getTodayISO() {
 }
 
 function jamToString(jamStr) {
-  // "07.00" → "07:00:00", "16.00" → "16:00:00"  (format time biar match kolom Sheets)
   const h = jamStr.split(".")[0].padStart(2, "0");
   return `${h}:00`;
+}
+
+// Kebalikannya: "07:00" → "07.00"
+function timeToJamOption(timeStr) {
+  // timeStr bisa "07:00:00" atau "07:00" atau "7:00"
+  if (!timeStr) return null;
+  const h = timeStr.split(":")[0].padStart(2, "0");
+  return `${h}.00`;
 }
 
 export const CHANGELOG = [
   "Form pengukuran cuaca harian",
   "Tanggal otomatis hari ini",
   "Data langsung terkirim ke Google Sheets Log Cuaca",
+  "Jam yang sudah diisi ditandai merah otomatis",
 ];
 
 export default function Cuaca() {
-  const [jam,          setJam]          = useState("");
-  const [selectedCuaca, setSelectedCuaca] = useState(null);
-  const [submitting,   setSubmitting]   = useState(false);
-  const [step,         setStep]         = useState(1); // 1 = form, 2 = sukses
-  const [submitError,  setSubmitError]  = useState(null);
+  const [jam,            setJam]            = useState("");
+  const [selectedCuaca,  setSelectedCuaca]  = useState(null);
+  const [submitting,     setSubmitting]     = useState(false);
+  const [step,           setStep]           = useState(1);
+  const [submitError,    setSubmitError]    = useState(null);
+  const [filledJams,     setFilledJams]     = useState(new Set()); // jam yang sudah diisi
+  const [loadingFilled,  setLoadingFilled]  = useState(true);
 
-  const todayISO  = getTodayISO();
+  const todayISO   = getTodayISO();
   const todayLabel = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
+  // Fetch data jam yang sudah diisi hari ini
+  useEffect(() => {
+    async function fetchFilledJams() {
+      try {
+        const url = `${WEBHOOK}?tanggal=${todayISO}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        // Ekspektasi response: array of objects dengan field "jam" / "Time"
+        // Sesuaikan field name dengan struktur JSON yang dikembalikan Apps Script kamu
+        if (Array.isArray(data)) {
+          const filled = new Set();
+          data.forEach(row => {
+            // Coba berbagai kemungkinan nama field
+            const time = row.jam || row.Time || row.time || row.Jam || "";
+            const jamOpt = timeToJamOption(time);
+            if (jamOpt) filled.add(jamOpt);
+          });
+          setFilledJams(filled);
+        }
+      } catch {
+        // Kalau gagal fetch (misal Apps Script belum support GET), ya sudah — form tetap bisa jalan
+        // Cuma fitur penandaan merah yang nggak muncul
+      } finally {
+        setLoadingFilled(false);
+      }
+    }
+    fetchFilledJams();
+  }, [todayISO]);
 
   const canSubmit = jam && selectedCuaca !== null;
 
@@ -63,6 +102,8 @@ export default function Cuaca() {
           skoring: selectedCuaca.skor,
         }),
       });
+      // Tandai jam ini sebagai sudah diisi secara lokal juga
+      setFilledJams(prev => new Set([...prev, jam]));
       setStep(2);
     } catch {
       setSubmitError("Gagal mengirim data. Cek koneksi internet kamu.");
@@ -90,6 +131,9 @@ export default function Cuaca() {
     : "#ffebee"
     : "#f5f5f5";
 
+  // Hitung berapa jam sudah diisi
+  const totalFilled = filledJams.size;
+
   return (
     <div style={{ minHeight: "100vh", background: "#f7f9f7", fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
 
@@ -100,6 +144,24 @@ export default function Cuaca() {
         </div>
         <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 2 }}>🌤️ Cuaca Harian</div>
         <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)" }}>{todayLabel}</div>
+
+        {/* Progress bar jam terisi */}
+        {!loadingFilled && totalFilled > 0 && (
+          <div style={{ marginTop: 10 }}>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>
+              {totalFilled} dari {JAM_OPTIONS.length} jam sudah diisi hari ini
+            </div>
+            <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: 99, height: 5, overflow: "hidden" }}>
+              <div style={{
+                height: "100%",
+                width: `${(totalFilled / JAM_OPTIONS.length) * 100}%`,
+                background: totalFilled === JAM_OPTIONS.length ? "#69f0ae" : "#fff",
+                borderRadius: 99,
+                transition: "width 0.4s ease",
+              }} />
+            </div>
+          </div>
+        )}
       </div>
 
       <div style={{ padding: "20px 16px", maxWidth: 480, margin: "0 auto" }}>
@@ -116,6 +178,20 @@ export default function Cuaca() {
               </div>
             </div>
 
+            {/* Legend */}
+            {!loadingFilled && totalFilled > 0 && (
+              <div style={{ display: "flex", gap: 12, marginBottom: 12, fontSize: 11, color: "#666", alignItems: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 3, background: "#ffcdd2", border: "1.5px solid #e53935" }} />
+                  Sudah diisi
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 3, background: "#fff", border: "1.5px solid #e0e0e0" }} />
+                  Belum diisi
+                </div>
+              </div>
+            )}
+
             {/* Pilih Jam */}
             <div style={{ marginBottom: 20 }}>
               <label style={{ fontSize: 11, color: "#1565C0", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700, display: "block", marginBottom: 8 }}>
@@ -123,17 +199,47 @@ export default function Cuaca() {
               </label>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
                 {JAM_OPTIONS.map(j => {
-                  const active = jam === j;
+                  const active  = jam === j;
+                  const isFilled = filledJams.has(j);
+
                   return (
-                    <button key={j} onClick={() => setJam(j)}
+                    <button
+                      key={j}
+                      onClick={() => setJam(j)}
+                      title={isFilled ? `Jam ${j} sudah diisi` : `Pilih jam ${j}`}
                       style={{
-                        padding: "10px 4px", borderRadius: 10, border: `1.5px solid ${active ? "#1565C0" : "#e0e0e0"}`,
-                        background: active ? "#e3f2fd" : "#fff",
-                        color: active ? "#0d47a1" : "#555",
-                        fontSize: 12, fontWeight: active ? 700 : 400,
-                        cursor: "pointer", transition: "all 0.15s",
-                      }}>
+                        padding: "10px 4px 8px",
+                        borderRadius: 10,
+                        border: `1.5px solid ${
+                          active    ? "#1565C0" :
+                          isFilled  ? "#e53935" :
+                          "#e0e0e0"
+                        }`,
+                        background: active
+                          ? "#e3f2fd"
+                          : isFilled
+                          ? "#ffebee"
+                          : "#fff",
+                        color: active
+                          ? "#0d47a1"
+                          : isFilled
+                          ? "#c62828"
+                          : "#555",
+                        fontSize: 12,
+                        fontWeight: active ? 700 : isFilled ? 600 : 400,
+                        cursor: "pointer",
+                        transition: "all 0.15s",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 2,
+                        position: "relative",
+                      }}
+                    >
                       {j}
+                      {isFilled && (
+                        <span style={{ fontSize: 9, color: "#e53935", fontWeight: 700, lineHeight: 1 }}>✓ terisi</span>
+                      )}
                     </button>
                   );
                 })}
@@ -176,6 +282,14 @@ export default function Cuaca() {
                 <div style={{ fontSize: 13, fontWeight: 800, color: skorColor }}>
                   Skor: {selectedCuaca.skor}
                 </div>
+              </div>
+            )}
+
+            {/* Warning kalau milih jam yang sudah terisi */}
+            {jam && filledJams.has(jam) && (
+              <div style={{ fontSize: 12, color: "#c62828", background: "#ffebee", border: "1px solid #ef9a9a", borderRadius: 8, padding: "8px 12px", marginBottom: 12, display: "flex", gap: 6, alignItems: "flex-start" }}>
+                <span>⚠️</span>
+                <span>Jam <strong>{jam}</strong> sudah pernah diisi hari ini. Data baru akan tetap terkirim dan tersimpan sebagai entri tambahan.</span>
               </div>
             )}
 
