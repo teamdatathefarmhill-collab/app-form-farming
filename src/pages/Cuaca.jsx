@@ -51,6 +51,7 @@ export default function Cuaca() {
   const [submitError,    setSubmitError]    = useState(null);
   const [filledJams,     setFilledJams]     = useState(new Set()); // jam yang sudah diisi
   const [loadingFilled,  setLoadingFilled]  = useState(true);
+  const [fetchStatus,    setFetchStatus]    = useState("loading"); // "loading" | "ok" | "error"
 
   const todayISO   = getTodayISO();
   const todayLabel = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -60,23 +61,46 @@ export default function Cuaca() {
     async function fetchFilledJams() {
       try {
         const url = `${WEBHOOK}?tanggal=${todayISO}`;
-        const res = await fetch(url);
-        const data = await res.json();
-        // Ekspektasi response: array of objects dengan field "jam" / "Time"
-        // Sesuaikan field name dengan struktur JSON yang dikembalikan Apps Script kamu
+        // Google Apps Script sering redirect — pakai redirect: "follow"
+        const res = await fetch(url, { redirect: "follow" });
+        const text = await res.text();
+
+        // Kadang Apps Script return HTML error page, bukan JSON
+        // Pastikan dulu isinya JSON valid
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          console.warn("Response bukan JSON:", text.slice(0, 200));
+          setFetchStatus("error");
+          return;
+        }
+
         if (Array.isArray(data)) {
           const filled = new Set();
           data.forEach(row => {
-            // Coba berbagai kemungkinan nama field
-            const time = row.jam || row.Time || row.time || row.Jam || "";
-            const jamOpt = timeToJamOption(time);
+            // Handle berbagai format field name dan format waktu
+            const rawTime = row.jam || row.Jam || row.Time || row.time || "";
+            // Handle kalau jam disimpan sebagai Date object dari Sheets (misal "1899-12-30T07:00:00.000Z")
+            let timeStr = "";
+            if (typeof rawTime === "string") {
+              timeStr = rawTime;
+            } else if (rawTime instanceof Date || (typeof rawTime === "object" && rawTime !== null)) {
+              // Sheets kadang return Date object
+              const d = new Date(rawTime);
+              timeStr = `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
+            }
+            const jamOpt = timeToJamOption(timeStr);
             if (jamOpt) filled.add(jamOpt);
           });
           setFilledJams(filled);
+          setFetchStatus("ok");
+        } else {
+          setFetchStatus("error");
         }
-      } catch {
-        // Kalau gagal fetch (misal Apps Script belum support GET), ya sudah — form tetap bisa jalan
-        // Cuma fitur penandaan merah yang nggak muncul
+      } catch (err) {
+        console.warn("Gagal fetch filled jams:", err);
+        setFetchStatus("error");
       } finally {
         setLoadingFilled(false);
       }
@@ -172,9 +196,13 @@ export default function Cuaca() {
             {/* Tanggal info */}
             <div style={{ background: "#e3f2fd", border: "1px solid #90caf9", borderRadius: 12, padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 16 }}>📅</span>
-              <div>
+              <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 11, color: "#1565C0", fontWeight: 700, letterSpacing: 0.5 }}>TANGGAL HARI INI</div>
                 <div style={{ fontSize: 13, color: "#0d47a1", fontWeight: 600 }}>{todayISO}</div>
+              </div>
+              {/* Status fetch */}
+              <div style={{ fontSize: 11, color: loadingFilled ? "#999" : fetchStatus === "ok" ? "#2e7d32" : "#e53935" }}>
+                {loadingFilled ? "⏳ memuat..." : fetchStatus === "ok" ? "✓ tersinkron" : "⚠ offline"}
               </div>
             </div>
 
