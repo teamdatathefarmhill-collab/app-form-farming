@@ -28,11 +28,9 @@ function jamToString(jamStr) {
   return `${h}:00`;
 }
 
-// Kebalikannya: "07:00" → "07.00"
 function timeToJamOption(timeStr) {
-  // timeStr bisa "07:00:00" atau "07:00" atau "7:00"
   if (!timeStr) return null;
-  const h = timeStr.split(":")[0].padStart(2, "0");
+  const h = String(timeStr).split(":")[0].padStart(2, "0");
   return `${h}.00`;
 }
 
@@ -40,71 +38,74 @@ export const CHANGELOG = [
   "Form pengukuran cuaca harian",
   "Tanggal otomatis hari ini",
   "Data langsung terkirim ke Google Sheets Log Cuaca",
-  "Jam yang sudah diisi ditandai merah otomatis",
+  "Jam yang sudah diisi ditandai merah otomatis via JSONP",
 ];
 
 export default function Cuaca() {
-  const [jam,            setJam]            = useState("");
-  const [selectedCuaca,  setSelectedCuaca]  = useState(null);
-  const [submitting,     setSubmitting]     = useState(false);
-  const [step,           setStep]           = useState(1);
-  const [submitError,    setSubmitError]    = useState(null);
-  const [filledJams,     setFilledJams]     = useState(new Set()); // jam yang sudah diisi
-  const [loadingFilled,  setLoadingFilled]  = useState(true);
-  const [fetchStatus,    setFetchStatus]    = useState("loading"); // "loading" | "ok" | "error"
+  const [jam,           setJam]           = useState("");
+  const [selectedCuaca, setSelectedCuaca] = useState(null);
+  const [submitting,    setSubmitting]    = useState(false);
+  const [step,          setStep]          = useState(1);
+  const [submitError,   setSubmitError]   = useState(null);
+  const [filledJams,    setFilledJams]    = useState(new Set());
+  const [loadingFilled, setLoadingFilled] = useState(true);
+  const [fetchStatus,   setFetchStatus]   = useState("loading");
 
   const todayISO   = getTodayISO();
   const todayLabel = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
-  // Fetch data jam yang sudah diisi hari ini
   useEffect(() => {
     async function fetchFilledJams() {
       try {
-        const url = `${WEBHOOK}?tanggal=${todayISO}`;
-        // Google Apps Script sering redirect — pakai redirect: "follow"
-        const res = await fetch(url, { redirect: "follow" });
-        const text = await res.text();
+        const callbackName = `cb_${Date.now()}`;
+        const url = `${WEBHOOK}?tanggal=${todayISO}&callback=${callbackName}`;
 
-        // Kadang Apps Script return HTML error page, bukan JSON
-        // Pastikan dulu isinya JSON valid
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch {
-          console.warn("Response bukan JSON:", text.slice(0, 200));
-          setFetchStatus("error");
-          return;
-        }
+        await new Promise((resolve, reject) => {
+          const script = document.createElement("script");
 
-        if (Array.isArray(data)) {
-          const filled = new Set();
-          data.forEach(row => {
-            // Handle berbagai format field name dan format waktu
-            const rawTime = row.jam || row.Jam || row.Time || row.time || "";
-            // Handle kalau jam disimpan sebagai Date object dari Sheets (misal "1899-12-30T07:00:00.000Z")
-            let timeStr = "";
-            if (typeof rawTime === "string") {
-              timeStr = rawTime;
-            } else if (rawTime instanceof Date || (typeof rawTime === "object" && rawTime !== null)) {
-              // Sheets kadang return Date object
-              const d = new Date(rawTime);
-              timeStr = `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
+          window[callbackName] = (data) => {
+            delete window[callbackName];
+            script.remove();
+            if (Array.isArray(data)) {
+              const filled = new Set();
+              data.forEach(row => {
+                const jamOpt = timeToJamOption(row.jam || "");
+                if (jamOpt) filled.add(jamOpt);
+              });
+              setFilledJams(filled);
+              setFetchStatus("ok");
+            } else {
+              setFetchStatus("error");
             }
-            const jamOpt = timeToJamOption(timeStr);
-            if (jamOpt) filled.add(jamOpt);
-          });
-          setFilledJams(filled);
-          setFetchStatus("ok");
-        } else {
-          setFetchStatus("error");
-        }
-      } catch (err) {
-        console.warn("Gagal fetch filled jams:", err);
+            resolve();
+          };
+
+          script.onerror = () => {
+            delete window[callbackName];
+            script.remove();
+            setFetchStatus("error");
+            reject(new Error("script load error"));
+          };
+
+          script.src = url;
+          document.head.appendChild(script);
+
+          setTimeout(() => {
+            if (window[callbackName]) {
+              delete window[callbackName];
+              script.remove();
+              setFetchStatus("error");
+              reject(new Error("timeout"));
+            }
+          }, 10000);
+        });
+      } catch {
         setFetchStatus("error");
       } finally {
         setLoadingFilled(false);
       }
     }
+
     fetchFilledJams();
   }, [todayISO]);
 
@@ -126,7 +127,6 @@ export default function Cuaca() {
           skoring: selectedCuaca.skor,
         }),
       });
-      // Tandai jam ini sebagai sudah diisi secara lokal juga
       setFilledJams(prev => new Set([...prev, jam]));
       setStep(2);
     } catch {
@@ -155,7 +155,6 @@ export default function Cuaca() {
     : "#ffebee"
     : "#f5f5f5";
 
-  // Hitung berapa jam sudah diisi
   const totalFilled = filledJams.size;
 
   return (
@@ -169,7 +168,6 @@ export default function Cuaca() {
         <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 2 }}>🌤️ Cuaca Harian</div>
         <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)" }}>{todayLabel}</div>
 
-        {/* Progress bar jam terisi */}
         {!loadingFilled && totalFilled > 0 && (
           <div style={{ marginTop: 10 }}>
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>
@@ -190,7 +188,6 @@ export default function Cuaca() {
 
       <div style={{ padding: "20px 16px", maxWidth: 480, margin: "0 auto" }}>
 
-        {/* ══ STEP 1 — Form ══ */}
         {step === 1 && (
           <>
             {/* Tanggal info */}
@@ -200,7 +197,6 @@ export default function Cuaca() {
                 <div style={{ fontSize: 11, color: "#1565C0", fontWeight: 700, letterSpacing: 0.5 }}>TANGGAL HARI INI</div>
                 <div style={{ fontSize: 13, color: "#0d47a1", fontWeight: 600 }}>{todayISO}</div>
               </div>
-              {/* Status fetch */}
               <div style={{ fontSize: 11, color: loadingFilled ? "#999" : fetchStatus === "ok" ? "#2e7d32" : "#e53935" }}>
                 {loadingFilled ? "⏳ memuat..." : fetchStatus === "ok" ? "✓ tersinkron" : "⚠ offline"}
               </div>
@@ -227,9 +223,8 @@ export default function Cuaca() {
               </label>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
                 {JAM_OPTIONS.map(j => {
-                  const active  = jam === j;
+                  const active   = jam === j;
                   const isFilled = filledJams.has(j);
-
                   return (
                     <button
                       key={j}
@@ -238,21 +233,9 @@ export default function Cuaca() {
                       style={{
                         padding: "10px 4px 8px",
                         borderRadius: 10,
-                        border: `1.5px solid ${
-                          active    ? "#1565C0" :
-                          isFilled  ? "#e53935" :
-                          "#e0e0e0"
-                        }`,
-                        background: active
-                          ? "#e3f2fd"
-                          : isFilled
-                          ? "#ffebee"
-                          : "#fff",
-                        color: active
-                          ? "#0d47a1"
-                          : isFilled
-                          ? "#c62828"
-                          : "#555",
+                        border: `1.5px solid ${active ? "#1565C0" : isFilled ? "#e53935" : "#e0e0e0"}`,
+                        background: active ? "#e3f2fd" : isFilled ? "#ffebee" : "#fff",
+                        color: active ? "#0d47a1" : isFilled ? "#c62828" : "#555",
                         fontSize: 12,
                         fontWeight: active ? 700 : isFilled ? 600 : 400,
                         cursor: "pointer",
@@ -261,7 +244,6 @@ export default function Cuaca() {
                         flexDirection: "column",
                         alignItems: "center",
                         gap: 2,
-                        position: "relative",
                       }}
                     >
                       {j}
@@ -313,11 +295,11 @@ export default function Cuaca() {
               </div>
             )}
 
-            {/* Warning kalau milih jam yang sudah terisi */}
+            {/* Warning jam sudah terisi */}
             {jam && filledJams.has(jam) && (
               <div style={{ fontSize: 12, color: "#c62828", background: "#ffebee", border: "1px solid #ef9a9a", borderRadius: 8, padding: "8px 12px", marginBottom: 12, display: "flex", gap: 6, alignItems: "flex-start" }}>
                 <span>⚠️</span>
-                <span>Jam <strong>{jam}</strong> sudah pernah diisi hari ini. Data baru akan tetap terkirim dan tersimpan sebagai entri tambahan.</span>
+                <span>Jam <strong>{jam}</strong> sudah pernah diisi hari ini. Data baru akan tetap terkirim sebagai entri tambahan.</span>
               </div>
             )}
 
@@ -340,7 +322,7 @@ export default function Cuaca() {
           </>
         )}
 
-        {/* ══ STEP 2 — Sukses ══ */}
+        {/* Sukses */}
         {step === 2 && (
           <div style={{ textAlign: "center", paddingTop: 32 }}>
             <div style={{ fontSize: 60, marginBottom: 12 }}>✅</div>
