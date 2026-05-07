@@ -134,8 +134,8 @@ const CABANG_BUAH_OPTIONS = [
 const PANJANG_TUNAS_AIR_OPTIONS = [
   "1 Ruas",
   "2 Ruas",
-  "3 - 4 Ruas",
-  "> 4 Ruas",
+  "3 Ruas",
+  "4 Ruas",
 ];
 
 // ─── Aspek Vigor tambahan (HST 38, 45, 54) ───────────────────────────────────
