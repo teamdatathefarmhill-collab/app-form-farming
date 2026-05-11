@@ -14,6 +14,7 @@ export const CHANGELOG = [
   "Revisi opsi Netting Buah HST 45: persentase diperbarui sesuai standar baru",
   "Panduan sampling: teks disesuaikan per tipe GH (Kolam & Dutch Bucket)",
   "Keterangan lebar daun: kini dinamis sesuai HST (daun ke-4, ke-7, ke-11)",
+  "Tambah seksi Pendataan Buah Net/Bercak Hitam pada HST 54",
 ];
 
 const HST_MIN = 5;
@@ -161,6 +162,13 @@ const NETTING_50_54_OPTIONS = [
   "Varian MD, EL, SS 80% atau 150 tanaman sudah mencapai netting 50%",
 ];
 
+// HST 54 — Net/Bercak Hitam (khusus Greeniegal & Daegoji)
+const NET_BERCAK_HITAM_54_OPTIONS = [
+  "Varian Greeniegal dan/atau Daegoji terdapat net/bercak hitam >10% per buah",
+  "Varian Greeniegal dan/atau Daegoji terdapat net/bercak hitam 5-10% per buah",
+  "Tidak ada net/bercak hitam pada Greeniegal dan/atau Daegoji",
+];
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function hitungHST(tgl) {
   const [y, m, d] = tgl.split("-").map(Number);
@@ -191,12 +199,13 @@ function initVarianData(varianList) {
       kesegaran:        "",
       nettingBuah:      "",
       netting50:        "",
+      netBercakHitam:   "",
     };
   });
   return obj;
 }
 
-function isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNetting, showNetting50, showLebarDiameter, showSimetri) {
+function isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNetting, showNetting50, showNetBercakHitam, showLebarDiameter, showSimetri) {
   if (showLebarDiameter && (d.lebarDaun === "" || d.diameterBatang === "")) return false;
   if (d.warnaDaun === "" || d.warnaAkar === "" || d.volumeAkar === "") return false;
   if (showKualitas && showSimetri && d.simetriBuah === "") return false;
@@ -205,6 +214,7 @@ function isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNettin
   if (showKesegaran && d.kesegaran === "") return false;
   if (showNetting   && d.nettingBuah === "") return false;
   if (showNetting50 && d.netting50 === "") return false;
+  if (showNetBercakHitam && d.netBercakHitam === "") return false;
   return true;
 }
 
@@ -359,6 +369,7 @@ export default function Vigor() {
   const showKesegaran     = selectedHST === 38 || selectedHST === 45 || selectedHST === 54;
   const showNetting       = selectedHST === 45 || selectedHST === 54;
   const showNetting50     = selectedHST === 54;
+  const showNetBercakHitam = selectedHST === 54;
 
   // Tentukan pilihan lebar daun dan diameter sesuai HST
   const lebarDaunOptions = selectedHST === 14 ? LEBAR_DAUN_14_OPTIONS
@@ -367,7 +378,7 @@ export default function Vigor() {
                          : LEBAR_DAUN_7_OPTIONS;
   const diameterOptions  = selectedHST === 33 ? DIAMETER_33_OPTIONS : DIAMETER_7_14_OPTIONS;
 
-  const filledCount = varianList.filter(v => isVarianFilled(varianData[v] || {}, showKualitas, showPolinasi, showKesegaran, showNetting, showNetting50, showLebarDiameter, showSimetri)).length;
+  const filledCount = varianList.filter(v => isVarianFilled(varianData[v] || {}, showKualitas, showPolinasi, showKesegaran, showNetting, showNetting50, showNetBercakHitam, showLebarDiameter, showSimetri)).length;
   const allFilled   = varianList.length > 0 && filledCount === varianList.length;
   const canSubmit   = allFilled && operator.trim().length > 0;
 
@@ -397,6 +408,7 @@ export default function Vigor() {
         kesegaran:          showKesegaran  ? (d.kesegaran        || "") : "",
         netting_buah:       showNetting    ? (d.nettingBuah      || "") : "",
         netting_50:         showNetting50  ? (d.netting50        || "") : "",
+        net_bercak_hitam:   showNetBercakHitam ? (d.netBercakHitam || "") : "",
         selfie_url:         "",
       };
     });
@@ -879,6 +891,26 @@ export default function Vigor() {
                                 return (
                                   <button key={idx} onClick={() => updateVarian(varian, "netting50", opt)}
                                     style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#6A1B9A" : "#e0e0e0"}`, background: active ? "#F3E5F5" : "#fff", color: active ? "#6A1B9A" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, transition: "all 0.15s", lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 8 }}>
+                                    <span style={{ flexShrink: 0, marginTop: 1 }}>{active ? "●" : "○"}</span>
+                                    <span>{opt}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* === NET/BERCAK HITAM (HST 54 saja) === */}
+                        {showNetBercakHitam && (
+                          <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginTop: 14 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "#BF360C", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🍈 Kualitas Buah Tambahan</div>
+                            <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>Pendataan Buah Net/Bercak Hitam</div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
+                              {NET_BERCAK_HITAM_54_OPTIONS.map((opt, idx) => {
+                                const active = d.netBercakHitam === opt;
+                                return (
+                                  <button key={idx} onClick={() => updateVarian(varian, "netBercakHitam", opt)}
+                                    style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#BF360C" : "#e0e0e0"}`, background: active ? "#FBE9E7" : "#fff", color: active ? "#BF360C" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, transition: "all 0.15s", lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 8 }}>
                                     <span style={{ flexShrink: 0, marginTop: 1 }}>{active ? "●" : "○"}</span>
                                     <span>{opt}</span>
                                   </button>
