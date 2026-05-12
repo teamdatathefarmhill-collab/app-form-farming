@@ -10,6 +10,8 @@ const SCRIPT_URL = import.meta.env.VITE_GAS_VIGOR_URL;
 
 // ─── Changelog — tambah item baru di sini setiap ada revisi ──────────────────
 export const CHANGELOG = [
+  "HST aktif sekarang mulai dari HST 1 (sebelumnya HST 5)",
+  "Tambah GH RnD: Tohudan 22 & Sawahan Tunnel — lebar daun HST 7/14/18 pakai skala Buruk/Sedang/Baik",
   "Revisi label Warna Akar: sekarang lebih deskriptif (Mati/Busuk & Sehat)",
   "Revisi opsi Netting Buah HST 45: persentase diperbarui sesuai standar baru",
   "Panduan sampling: teks disesuaikan per tipe GH (Kolam & Dutch Bucket)",
@@ -17,7 +19,7 @@ export const CHANGELOG = [
   "Tambah seksi Pendataan Buah Net/Bercak Hitam pada HST 54",
 ];
 
-const HST_MIN = 5;
+const HST_MIN = 1;
 const HST_MAX = 60;
 const HST_CHECKPOINTS = [7, 14, 18, 33, 38, 45, 54];
 const HST_NEAR_RANGE  = 2;
@@ -36,7 +38,8 @@ const TIPE_GH = [
   {
     key: "kolam", label: "Kolam", icon: "🏊", color: "#00897B",
     pattern: (gh) => {
-      const upper = gh.toUpperCase();
+      const upper = gh.toUpperCase().trim();
+      if (upper === "SAWAHAN TUNNEL") return true;
       if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return (n >= 1 && n <= 11) || n === 13 || n === 22; }
       if (upper.startsWith("SAWAHAN")) { const n = parseInt(upper.replace("SAWAHAN","").trim()); return n >= 1 && n <= 4; }
       return false;
@@ -73,6 +76,16 @@ function hstTerdekat(hst) {
   return HST_CHECKPOINTS.reduce((prev, curr) =>
     Math.abs(curr - hst) < Math.abs(prev - hst) ? curr : prev
   );
+}
+
+// ─── RnD GH — GH khusus riset (Tohudan 22 & Sawahan Tunnel) ─────────────────
+const RND_GH_LIST = ["TOHUDAN 22", "SAWAHAN TUNNEL"];
+const LEBAR_DAUN_RND_OPTIONS = ["Buruk", "Sedang", "Baik"];
+
+function isRndGH(gh) {
+  if (!gh) return false;
+  const upper = gh.toUpperCase().trim();
+  return RND_GH_LIST.some(r => upper === r);
 }
 
 // ─── Aspek Vigor — per HST ────────────────────────────────────────────────────
@@ -372,10 +385,13 @@ export default function Vigor() {
   const showNetBercakHitam = selectedHST === 54;
 
   // Tentukan pilihan lebar daun dan diameter sesuai HST
-  const lebarDaunOptions = selectedHST === 14 ? LEBAR_DAUN_14_OPTIONS
-                         : selectedHST === 18 ? LEBAR_DAUN_18_OPTIONS
-                         : selectedHST === 33 ? LEBAR_DAUN_33_OPTIONS
-                         : LEBAR_DAUN_7_OPTIONS;
+  const isRnd = isRndGH(selectedGH);
+  const lebarDaunOptions = (isRnd && (selectedHST === 7 || selectedHST === 14 || selectedHST === 18))
+    ? LEBAR_DAUN_RND_OPTIONS
+    : selectedHST === 14 ? LEBAR_DAUN_14_OPTIONS
+    : selectedHST === 18 ? LEBAR_DAUN_18_OPTIONS
+    : selectedHST === 33 ? LEBAR_DAUN_33_OPTIONS
+    : LEBAR_DAUN_7_OPTIONS;
   const diameterOptions  = selectedHST === 33 ? DIAMETER_33_OPTIONS : DIAMETER_7_14_OPTIONS;
 
   const filledCount = varianList.filter(v => isVarianFilled(varianData[v] || {}, showKualitas, showPolinasi, showKesegaran, showNetting, showNetting50, showNetBercakHitam, showLebarDiameter, showSimetri)).length;
