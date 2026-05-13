@@ -11,7 +11,7 @@ const SCRIPT_URL = import.meta.env.VITE_GAS_VIGOR_URL;
 // ─── Changelog — tambah item baru di sini setiap ada revisi ──────────────────
 export const CHANGELOG = [
   "HST aktif sekarang mulai dari HST 1 (sebelumnya HST 5)",
-  "Tambah GH RnD: Tohudan 22 & Sawahan Tunnel — lebar daun HST 7/14/18 pakai skala Buruk/Sedang/Baik",
+  "GH RnD (Tohudan 22 & Sawahan Tunnel) kini tampil sebagai tipe tersendiri di Pilih GH — tidak lagi bergabung di Kolam",
   "Revisi label Warna Akar: sekarang lebih deskriptif (Mati/Busuk & Sehat)",
   "Revisi opsi Netting Buah HST 45: persentase diperbarui sesuai standar baru",
   "Panduan sampling: teks disesuaikan per tipe GH (Kolam & Dutch Bucket)",
@@ -39,8 +39,8 @@ const TIPE_GH = [
     key: "kolam", label: "Kolam", icon: "🏊", color: "#00897B",
     pattern: (gh) => {
       const upper = gh.toUpperCase().trim();
-      if (upper === "SAWAHAN TUNNEL") return true;
-      if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return (n >= 1 && n <= 11) || n === 13 || n === 22; }
+      if (upper === "SAWAHAN TUNNEL") return false; // masuk RnD
+      if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return (n >= 1 && n <= 11) || n === 13; } // 22 masuk RnD
       if (upper.startsWith("SAWAHAN")) { const n = parseInt(upper.replace("SAWAHAN","").trim()); return n >= 1 && n <= 4; }
       return false;
     },
@@ -50,6 +50,15 @@ const TIPE_GH = [
     pattern: (gh) => {
       const upper = gh.toUpperCase();
       if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return n === 14 || (n >= 15 && n <= 21); }
+      return false;
+    },
+  },
+  {
+    key: "rnd", label: "RnD", icon: "🔬", color: "#7B1FA2",
+    pattern: (gh) => {
+      const upper = gh.toUpperCase().trim();
+      if (upper === "SAWAHAN TUNNEL") return true;
+      if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return n === 22; }
       return false;
     },
   },
@@ -732,6 +741,8 @@ export default function Vigor() {
                             samplingText = "Sistem Kolam: ambil mulai dari tanaman ke-16 dari baris depan sejumlah 7 tanaman, dan ke-16 dari baris belakang sejumlah 7 tanaman (total 14 tanaman)";
                           } else if (tipeGH?.key === "dutch") {
                             samplingText = "Sistem DB: ambil mulai dari bucket/polybag ke-16 dari baris depan sejumlah 7 tanaman, dan ke-16 dari baris belakang sejumlah 7 tanaman (total 14 tanaman)";
+                          } else if (tipeGH?.key === "rnd") {
+                            samplingText = "GH RnD: ambil sampel sesuai protokol riset yang berlaku — pastikan konsistensi titik sampling antar pengamatan";
                           } else {
                             samplingText = "Ambil sampel setelah 10 tanaman depan dan 10 tanaman belakang, hindari tanaman yang terpengaruh variabel luar";
                           }
