@@ -49,19 +49,14 @@ function hitungHST(tglStr) {
   let tanam;
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
-    // "2026-01-29"
     const [y, m, d] = cleaned.split("-").map(Number);
     tanam = new Date(y, m - 1, d);
-
   } else if (/^\d{1,2}-[a-zA-Z]{3}-\d{4}$/.test(cleaned)) {
-    // "29-Jan-2026"
     const [d, mon, y] = cleaned.split("-");
     const m = BULAN[mon.toLowerCase()];
     if (!m) return null;
     tanam = new Date(parseInt(y), m - 1, parseInt(d));
-
   } else if (/^\d{1,2}\s+[a-zA-Z]{3,}\s+\d{4}$/.test(cleaned)) {
-    // "9 Apr 2026" atau "10 April 2026"
     const parts = cleaned.split(/\s+/);
     const d = parseInt(parts[0]);
     const mon = parts[1].slice(0, 3).toLowerCase();
@@ -69,14 +64,10 @@ function hitungHST(tglStr) {
     const m = BULAN[mon];
     if (!m) return null;
     tanam = new Date(y, m - 1, d);
-
   } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(cleaned)) {
-    // "29/01/2026"
     const [d, m, y] = cleaned.split("/").map(Number);
     tanam = new Date(y, m - 1, d);
-
   } else {
-    // fallback ke Date parser
     tanam = new Date(cleaned);
   }
 
@@ -86,11 +77,10 @@ function hitungHST(tglStr) {
   return Math.floor((nowLocal - tanam) / 86400000);
 }
 
-
 function hstChipStyle(hst) {
   if (hst === null) return { bg: "#f5f5f5", color: "#999", border: "#e0e0e0" };
-  if (hst === 29 || hst === 49) return { bg: "#fff3e0", color: "#e65100", border: "#ffb74d" }; // H-1 warning
-  if (hst === 30 || hst === 50) return { bg: "#fbe9e7", color: "#bf360c", border: "#ffab91" }; // deadline
+  if (hst === 29 || hst === 49) return { bg: "#fff3e0", color: "#e65100", border: "#ffb74d" };
+  if (hst === 30 || hst === 50) return { bg: "#fbe9e7", color: "#bf360c", border: "#ffab91" };
   if (hst > 50) return { bg: "#fce4ec", color: "#880e4f", border: "#f48fb1" };
   return { bg: "#e8f5e9", color: "#2e7d32", border: "#a5d6a7" };
 }
@@ -99,8 +89,6 @@ function isSODeadlineAlert(hst) {
   return hst === 29 || hst === 30 || hst === 49 || hst === 50;
 }
 
-// SO dilakukan di HST 29-32 (sekitar 30) dan HST 49-52 (sekitar 50)
-// GH aktif untuk SO: HST < 65
 function isSOAktif(hst) {
   return hst !== null && hst >= 1 && hst < 65;
 }
@@ -127,12 +115,12 @@ export default function SO() {
   const { getDraft, saveDraft, clearDraft } = useDraft("so");
   const _draft = getDraft();
 
-  const [step, setStep]       = useState(_draft?.step || 1);
+  const [step, setStep]         = useState(_draft?.step || 1);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const { ghData, loading: loadingRef, isDemoMode, refetch: fetchRefData } = useGHData();
 
-  const [openTipe, setOpenTipe] = useState(null); // accordion
+  const [openTipe, setOpenTipe]         = useState(null);
   const [selectedGH, setSelectedGH]     = useState(_draft?.selectedGH || "");
   const [tableData, setTableData]       = useState(_draft?.tableData  || []);
   const [operator, setOperator]         = useState(_draft?.operator   || "");
@@ -174,30 +162,25 @@ export default function SO() {
   useEffect(() => { if (isOnline) syncPendingData(); }, [isOnline]);
 
 
-  // ── Sync pending offline ──
+  // ── Sync pending offline — kirim batch sekaligus ──
   const syncPendingData = useCallback(async () => {
     const allPending = await idbGetAll(DB_NAME);
     if (allPending.length === 0) return;
     setIsSyncingPending(true);
     for (const record of allPending) {
       try {
-        let allOk = true;
-        for (const payload of record.payloads) {
-          try {
-            await fetch(SCRIPT_URL, {
-              method: "POST",
-              headers: { "Content-Type": "text/plain" },
-              body: JSON.stringify(payload),
-              redirect: "follow",
-            });
-          } catch { allOk = false; break; }
-        }
-        if (allOk) {
-          markSubmitted(record.gh);
-          setSubmittedToday(getSubmittedToday());
-          await idbDelete(DB_NAME, record.id);
-        }
-      } catch { /* skip */ }
+        await fetch(SCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify({ action: "submitSOBatch", rows: record.payloads }),
+          redirect: "follow",
+        });
+        markSubmitted(record.gh);
+        setSubmittedToday(getSubmittedToday());
+        await idbDelete(DB_NAME, record.id);
+      } catch {
+        // Gagal sync record ini, skip dulu — coba lagi nanti
+      }
     }
     await refreshPendingCount();
     setIsSyncingPending(false);
@@ -280,30 +263,31 @@ export default function SO() {
 
   // ── Build payloads ──
   const buildPayloads = () => {
-    const ghInfo    = ghData[selectedGH];
-    const hst       = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : "";
-    const ts        = todayTimestamp();
+    const ghInfo           = ghData[selectedGH];
+    const hst              = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : "";
+    const ts               = todayTimestamp();
     const client_timestamp = new Date().toISOString();
     return tableData
       .filter(r => r.populasi !== "")
       .map(r => ({
-        action:           "submitSO",
+        action:           "submitSOBatch",
         client_timestamp: client_timestamp,
         timestamp:        ts,
         tanggal:          todayISO,
         operator:         operator.trim(),
         greenhouse:       selectedGH,
-        periode:    ghInfo?.periode || "",
-        hst:        hst ?? "",
-        baris:      r.baris,
-        varian:     r.varian,
-        populasi:   parseInt(r.populasi) || 0,
+        periode:          ghInfo?.periode || "",
+        hst:              hst ?? "",
+        baris:            r.baris,
+        varian:           r.varian,
+        populasi:         parseInt(r.populasi) || 0,
       }));
   };
 
   // ── Submit ──
   const handleSubmit = async () => {
-    setSyncing(true); setSubmitError(null);
+    setSyncing(true);
+    setSubmitError(null);
     const payloads = buildPayloads();
     setSyncProgress({ done: 0, total: payloads.length });
 
@@ -315,7 +299,8 @@ export default function SO() {
       }
       markSubmitted(selectedGH);
       setSubmittedToday(getSubmittedToday());
-      setStep(3); setSyncing(false);
+      setStep(3);
+      setSyncing(false);
       return;
     }
 
@@ -326,33 +311,37 @@ export default function SO() {
         await refreshPendingCount();
         markSubmitted(selectedGH);
         setSubmittedToday(getSubmittedToday());
-        clearDraft(); setSavedOffline(true); setStep(3);
-      } catch { setSubmitError("Gagal menyimpan data offline. Coba lagi."); }
-      finally { setSyncing(false); }
+        clearDraft();
+        setSavedOffline(true);
+        setStep(3);
+      } catch {
+        setSubmitError("Gagal menyimpan data offline. Coba lagi.");
+      } finally {
+        setSyncing(false);
+      }
       return;
     }
 
-    // Online
+    // Online — kirim semua baris sekaligus dalam satu request
     setSavedOffline(false);
-    let done = 0;
-    for (const payload of payloads) {
-      try {
-        await fetch(SCRIPT_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify(payload),
-          redirect: "follow",
-        });
-        done++;
-        setSyncProgress({ done, total: payloads.length });
-      } catch {
-        setSubmitError(`Gagal kirim baris ${payload.baris}. Cek koneksi.`);
-        setSyncing(false); return;
-      }
+    try {
+      setSyncProgress({ done: 0, total: payloads.length });
+      await fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({ action: "submitSOBatch", rows: payloads }),
+        redirect: "follow",
+      });
+      setSyncProgress({ done: payloads.length, total: payloads.length });
+      markSubmitted(selectedGH);
+      setSubmittedToday(getSubmittedToday());
+      clearDraft();
+      setStep(3);
+    } catch {
+      setSubmitError("Gagal mengirim data. Cek koneksi dan coba lagi.");
+    } finally {
+      setSyncing(false);
     }
-    markSubmitted(selectedGH);
-    setSubmittedToday(getSubmittedToday());
-    setStep(3); setSyncing(false);
   };
 
   const resetForm = () => {
@@ -363,10 +352,10 @@ export default function SO() {
   };
 
   // ── Derived values ──
-  const ghInfo     = ghData[selectedGH];
-  const hstAktif   = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : null;
-  const chipStyle  = hstChipStyle(hstAktif);
-  const reminders  = reminderGH();
+  const ghInfo    = ghData[selectedGH];
+  const hstAktif  = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : null;
+  const chipStyle = hstChipStyle(hstAktif);
+  const reminders = reminderGH();
 
   return (
     <div style={{ minHeight: "100vh", background: "#f5f5f5", fontFamily: "'DM Sans','Segoe UI',sans-serif" }}>
@@ -561,7 +550,7 @@ export default function SO() {
                 </thead>
                 <tbody>
                   {tableData.map((row, i) => {
-                    const filled = row.populasi !== "";
+                    const filled   = row.populasi !== "";
                     const isManual = row.isManual;
                     return (
                       <tr key={i} style={{ background: isManual ? "#f3e5f5" : filled ? "#f1f8e9" : i % 2 === 0 ? "#fff" : "#fafafa", transition: "background 0.2s" }}>
@@ -606,7 +595,6 @@ export default function SO() {
 
             {/* Ringkasan & Copy to Clipboard */}
             {filledCount > 0 && (() => {
-              // Hitung total per varian
               const totalPerVarian = {};
               let totalAll = 0;
               tableData.forEach(r => {
@@ -617,7 +605,6 @@ export default function SO() {
                 totalAll += pop;
               });
 
-              // Group per huruf baris — K1, K2, K3 → K (strip angka di akhir)
               const barisGroup = {};
               const barisOrder = [];
               tableData.forEach(r => {
@@ -631,13 +618,11 @@ export default function SO() {
                 barisGroup[barisKey][v] = (barisGroup[barisKey][v] || 0) + (parseInt(r.populasi) || 0);
               });
 
-              // Build teks baris — "K Elysia 130 Greeniegal 48 Sunray 4"
               const lines = barisOrder.map(baris => {
                 const parts = Object.entries(barisGroup[baris]).map(([v, p]) => `${v} ${p}`).join(" ");
                 return `${baris} ${parts}`;
               });
 
-              // Tambah total per varian
               const totalLines = Object.entries(totalPerVarian)
                 .sort((a, b) => b[1] - a[1])
                 .map(([v, t]) => `${v}: ${t.toLocaleString("id-ID")} tanaman`);
@@ -667,12 +652,10 @@ export default function SO() {
                     </button>
                   </div>
 
-                  {/* Per baris */}
                   <div style={{ fontFamily: "monospace", fontSize: 12, color: "#333", marginBottom: 10, whiteSpace: "pre-wrap", lineHeight: 1.7 }}>
                     {lines.join("\n")}
                   </div>
 
-                  {/* Total per varian */}
                   <div style={{ borderTop: "1px solid #dce775", paddingTop: 8 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: "#558b2f", marginBottom: 6 }}>Total per varian</div>
                     {Object.entries(totalPerVarian).sort((a,b) => b[1]-a[1]).map(([v, t]) => (
@@ -770,7 +753,7 @@ export default function SO() {
           <button onClick={() => setConfirmOpen(true)} disabled={!canSubmit || syncing}
             style={{ flex: 2, padding: "13px", border: "none", borderRadius: 12, background: canSubmit && !syncing ? (!isOnline ? "linear-gradient(135deg,#1565C0,#1976D2)" : "linear-gradient(135deg,#1b5e20,#2e7d32)") : "#e0e0e0", color: canSubmit && !syncing ? "#fff" : "#aaa", fontSize: 15, fontWeight: 700, cursor: canSubmit && !syncing ? "pointer" : "not-allowed", transition: "all 0.2s" }}>
             {syncing
-              ? `⏳ ${syncProgress.done}/${syncProgress.total}...`
+              ? `⏳ Mengirim...`
               : !isOnline && canSubmit
                 ? `💾 Simpan Offline (${tableData.filter(r => r.populasi !== "").length} baris)`
                 : `Submit ${tableData.filter(r => r.populasi !== "").length} Baris ✓`}
