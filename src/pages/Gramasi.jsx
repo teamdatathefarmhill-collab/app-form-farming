@@ -22,7 +22,6 @@ function markSubmitted(gh) {
   if (!list.includes(gh)) localStorage.setItem(LS_KEY, JSON.stringify([...list, gh]));
 }
 function mergeSubmitted(serverList) {
-  // Gabungin data server + cache lokal, simpan balik ke localStorage
   const local = getSubmittedToday();
   const merged = [...new Set([...serverList, ...local])];
   localStorage.setItem(LS_KEY, JSON.stringify(merged));
@@ -31,9 +30,8 @@ function mergeSubmitted(serverList) {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function hitungHST(tgl) {
-  // Parse manual agar tidak kena masalah UTC
   const [y, m, d] = tgl.split("-").map(Number);
-  const tanam = new Date(y, m - 1, d); // local time, bukan UTC
+  const tanam = new Date(y, m - 1, d);
   const now = new Date();
   const nowLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   return Math.floor((nowLocal - tanam) / 86400000);
@@ -60,7 +58,7 @@ export default function Gramasi() {
   const { getDraft, saveDraft, clearDraft } = useDraft("gramasi");
   const _draft = getDraft();
 
-  const [step, setStep]   = useState(_draft?.step || 1);
+  const [step, setStep]         = useState(_draft?.step || 1);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const { ghData, loading: loadingGH, isDemoMode } = useGHData();
@@ -75,9 +73,9 @@ export default function Gramasi() {
   const [savedOffline, setSavedOffline] = useState(false);
   const [confirmOpen, setConfirmOpen]   = useState(false);
 
-  const [submittedToday, setSubmittedToday] = useState(getSubmittedToday());
-  const [showWarning, setShowWarning]       = useState(false);
-  const [pendingGH, setPendingGH]           = useState("");
+  const [submittedToday, setSubmittedToday]     = useState(getSubmittedToday());
+  const [showWarning, setShowWarning]           = useState(false);
+  const [pendingGH, setPendingGH]               = useState("");
   const [loadingSubmitted, setLoadingSubmitted] = useState(false);
 
   // ── Fetch GH yang sudah disubmit hari ini dari server (cross-device) ──
@@ -92,7 +90,7 @@ export default function Gramasi() {
         setSubmittedToday(merged);
       }
     } catch {
-      // Gagal fetch — pakai cache lokal saja, nggak perlu error
+      // Gagal fetch — pakai cache lokal saja
     } finally {
       setLoadingSubmitted(false);
     }
@@ -136,35 +134,24 @@ export default function Gramasi() {
     if (isOnline) syncPendingData();
   }, [isOnline]);
 
-
-  // ── Sync semua pending ke GAS ──
+  // ── Sync semua pending ke GAS — kirim batch sekaligus ──
   const syncPendingData = useCallback(async () => {
     const allPending = await idbGetAll(DB_NAME);
     if (allPending.length === 0) return;
     setIsSyncingPending(true);
     for (const record of allPending) {
       try {
-        let allSuccess = true;
-        for (const payload of record.payloads) {
-          try {
-            await fetch(SCRIPT_URL, {
-              method: "POST",
-              headers: { "Content-Type": "text/plain" },
-              body: JSON.stringify(payload),
-              redirect: "follow",
-            });
-          } catch {
-            allSuccess = false;
-            break;
-          }
-        }
-        if (allSuccess) {
-          markSubmitted(record.gh);
-          setSubmittedToday(getSubmittedToday());
-          await idbDelete(DB_NAME, record.id);
-        }
+        await fetch(SCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify({ action: "submitGramasiBatch", rows: record.payloads }),
+          redirect: "follow",
+        });
+        markSubmitted(record.gh);
+        setSubmittedToday(getSubmittedToday());
+        await idbDelete(DB_NAME, record.id);
       } catch {
-        // skip, coba lagi next time
+        // Gagal sync record ini, skip dulu — coba lagi nanti
       }
     }
     await refreshPendingCount();
@@ -195,7 +182,6 @@ export default function Gramasi() {
 
   const updateCell = (i, field, val) => {
     if (val !== "" && !/^\d*\.?\d*$/.test(val)) return;
-    // Max 4 digit (angka sebelum titik desimal)
     const intPart = val.split(".")[0];
     if (intPart.length > 4) return;
     setTableData(prev => {
@@ -218,18 +204,17 @@ export default function Gramasi() {
     return tableData.map(row => {
       const avg = calcAvg(row.s1, row.s2, row.s3);
       return {
-        action: "submitGramasi",
         client_timestamp,
-        tanggal: todayISO,
-        gh: selectedGH,
-        periode: ghInfo?.periode || "",
-        hst: hst ?? "",
-        baris: row.baris,
-        varian: row.varian,
-        s1: row.s1 || 0,
-        s2: row.s2 || 0,
-        s3: row.s3 || 0,
-        avg: avg || 0,
+        tanggal:    todayISO,
+        gh:         selectedGH,
+        periode:    ghInfo?.periode || "",
+        hst:        hst ?? "",
+        baris:      row.baris,
+        varian:     row.varian,
+        s1:         row.s1 || 0,
+        s2:         row.s2 || 0,
+        s3:         row.s3 || 0,
+        avg:        avg || 0,
         operator,
         keterangan: keterangan.trim() || "",
       };
@@ -239,13 +224,14 @@ export default function Gramasi() {
   const handleSubmit = async () => {
     setSyncing(true);
     setSubmitError(null);
-    setSyncProgress({ done: 0, total: tableData.length });
+    const payloads = buildPayloads();
+    setSyncProgress({ done: 0, total: payloads.length });
 
     // ── Mode Demo ──
     if (isDemoMode) {
-      for (let i = 0; i < tableData.length; i++) {
+      for (let i = 0; i < payloads.length; i++) {
         await new Promise(r => setTimeout(r, 60));
-        setSyncProgress({ done: i + 1, total: tableData.length });
+        setSyncProgress({ done: i + 1, total: payloads.length });
       }
       markSubmitted(selectedGH);
       setSubmittedToday(getSubmittedToday());
@@ -254,15 +240,14 @@ export default function Gramasi() {
       return;
     }
 
-    const payloads = buildPayloads();
-
-    // ══ MODE OFFLINE ══
+    // ── Mode Offline ──
     if (!isOnline) {
       try {
         await idbAdd(DB_NAME, { gh: selectedGH, tanggal: todayISO, createdAt: Date.now(), payloads });
         await refreshPendingCount();
         markSubmitted(selectedGH);
         setSubmittedToday(getSubmittedToday());
+        clearDraft();
         setSavedOffline(true);
         setStep(3);
       } catch {
@@ -273,29 +258,25 @@ export default function Gramasi() {
       return;
     }
 
-    // ══ MODE ONLINE ══
+    // ── Mode Online — kirim semua baris sekaligus dalam satu request ──
     setSavedOffline(false);
-    let done = 0;
-    for (const payload of payloads) {
-      try {
-        await fetch(SCRIPT_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify(payload),
-          redirect: "follow",
-        });
-        done++;
-        setSyncProgress({ done, total: tableData.length });
-      } catch {
-        setSubmitError(`Gagal mengirim baris ${payload.baris}, cek koneksi`);
-        setSyncing(false);
-        return;
-      }
+    try {
+      await fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({ action: "submitGramasiBatch", rows: payloads }),
+        redirect: "follow",
+      });
+      setSyncProgress({ done: payloads.length, total: payloads.length });
+      markSubmitted(selectedGH);
+      setSubmittedToday(getSubmittedToday());
+      clearDraft();
+      setStep(3);
+    } catch {
+      setSubmitError("Gagal mengirim data. Cek koneksi dan coba lagi.");
+    } finally {
+      setSyncing(false);
     }
-    markSubmitted(selectedGH);
-    setSubmittedToday(getSubmittedToday());
-    setStep(3);
-    setSyncing(false);
   };
 
   const resetForm = () => {
@@ -394,7 +375,6 @@ export default function Gramasi() {
                   <div style={{ fontSize: 12, color: "#f57f17", fontWeight: 600 }}>Server tidak terjangkau</div>
                   <div style={{ fontSize: 11, color: "#a67c00", marginTop: 2 }}>Menampilkan data demo</div>
                 </div>
-                <button onClick={fetchGHData} style={{ padding: "5px 10px", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 7, color: "#e65100", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>Coba Lagi</button>
               </div>
             )}
 
@@ -408,9 +388,9 @@ export default function Gramasi() {
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 {ghAktif.map(([gh, info]) => {
-                  const hstGH   = info.tanam ? hitungHST(info.tanam) : null;
-                  const c       = hstGH !== null ? hstColor(hstGH) : hstColor(30);
-                  const dipilih = selectedGH === gh;
+                  const hstGH    = info.tanam ? hitungHST(info.tanam) : null;
+                  const c        = hstGH !== null ? hstColor(hstGH) : hstColor(30);
+                  const dipilih  = selectedGH === gh;
                   const sudahIsi = submittedToday.includes(gh);
                   return (
                     <button key={gh} onClick={() => handleSelectGH(gh)} style={{ padding: "12px 10px", borderRadius: 14, cursor: "pointer", textAlign: "center", border: dipilih ? "2px solid #2e7d32" : sudahIsi ? "1px solid #ffb74d" : "1px solid #e0e0e0", background: dipilih ? "#e8f5e9" : sudahIsi ? "#fff8e1" : "#fff", boxShadow: dipilih ? "0 2px 10px rgba(46,125,50,0.15)" : "0 1px 4px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column", alignItems: "center", gap: 7, transition: "all 0.2s" }}>
@@ -511,12 +491,6 @@ export default function Gramasi() {
               </table>
             </div>
 
-            {!allFilled && tableData.length > 0 && (
-              <div style={{ fontSize: 12, color: "#e65100", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
-                ⚠️ {tableData.length - filledCount} baris belum lengkap (perlu 3 sampel)
-              </div>
-            )}
-
             {/* Keterangan (opsional) — di bawah tabel */}
             <div style={{ marginBottom: 12, marginTop: 4 }}>
               <label style={{ fontSize: 11, color: "#388e3c", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
@@ -530,6 +504,12 @@ export default function Gramasi() {
               />
             </div>
 
+            {!allFilled && tableData.length > 0 && (
+              <div style={{ fontSize: 12, color: "#e65100", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
+                ⚠️ {tableData.length - filledCount} baris belum lengkap (perlu 3 sampel)
+              </div>
+            )}
+
             {submitError && (
               <div style={{ fontSize: 12, color: "#c62828", background: "#ffebee", border: "1px solid #ef9a9a", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
                 ⚠️ {submitError}
@@ -538,7 +518,7 @@ export default function Gramasi() {
 
             {syncing && (
               <div style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 12, color: "#666", marginBottom: 6 }}>Menyimpan {syncProgress.done}/{syncProgress.total} baris...</div>
+                <div style={{ fontSize: 12, color: "#666", marginBottom: 6 }}>Mengirim data...</div>
                 <div style={{ background: "#e0e0e0", borderRadius: 4, height: 6, overflow: "hidden" }}>
                   <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#2e7d32,#4CAF50)", width: `${syncProgress.total > 0 ? (syncProgress.done / syncProgress.total) * 100 : 0}%`, transition: "width 0.3s" }} />
                 </div>
@@ -609,7 +589,7 @@ export default function Gramasi() {
           {step === 2 && (
             <button onClick={() => setConfirmOpen(true)} disabled={!canSubmit || syncing} style={{ flex: 2, padding: "13px", border: "none", borderRadius: 12, background: canSubmit && !syncing ? (!isOnline ? "linear-gradient(135deg,#1565C0,#1976D2)" : "linear-gradient(135deg,#1b5e20,#2e7d32)") : "#e0e0e0", color: canSubmit && !syncing ? "#fff" : "#aaa", fontSize: 15, fontWeight: 700, cursor: canSubmit && !syncing ? "pointer" : "not-allowed", transition: "all 0.2s" }}>
               {syncing
-                ? `⏳ ${syncProgress.done}/${syncProgress.total}...`
+                ? `⏳ Mengirim...`
                 : !isOnline && canSubmit
                   ? `💾 Simpan Offline (${tableData.length} baris)`
                   : `Submit ${tableData.length} Baris ✓`}
