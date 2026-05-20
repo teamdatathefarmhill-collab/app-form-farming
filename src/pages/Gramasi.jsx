@@ -12,7 +12,20 @@ const HST_MAX = 55;
 
 
 // ─── localStorage helpers (cache lokal, fallback offline) ─────────────────────
-const LS_KEY = `gramasi_${new Date().toLocaleDateString("id-ID")}`;
+// Pakai ISO date (YYYY-MM-DD) supaya tidak ambigu lintas locale & timezone lokal
+const _todayISO_LS = new Date().toISOString().split("T")[0]; // e.g. "2026-05-20"
+const LS_KEY = `gramasi_submitted_${_todayISO_LS}`;
+const LS_PREFIX = "gramasi_submitted_";
+
+// Hapus cache hari-hari sebelumnya supaya tidak numpuk & tidak bocor ke hari lain
+function cleanOldKeys() {
+  try {
+    Object.keys(localStorage)
+      .filter(k => k.startsWith(LS_PREFIX) && k !== LS_KEY)
+      .forEach(k => localStorage.removeItem(k));
+  } catch { /* ignore */ }
+}
+
 function getSubmittedToday() {
   try { return JSON.parse(localStorage.getItem(LS_KEY) || "[]"); }
   catch { return []; }
@@ -73,21 +86,33 @@ export default function Gramasi() {
   const [savedOffline, setSavedOffline] = useState(false);
   const [confirmOpen, setConfirmOpen]   = useState(false);
 
-  const [submittedToday, setSubmittedToday]     = useState(getSubmittedToday());
+  const [submittedToday, setSubmittedToday]     = useState(() => {
+    cleanOldKeys(); // bersihin cache hari sebelumnya saat pertama load
+    return getSubmittedToday();
+  });
   const [showWarning, setShowWarning]           = useState(false);
   const [pendingGH, setPendingGH]               = useState("");
   const [loadingSubmitted, setLoadingSubmitted] = useState(false);
 
   // ── Fetch GH yang sudah disubmit hari ini dari server (cross-device) ──
+  // Kirim parameter tanggal supaya server bisa filter dengan benar, tidak balik data kemarin
   const fetchSubmittedToday = useCallback(async () => {
     if (!isOnline || isDemoMode) return;
     setLoadingSubmitted(true);
     try {
-      const res = await fetch(`${SCRIPT_URL}?action=getSubmittedToday`, { redirect: "follow" });
+      const url = `${SCRIPT_URL}?action=getSubmittedToday&tanggal=${encodeURIComponent(todayISO)}`;
+      const res = await fetch(url, { redirect: "follow" });
       const data = await res.json();
       if (Array.isArray(data.submitted)) {
-        const merged = mergeSubmitted(data.submitted);
-        setSubmittedToday(merged);
+        // Kalau server juga balik field tanggal, validasi dulu sebelum merge
+        const serverDate = data.tanggal; // opsional — tergantung GAS kamu
+        if (!serverDate || serverDate === todayISO) {
+          const merged = mergeSubmitted(data.submitted);
+          setSubmittedToday(merged);
+        } else {
+          // Server balik tanggal yang salah — abaikan, pakai local cache saja
+          console.warn("Server returned data for wrong date:", serverDate, "expected:", todayISO);
+        }
       }
     } catch {
       // Gagal fetch — pakai cache lokal saja
