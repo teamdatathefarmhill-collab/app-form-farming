@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 
 const WEBHOOK = "https://script.google.com/macros/s/AKfycbzBndG0bEIxKN2RJ7zvI571vRk9EOq5iuN-OzObBU6LHZDvG2GKb6ptXRqHdMj1Z7K2Dw/exec";
 
@@ -7,12 +8,100 @@ const JAM_OPTIONS = [
   "12.00","13.00","14.00","15.00","16.00",
 ];
 
+/* ─── ANIMATED WEATHER ICONS ─── */
+
+function SunIcon({ size = 40 }) {
+  return (
+    <motion.svg viewBox="0 0 48 48" fill="none" style={{ width: size, height: size }}>
+      <motion.g animate={{ rotate: 360 }} transition={{ duration: 12, ease: "linear", repeat: Infinity }}>
+        {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
+          <motion.line key={deg} x1="24" y1="6" x2="24" y2="10"
+            stroke="#FBBF24" strokeWidth={2} strokeLinecap="round"
+            style={{ transformOrigin: "24px 24px", rotate: deg }}
+            animate={{ opacity: [0.4, 1, 0.4] }}
+            transition={{ duration: 2, repeat: Infinity, delay: deg / 360 }} />
+        ))}
+      </motion.g>
+      <motion.circle cx="24" cy="24" r="8" fill="#FBBF24" opacity={0.2}
+        animate={{ scale: [1, 1.15, 1] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }} />
+      <circle cx="24" cy="24" r="8" stroke="#FBBF24" strokeWidth={2} />
+    </motion.svg>
+  );
+}
+
+function PartlyCloudyIcon({ size = 40 }) {
+  return (
+    <svg viewBox="0 0 48 48" fill="none" style={{ width: size, height: size }}>
+      <motion.g animate={{ rotate: 360 }} transition={{ duration: 20, ease: "linear", repeat: Infinity }}
+        style={{ transformOrigin: "16px 16px" }}>
+        {[0, 60, 120, 180, 240, 300].map((deg) => (
+          <line key={deg} x1="16" y1="6" x2="16" y2="9"
+            stroke="#FBBF24" strokeWidth={1.5} strokeLinecap="round"
+            style={{ transformOrigin: "16px 16px", rotate: deg }} />
+        ))}
+      </motion.g>
+      <circle cx="16" cy="16" r="6" stroke="#FBBF24" strokeWidth={1.5} fill="#FBBF24" fillOpacity={0.15} />
+      <motion.g animate={{ x: [0, 1.5, 0, -1.5, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}>
+        <path d="M38 34H18a7 7 0 01-.5-14A9 9 0 0136 22a6 6 0 012 12z" fill="#94A3B8" opacity={0.12} />
+        <path d="M38 34H18a7 7 0 01-.5-14A9 9 0 0136 22a6 6 0 012 12z" stroke="#94A3B8" strokeWidth={2} strokeLinecap="round" />
+      </motion.g>
+    </svg>
+  );
+}
+
+function CloudIcon({ size = 40 }) {
+  return (
+    <svg viewBox="0 0 48 48" fill="none" style={{ width: size, height: size }}>
+      <motion.g animate={{ x: [0, 2, 0, -2, 0] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}>
+        <path d="M36 30H14a8 8 0 01-.5-16A10 10 0 0134 16a7 7 0 012 14z" fill="#94A3B8" opacity={0.12} />
+        <path d="M36 30H14a8 8 0 01-.5-16A10 10 0 0134 16a7 7 0 012 14z" stroke="#94A3B8" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      </motion.g>
+    </svg>
+  );
+}
+
+/* Mendung = awan gelap, lebih berat */
+function MendungIcon({ size = 40 }) {
+  return (
+    <svg viewBox="0 0 48 48" fill="none" style={{ width: size, height: size }}>
+      <motion.g animate={{ x: [0, 1.5, 0, -1.5, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}>
+        <path d="M36 30H14a8 8 0 01-.5-16A10 10 0 0134 16a7 7 0 012 14z" fill="#475569" opacity={0.18} />
+        <path d="M36 30H14a8 8 0 01-.5-16A10 10 0 0134 16a7 7 0 012 14z" stroke="#475569" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+      </motion.g>
+      {/* awan kedua di belakang, biar keliatan tumpuk */}
+      <motion.g animate={{ x: [0, -2, 0, 2, 0] }} transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}>
+        <path d="M40 36H20a6 6 0 01-.4-12A8 8 0 0138 26a5 5 0 012 10z" fill="#334155" opacity={0.12} />
+        <path d="M40 36H20a6 6 0 01-.4-12A8 8 0 0138 26a5 5 0 012 10z" stroke="#334155" strokeWidth={1.5} strokeLinecap="round" strokeDasharray="2 2" />
+      </motion.g>
+    </svg>
+  );
+}
+
+function RainIcon({ size = 40 }) {
+  const drops = [
+    { x: 16, d: 0 }, { x: 22, d: 0.3 }, { x: 28, d: 0.6 }, { x: 34, d: 0.15 },
+  ];
+  return (
+    <svg viewBox="0 0 48 48" fill="none" style={{ width: size, height: size }}>
+      <path d="M36 22H14a7 7 0 01-.5-14A9 9 0 0134 10a6 6 0 012 12z" fill="#60A5FA" opacity={0.1} />
+      <path d="M36 22H14a7 7 0 01-.5-14A9 9 0 0134 10a6 6 0 012 12z" stroke="#60A5FA" strokeWidth={2} strokeLinecap="round" />
+      {drops.map((drop) => (
+        <motion.line key={drop.x} x1={drop.x} y1={26} x2={drop.x} y2={30}
+          stroke="#60A5FA" strokeWidth={2} strokeLinecap="round"
+          animate={{ y: [0, 12], opacity: [0.8, 0] }}
+          transition={{ duration: 0.8, repeat: Infinity, delay: drop.d, ease: "easeIn" }} />
+      ))}
+    </svg>
+  );
+}
+
+/* ─── CUACA OPTIONS pakai Icon component, bukan emoji string ─── */
 const CUACA_OPTIONS = [
-  { label: "Cerah",         icon: "☀️",  skor: 100 },
-  { label: "Cerah Berawan", icon: "⛅",  skor: 80  },
-  { label: "Berawan",       icon: "☁️",  skor: 50  },
-  { label: "Mendung",       icon: "🌥️", skor: 25  },
-  { label: "Hujan",         icon: "🌧️", skor: 0   },
+  { label: "Cerah",         Icon: SunIcon,          emoji: "☀️",  skor: 100 },
+  { label: "Cerah Berawan", Icon: PartlyCloudyIcon,  emoji: "⛅",  skor: 80  },
+  { label: "Berawan",       Icon: CloudIcon,          emoji: "☁️",  skor: 50  },
+  { label: "Mendung",       Icon: MendungIcon,        emoji: "🌥️", skor: 25  },
+  { label: "Hujan",         Icon: RainIcon,           emoji: "🌧️", skor: 0   },
 ];
 
 function getTodayISO() {
@@ -39,6 +128,7 @@ export const CHANGELOG = [
   "Tanggal otomatis hari ini",
   "Data langsung terkirim ke Google Sheets Log Cuaca",
   "Jam yang sudah diisi ditandai merah otomatis via JSONP",
+  "Icon cuaca diganti ke animated SVG (framer-motion)",
 ];
 
 export default function Cuaca() {
@@ -256,7 +346,7 @@ export default function Cuaca() {
               </div>
             </div>
 
-            {/* Pilih Cuaca */}
+            {/* Pilih Cuaca — pakai animated icon */}
             <div style={{ marginBottom: 20 }}>
               <label style={{ fontSize: 11, color: "#1565C0", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700, display: "block", marginBottom: 8 }}>
                 🌡️ Kondisi Cuaca <span style={{ color: "#e53935" }}>*</span>
@@ -275,7 +365,8 @@ export default function Cuaca() {
                         display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
                         transition: "all 0.15s",
                       }}>
-                      <span style={{ fontSize: 22, lineHeight: 1 }}>{c.icon}</span>
+                      {/* ← Animated SVG icon, bukan emoji */}
+                      <c.Icon size={36} />
                       <span style={{ fontSize: 10, fontWeight: active ? 700 : 400, color: active ? "#0d47a1" : "#666", textAlign: "center", lineHeight: 1.3 }}>{c.label}</span>
                     </button>
                   );
@@ -286,8 +377,9 @@ export default function Cuaca() {
             {/* Skor preview */}
             {selectedCuaca && (
               <div style={{ background: skorBg, border: `1px solid ${skorColor}33`, borderRadius: 12, padding: "10px 14px", marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ fontSize: 13, color: skorColor, fontWeight: 600 }}>
-                  {selectedCuaca.icon} {selectedCuaca.label}
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <selectedCuaca.Icon size={28} />
+                  <span style={{ fontSize: 13, color: skorColor, fontWeight: 600 }}>{selectedCuaca.label}</span>
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 800, color: skorColor }}>
                   Skor: {selectedCuaca.skor}
@@ -329,12 +421,18 @@ export default function Cuaca() {
             <div style={{ fontSize: 21, fontWeight: 800, color: "#1b5e20", marginBottom: 6 }}>Data Tersimpan!</div>
             <div style={{ fontSize: 13, color: "#888", marginBottom: 20 }}>Data cuaca berhasil dikirim ke Google Sheets</div>
             <div style={{ background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 14, padding: 16, textAlign: "left", marginBottom: 24 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#333", marginBottom: 6 }}>Ringkasan</div>
-              <div style={{ fontSize: 13, color: "#555", lineHeight: 2 }}>
-                📅 {todayISO}<br />
-                🕐 Jam {jam}<br />
-                {selectedCuaca?.icon} {selectedCuaca?.label}<br />
-                📊 Skor: <strong style={{ color: skorColor }}>{selectedCuaca?.skor}</strong>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#333", marginBottom: 10 }}>Ringkasan</div>
+              <div style={{ fontSize: 13, color: "#555", lineHeight: 2.2 }}>
+                <div>📅 {todayISO}</div>
+                <div>🕐 Jam {jam}</div>
+                {/* Animated icon di sukses screen */}
+                {selectedCuaca && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <selectedCuaca.Icon size={24} />
+                    <span>{selectedCuaca.label}</span>
+                  </div>
+                )}
+                <div>📊 Skor: <strong style={{ color: skorColor }}>{selectedCuaca?.skor}</strong></div>
               </div>
             </div>
             <button onClick={resetForm}
