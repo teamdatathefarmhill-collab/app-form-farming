@@ -7,7 +7,7 @@ import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 const DB_NAME = "GramasiOfflineDB";
 
 const SCRIPT_URL = import.meta.env.VITE_GAS_GRAMASI_URL;
-const HST_MIN = 30;
+const HST_MIN = 26;
 const HST_MAX = 55;
 
 
