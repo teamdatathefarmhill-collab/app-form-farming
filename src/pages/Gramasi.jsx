@@ -10,34 +10,46 @@ const SCRIPT_URL = import.meta.env.VITE_GAS_GRAMASI_URL;
 const HST_MIN = 26;
 const HST_MAX = 55;
 
+// ─── Tanggal helpers — selalu computed fresh, TIDAK di module level ──────────
+// Supaya kalau app dibiarkan terbuka semalam, tanggalnya tetap akurat saat dibuka pagi
+function getTodayDisplay() {
+  return new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+function getTodayLabel() {
+  return new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+}
 
 // ─── localStorage helpers (cache lokal, fallback offline) ─────────────────────
-// Pakai ISO date (YYYY-MM-DD) supaya tidak ambigu lintas locale & timezone lokal
-const _todayISO_LS = new Date().toISOString().split("T")[0]; // e.g. "2026-05-20"
-const LS_KEY = `gramasi_submitted_${_todayISO_LS}`;
 const LS_PREFIX = "gramasi_submitted_";
+
+// Key selalu fresh pakai tanggal saat ini (bukan frozen di module load)
+function getLSKey() {
+  // Pakai format ISO (YYYY-MM-DD) supaya tidak ambigu lintas locale & timezone
+  return `${LS_PREFIX}${new Date().toISOString().split("T")[0]}`;
+}
 
 // Hapus cache hari-hari sebelumnya supaya tidak numpuk & tidak bocor ke hari lain
 function cleanOldKeys() {
   try {
+    const currentKey = getLSKey();
     Object.keys(localStorage)
-      .filter(k => k.startsWith(LS_PREFIX) && k !== LS_KEY)
+      .filter(k => k.startsWith(LS_PREFIX) && k !== currentKey)
       .forEach(k => localStorage.removeItem(k));
   } catch { /* ignore */ }
 }
 
 function getSubmittedToday() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY) || "[]"); }
+  try { return JSON.parse(localStorage.getItem(getLSKey()) || "[]"); }
   catch { return []; }
 }
 function markSubmitted(gh) {
   const list = getSubmittedToday();
-  if (!list.includes(gh)) localStorage.setItem(LS_KEY, JSON.stringify([...list, gh]));
+  if (!list.includes(gh)) localStorage.setItem(getLSKey(), JSON.stringify([...list, gh]));
 }
 function mergeSubmitted(serverList) {
   const local = getSubmittedToday();
   const merged = [...new Set([...serverList, ...local])];
-  localStorage.setItem(LS_KEY, JSON.stringify(merged));
+  localStorage.setItem(getLSKey(), JSON.stringify(merged));
   return merged;
 }
 
@@ -64,12 +76,13 @@ function hstColor(hst) {
   return             { bg: "#fbe9e7", border: "#ffab91", text: "#bf360c", badge: "#fce4ec" };
 }
 
-const todayISO   = new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
-const todayLabel = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-
 export default function Gramasi() {
   const { getDraft, saveDraft, clearDraft } = useDraft("gramasi");
   const _draft = getDraft();
+
+  // Tanggal selalu fresh saat komponen mount — bukan dari module-level variable
+  const [todayISO]   = useState(() => getTodayDisplay());
+  const [todayLabel] = useState(() => getTodayLabel());
 
   const [step, setStep]         = useState(_draft?.step || 1);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -86,7 +99,7 @@ export default function Gramasi() {
   const [savedOffline, setSavedOffline] = useState(false);
   const [confirmOpen, setConfirmOpen]   = useState(false);
 
-  const [submittedToday, setSubmittedToday]     = useState(() => {
+  const [submittedToday, setSubmittedToday] = useState(() => {
     cleanOldKeys(); // bersihin cache hari sebelumnya saat pertama load
     return getSubmittedToday();
   });
@@ -95,7 +108,6 @@ export default function Gramasi() {
   const [loadingSubmitted, setLoadingSubmitted] = useState(false);
 
   // ── Fetch GH yang sudah disubmit hari ini dari server (cross-device) ──
-  // Kirim parameter tanggal supaya server bisa filter dengan benar, tidak balik data kemarin
   const fetchSubmittedToday = useCallback(async () => {
     if (!isOnline || isDemoMode) return;
     setLoadingSubmitted(true);
@@ -104,13 +116,11 @@ export default function Gramasi() {
       const res = await fetch(url, { redirect: "follow" });
       const data = await res.json();
       if (Array.isArray(data.submitted)) {
-        // Kalau server juga balik field tanggal, validasi dulu sebelum merge
-        const serverDate = data.tanggal; // opsional — tergantung GAS kamu
+        const serverDate = data.tanggal;
         if (!serverDate || serverDate === todayISO) {
           const merged = mergeSubmitted(data.submitted);
           setSubmittedToday(merged);
         } else {
-          // Server balik tanggal yang salah — abaikan, pakai local cache saja
           console.warn("Server returned data for wrong date:", serverDate, "expected:", todayISO);
         }
       }
@@ -119,7 +129,7 @@ export default function Gramasi() {
     } finally {
       setLoadingSubmitted(false);
     }
-  }, [isOnline, isDemoMode]);
+  }, [isOnline, isDemoMode, todayISO]);
 
   // ── Offline state ──
   const [pendingCount, setPendingCount]         = useState(0);
@@ -159,7 +169,7 @@ export default function Gramasi() {
     if (isOnline) syncPendingData();
   }, [isOnline]);
 
-  // ── Sync semua pending ke GAS — kirim batch sekaligus ──
+  // ── Sync semua pending ke GAS ──
   const syncPendingData = useCallback(async () => {
     const allPending = await idbGetAll(DB_NAME);
     if (allPending.length === 0) return;
@@ -226,11 +236,13 @@ export default function Gramasi() {
   // ── Build semua payload per baris ──
   const buildPayloads = () => {
     const client_timestamp = new Date().toISOString();
+    // Ambil tanggal fresh saat submit — bukan dari state yang mungkin sudah stale
+    const submitDate = getTodayDisplay();
     return tableData.map(row => {
       const avg = calcAvg(row.s1, row.s2, row.s3);
       return {
         client_timestamp,
-        tanggal:    todayISO,
+        tanggal:    submitDate,
         gh:         selectedGH,
         periode:    ghInfo?.periode || "",
         hst:        hst ?? "",
@@ -283,7 +295,7 @@ export default function Gramasi() {
       return;
     }
 
-    // ── Mode Online — kirim semua baris sekaligus dalam satu request ──
+    // ── Mode Online ──
     setSavedOffline(false);
     try {
       await fetch(SCRIPT_URL, {
@@ -322,7 +334,6 @@ export default function Gramasi() {
             <div style={{ fontSize: 13, opacity: 0.65, marginTop: 1 }}>{todayLabel}</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {/* Badge pending */}
             {pendingCount > 0 && (
               <button
                 onClick={isOnline ? syncPendingData : undefined}
@@ -346,7 +357,6 @@ export default function Gramasi() {
           </div>
         </div>
 
-        {/* Banner offline */}
         {!isOnline && (
           <div style={{ marginTop: 8, padding: "6px 10px", background: "rgba(244,67,54,0.2)", border: "1px solid rgba(244,67,54,0.4)", borderRadius: 7, display: "flex", alignItems: "center", gap: 7 }}>
             <span style={{ fontSize: 13 }}>📵</span>
@@ -450,7 +460,6 @@ export default function Gramasi() {
               )}
             </div>
 
-            {/* Banner offline di step 2 */}
             {!isOnline && (
               <div style={{ marginBottom: 12, padding: "8px 12px", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 9, display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 14 }}>📵</span>
@@ -465,7 +474,6 @@ export default function Gramasi() {
               <div style={{ height: "100%", borderRadius: 4, background: "#4CAF50", width: `${tableData.length > 0 ? (filledCount / tableData.length) * 100 : 0}%`, transition: "width 0.3s" }} />
             </div>
 
-            {/* Operator — di atas tabel */}
             <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 11, color: "#388e3c", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
                 👤 Nama Operator <span style={{ color: "#e53935" }}>*</span>
@@ -516,7 +524,6 @@ export default function Gramasi() {
               </table>
             </div>
 
-            {/* Keterangan (opsional) — di bawah tabel */}
             <div style={{ marginBottom: 12, marginTop: 4 }}>
               <label style={{ fontSize: 11, color: "#388e3c", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
                 📝 Keterangan <span style={{ fontSize: 10, color: "#aaa", textTransform: "none", letterSpacing: 0, fontWeight: 400 }}>— opsional</span>
