@@ -487,11 +487,18 @@ export default function Vigor() {
         } catch { resolvedSelfieUrl = ""; }
       }
 
-      for (const payload of payloads) {
-        const res  = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ ...payload, selfie_url: resolvedSelfieUrl }), redirect: "follow" });
-        const json = await res.json();
-        if (!json.success) throw new Error(json.message || "Gagal menyimpan");
-      }
+      // Jadi ini:
+        const res  = await fetch(SCRIPT_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain" },
+            body: JSON.stringify({
+              action: "submitVigorBatch",
+              rows: payloads.map(p => ({ ...p, selfie_url: resolvedSelfieUrl })),
+            }),
+              redirect: "follow",
+            });
+            const json = await res.json();
+if (!json.success) throw new Error(json.error || "Gagal menyimpan");
       markSubmitted(selectedGH); setSubmittedToday(getSubmittedToday());
       clearDraft(); setStep(3);
     } catch (e) {
