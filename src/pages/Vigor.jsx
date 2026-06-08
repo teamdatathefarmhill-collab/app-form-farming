@@ -8,7 +8,7 @@ import FotoSelfie from "../components/FotoSelfie";
 const DB_NAME    = "VigorOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_VIGOR_URL;
 
-// ─── Changelog — tambah item baru di sini setiap ada revisi ──────────────────
+// ─── Changelog ───────────────────────────────────────────────────────────────
 export const CHANGELOG = [
   "HST aktif sekarang mulai dari HST 1 (sebelumnya HST 5)",
   "GH RnD (Tohudan 22 & Sawahan Tunnel) kini tampil sebagai tipe tersendiri di Pilih GH — tidak lagi bergabung di Kolam",
@@ -29,9 +29,9 @@ const TIPE_GH = [
     key: "drip", label: "Drip", icon: "💧", color: "#1E88E5",
     pattern: (gh) => {
       const upper = gh.toUpperCase();
-      if (upper.startsWith("BERGAS")) { const n = parseInt(upper.replace("BERGAS","").trim()); return n >= 1 && n <= 8 && n !== 6; }
+      if (upper.startsWith("BERGAS"))   { const n = parseInt(upper.replace("BERGAS","").trim());   return n >= 1 && n <= 8 && n !== 6; }
       if (upper.startsWith("COLOMADU")) { const n = parseInt(upper.replace("COLOMADU","").trim()); return n >= 1 && n <= 4; }
-      if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return n === 12; }
+      if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim());  return n === 12; }
       return false;
     },
   },
@@ -39,8 +39,8 @@ const TIPE_GH = [
     key: "kolam", label: "Kolam", icon: "🏊", color: "#00897B",
     pattern: (gh) => {
       const upper = gh.toUpperCase().trim();
-      if (upper === "SAWAHAN TUNNEL") return false; // masuk RnD
-      if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return (n >= 1 && n <= 11) || n === 13; } // 22 masuk RnD
+      if (upper === "SAWAHAN TUNNEL") return false;
+      if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return (n >= 1 && n <= 11) || n === 13; }
       if (upper.startsWith("SAWAHAN")) { const n = parseInt(upper.replace("SAWAHAN","").trim()); return n >= 1 && n <= 4; }
       return false;
     },
@@ -66,17 +66,11 @@ const TIPE_GH = [
 
 function getCheckpointStatus(hst) {
   if (hst === null) return null;
-  // Cek apakah pas atau sudah lewat checkpoint (dalam 3 hari setelah checkpoint)
   for (const cp of HST_CHECKPOINTS) {
-    if (hst >= cp && hst <= cp + 3) {
-      return { type: "due", cp, label: `⚠️ Waktunya input Vigor HST ${cp}!` };
-    }
+    if (hst >= cp && hst <= cp + 3) return { type: "due",  cp, label: `⚠️ Waktunya input Vigor HST ${cp}!` };
   }
-  // Cek approaching (dalam HST_NEAR_RANGE hari sebelum checkpoint)
   for (const cp of HST_CHECKPOINTS) {
-    if (hst >= cp - HST_NEAR_RANGE && hst < cp) {
-      return { type: "soon", cp, label: `🔔 ${cp - hst} hari lagi menuju checkpoint HST ${cp}` };
-    }
+    if (hst >= cp - HST_NEAR_RANGE && hst < cp) return { type: "soon", cp, label: `🔔 ${cp - hst} hari lagi menuju checkpoint HST ${cp}` };
   }
   return null;
 }
@@ -87,18 +81,15 @@ function hstTerdekat(hst) {
   );
 }
 
-// ─── RnD GH — GH khusus riset (Tohudan 22 & Sawahan Tunnel) ─────────────────
 const RND_GH_LIST = ["TOHUDAN 22", "SAWAHAN TUNNEL"];
 const LEBAR_DAUN_RND_OPTIONS = ["Buruk", "Sedang", "Baik"];
 
 function isRndGH(gh) {
   if (!gh) return false;
-  const upper = gh.toUpperCase().trim();
-  return RND_GH_LIST.some(r => upper === r);
+  return RND_GH_LIST.some(r => gh.toUpperCase().trim() === r);
 }
 
-// ─── Aspek Vigor — per HST ────────────────────────────────────────────────────
-// Lebar Daun
+// ─── Opsi form ────────────────────────────────────────────────────────────────
 const LEBAR_DAUN_7_OPTIONS  = ["<7", "7–9,9", "10–12"];
 const LEBAR_DAUN_14_OPTIONS = ["< 13 cm", "13.0 - 14.9 cm", "15.0 - 17.0 cm"];
 const LEBAR_DAUN_18_OPTIONS = ["< 16 cm", "16.0 - 17.9 cm", "18 - 20 cm"];
@@ -107,91 +98,59 @@ const LEBAR_DAUN_33_OPTIONS = [
   "Lebar daun atas lebih kecil dengan daun tengah",
   "Lebar daun atas sama dengan daun tengah",
 ];
-
-// Diameter Batang
 const DIAMETER_7_14_OPTIONS = [
   "Tanaman Kutilang (Diameter batang kecil, antar ruas panjang)",
   "Batang kecil, antar ruas pendek",
   "Batang besar, antar ruas panjang",
   "Batang besar, ruas pendek",
 ];
-const DIAMETER_33_OPTIONS = [
-  "Diameter batang kecil",
-  "Diameter batang besar",
-];
-
-// Warna Daun (sama semua HST)
+const DIAMETER_33_OPTIONS = ["Diameter batang kecil", "Diameter batang besar"];
 const WARNA_DAUN_OPTIONS = [
   "> 8 tanaman menguning",
   "5–8 tanaman menguning",
   "1–4 tanaman menguning",
   "Tidak ada menguning",
 ];
-
-// ─── Aspek Perakaran ──────────────────────────────────────────────────────────
 const WARNA_AKAR_OPTIONS  = ["Akar Coklat (Mati/Busuk)", "Akar Putih Bersih / Akar Coklat Sehat"];
 const VOLUME_AKAR_OPTIONS = ["Tidak Ada Akar", "Volume Akar Sedikit", "Volume Akar Banyak"];
-
-// ─── Aspek Kualitas Buah (HST > 30) ──────────────────────────────────────────
 const SIMETRI_BUAH_OPTIONS = [
   "Buah asimetris/peyang > 40 tanaman",
   "Buah asimetris/peyang 31 - 40 tanaman",
   "Buah asimetris/peyang 21 - 30 tanaman",
   "Buah asimetris/peyang < 20 tanaman",
 ];
-
-// ─── Aspek Polinasi (HST 18 saja) ────────────────────────────────────────────
 const BUAH_BAJANG_OPTIONS = [
   "Bunga bajang/menguning sebelum mekar banyak (> 2 tunas/cabang)",
   "Bunga bajang/menguning sebelum mekar sedikit (+- 2 tunas/cabang)",
   "Tidak ada bunga bajang/menguning",
 ];
-
-// ─── Aspek Kualitas Buah — Cabang Buah (HST 33) ─────────────────────────────
 const CABANG_BUAH_OPTIONS = [
   "Buah jadi pada cabang > 13",
   "Buah jadi pada cabang 12 - 13",
   "Buah jadi pada cabang 9 - 11",
 ];
-
-const PANJANG_TUNAS_AIR_OPTIONS = [
-  "1 Ruas",
-  "2 Ruas",
-  "3 Ruas",
-  "4 Ruas",
-];
-
-// ─── Aspek Vigor tambahan (HST 38, 45, 54) ───────────────────────────────────
+const PANJANG_TUNAS_AIR_OPTIONS = ["1 Ruas", "2 Ruas", "3 Ruas", "4 Ruas"];
 const KESEGARAN_OPTIONS = ["Layu", "Lemas", "Segar"];
-
-// ─── Aspek Kualitas Buah tambahan ────────────────────────────────────────────
-// HST 45 — Netting Buah (2 pilihan)
 const NETTING_BUAH_45_OPTIONS = [
   "Varian MD, EL, SS <10% tanaman mulai netting ; SG, GR, dll <80% netting",
   "Varian MD, EL, SS 10% tanaman sudah mulai netting ; SG, GR, dll 80% - 100% netting",
 ];
-
-// HST 54 — Netting Buah crack basah (3 pilihan)
 const NETTING_BUAH_54_OPTIONS = [
   "Varian bernet crack terbuka (crack basah) > 40 tanaman",
   "Varian bernet crack terbuka (crack basah) 20 - 40 tanaman",
   "Varian bernet crack terbuka (crack basah) < 20 tanaman",
 ];
-
-// HST 54 — Netting 50% (2 pilihan tambahan)
 const NETTING_50_54_OPTIONS = [
   "Varian MD, EL, SS < 80% tanaman sudah mencapai netting 50%",
   "Varian MD, EL, SS 80% atau 150 tanaman sudah mencapai netting 50%",
 ];
-
-// HST 54 — Net/Bercak Hitam (khusus Greeniegal & Daegoji)
 const NET_BERCAK_HITAM_54_OPTIONS = [
   "Varian Greeniegal dan/atau Daegoji terdapat net/bercak hitam >10% per buah",
   "Varian Greeniegal dan/atau Daegoji terdapat net/bercak hitam 5-10% per buah",
   "Tidak ada net/bercak hitam pada Greeniegal dan/atau Daegoji",
 ];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 function hitungHST(tgl) {
   const [y, m, d] = tgl.split("-").map(Number);
   const tanam = new Date(y, m - 1, d);
@@ -209,19 +168,9 @@ function initVarianData(varianList) {
   const obj = {};
   varianList.forEach(v => {
     obj[v] = {
-      lebarDaun:        "",
-      diameterBatang:   "",
-      warnaDaun:        "",
-      warnaAkar:        "",
-      volumeAkar:       "",
-      simetriBuah:      "",
-      cabangBuah:       "",
-      buahBajang:       "",
-      panjangTunasAir:  "",
-      kesegaran:        "",
-      nettingBuah:      "",
-      netting50:        "",
-      netBercakHitam:   "",
+      lebarDaun: "", diameterBatang: "", warnaDaun: "", warnaAkar: "", volumeAkar: "",
+      simetriBuah: "", cabangBuah: "", buahBajang: "", panjangTunasAir: "",
+      kesegaran: "", nettingBuah: "", netting50: "", netBercakHitam: "",
     };
   });
   return obj;
@@ -240,17 +189,25 @@ function isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNettin
   return true;
 }
 
-const LS_KEY = `vigor_${new Date().toLocaleDateString("id-ID")}`;
+// ─── localStorage helpers — pakai fungsi supaya tanggal selalu fresh ─────────
+const LS_PREFIX = "vigor_submitted_";
+
+function getLSKey() {
+  return `${LS_PREFIX}${new Date().toISOString().split("T")[0]}`;
+}
+function cleanOldKeys() {
+  try {
+    const cur = getLSKey();
+    Object.keys(localStorage).filter(k => k.startsWith(LS_PREFIX) && k !== cur).forEach(k => localStorage.removeItem(k));
+  } catch { /* ignore */ }
+}
 function getSubmittedToday() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY) || "[]"); } catch { return []; }
+  try { return JSON.parse(localStorage.getItem(getLSKey()) || "[]"); } catch { return []; }
 }
 function markSubmitted(gh) {
   const list = getSubmittedToday();
-  if (!list.includes(gh)) localStorage.setItem(LS_KEY, JSON.stringify([...list, gh]));
+  if (!list.includes(gh)) localStorage.setItem(getLSKey(), JSON.stringify([...list, gh]));
 }
-
-const todayISO   = new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
-const todayLabel = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
 // ─── Komponen: Pilih Opsi (Radio style) ──────────────────────────────────────
 function PilihOpsi({ options, value, onChange, color = "#2e7d32", cols = 1 }) {
@@ -280,40 +237,45 @@ function PilihOpsi({ options, value, onChange, color = "#2e7d32", cols = 1 }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function Vigor() {
-  const [step, setStep]       = useState(1);
+  const [step, setStep]         = useState(1);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  // Tanggal selalu fresh saat komponen mount
+  const [todayISO]   = useState(() => new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" }));
+  const [todayLabel] = useState(() => new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" }));
 
   const { ghData, loading: loadingGH, isDemoMode } = useGHData();
 
-  // ── Draft persistence ──
   const { getDraft, saveDraft, clearDraft } = useDraft("vigor");
-
   const _draft = getDraft();
-  const [selectedGH, setSelectedGH]   = useState(_draft?.selectedGH   || "");
-  const [selectedHST, setSelectedHST] = useState(_draft?.selectedHST  || null);
+
+  const [selectedGH, setSelectedGH]     = useState(_draft?.selectedGH   || "");
+  const [selectedHST, setSelectedHST]   = useState(_draft?.selectedHST  || null);
   const [selectedTipe, setSelectedTipe] = useState(_draft?.selectedTipe || "");
-  const [varianData, setVarianData]   = useState(_draft?.varianData   || {});
-  const [operator, setOperator]       = useState(_draft?.operator     || "");
+  const [varianData, setVarianData]     = useState(_draft?.varianData   || {});
+  const [operator, setOperator]         = useState(_draft?.operator     || "");
   const [activeVarian, setActiveVarian] = useState(null);
 
-  const [submitting, setSubmitting]   = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [submitError, setSubmitError] = useState(null);
+  const [submitting, setSubmitting]     = useState(false);
+  const [confirmOpen, setConfirmOpen]   = useState(false);
+  const [submitError, setSubmitError]   = useState(null);
   const [savedOffline, setSavedOffline] = useState(false);
 
-  const [selfieFile, setSelfieFile]     = useState(null);
+  const [selfieFile, setSelfieFile]       = useState(null);
   const [selfiePreview, setSelfiePreview] = useState(null);
-  const [selfieUrl, setSelfieUrl]       = useState("");
+  const [selfieUrl, setSelfieUrl]         = useState("");
 
-  const [submittedToday, setSubmittedToday] = useState(getSubmittedToday);
+  const [submittedToday, setSubmittedToday] = useState(() => {
+    cleanOldKeys();
+    return getSubmittedToday();
+  });
   const [showWarning, setShowWarning] = useState(false);
   const [pendingGH, setPendingGH]     = useState("");
-  const [pendingCount, setPendingCount]     = useState(0);
+  const [pendingCount, setPendingCount]         = useState(0);
   const [isSyncingPending, setIsSyncingPending] = useState(false);
 
-  // Auto-save draft setiap kali state form berubah
   useEffect(() => {
-    if (step === 3) return; // jangan save state sukses
+    if (step === 3) return;
     saveDraft({ step, selectedGH, selectedHST, selectedTipe, varianData, operator });
   }, [step, selectedGH, selectedHST, selectedTipe, varianData, operator]);
 
@@ -324,7 +286,7 @@ export default function Vigor() {
   useEffect(() => { refreshPendingCount(); }, [refreshPendingCount]);
 
   useEffect(() => {
-    const on = () => setIsOnline(true);
+    const on  = () => setIsOnline(true);
     const off = () => setIsOnline(false);
     window.addEventListener("online", on);
     window.addEventListener("offline", off);
@@ -333,20 +295,26 @@ export default function Vigor() {
 
   useEffect(() => { if (isOnline) syncPending(); }, [isOnline]);
 
+  // ── Sync offline pending — kirim batch per record ──────────────────────────
   const syncPending = useCallback(async () => {
     const all = await idbGetAll(DB_NAME);
     if (!all.length) return;
     setIsSyncingPending(true);
     for (const record of all) {
       try {
-        let ok = true;
-        for (const payload of record.payloads) {
-          const res  = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload), redirect: "follow" });
-          const json = await res.json();
-          if (!json.success) { ok = false; break; }
+        const res  = await fetch(SCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify({ action: "submitVigorBatch", rows: record.payloads }),
+          redirect: "follow",
+        });
+        const json = await res.json();
+        if (json.success) {
+          markSubmitted(record.gh);
+          setSubmittedToday(getSubmittedToday());
+          await idbDelete(DB_NAME, record.id);
         }
-        if (ok) { markSubmitted(record.gh); setSubmittedToday(getSubmittedToday()); await idbDelete(DB_NAME, record.id); }
-      } catch { /* retry later */ }
+      } catch { /* retry nanti */ }
     }
     await refreshPendingCount();
     setIsSyncingPending(false);
@@ -383,17 +351,15 @@ export default function Vigor() {
   const hstAktual  = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : null;
   const col        = hstAktual !== null ? hstColor(hstAktual) : hstColor(21);
 
-  // Kontrol kemunculan field per HST
-  const showLebarDiameter = selectedHST !== 38 && selectedHST !== 45 && selectedHST !== 54;
-  const showKualitas      = selectedHST !== null && selectedHST > 30;
-  const showSimetri       = selectedHST === 33 || selectedHST === 38;
-  const showPolinasi      = selectedHST === 18;
-  const showKesegaran     = selectedHST === 38 || selectedHST === 45 || selectedHST === 54;
-  const showNetting       = selectedHST === 45 || selectedHST === 54;
-  const showNetting50     = selectedHST === 54;
+  const showLebarDiameter  = selectedHST !== 38 && selectedHST !== 45 && selectedHST !== 54;
+  const showKualitas       = selectedHST !== null && selectedHST > 30;
+  const showSimetri        = selectedHST === 33 || selectedHST === 38;
+  const showPolinasi       = selectedHST === 18;
+  const showKesegaran      = selectedHST === 38 || selectedHST === 45 || selectedHST === 54;
+  const showNetting        = selectedHST === 45 || selectedHST === 54;
+  const showNetting50      = selectedHST === 54;
   const showNetBercakHitam = selectedHST === 54;
 
-  // Tentukan pilihan lebar daun dan diameter sesuai HST
   const isRnd = isRndGH(selectedGH);
   const lebarDaunOptions = (isRnd && (selectedHST === 7 || selectedHST === 14 || selectedHST === 18))
     ? LEBAR_DAUN_RND_OPTIONS
@@ -401,7 +367,7 @@ export default function Vigor() {
     : selectedHST === 18 ? LEBAR_DAUN_18_OPTIONS
     : selectedHST === 33 ? LEBAR_DAUN_33_OPTIONS
     : LEBAR_DAUN_7_OPTIONS;
-  const diameterOptions  = selectedHST === 33 ? DIAMETER_33_OPTIONS : DIAMETER_7_14_OPTIONS;
+  const diameterOptions = selectedHST === 33 ? DIAMETER_33_OPTIONS : DIAMETER_7_14_OPTIONS;
 
   const filledCount = varianList.filter(v => isVarianFilled(varianData[v] || {}, showKualitas, showPolinasi, showKesegaran, showNetting, showNetting50, showNetBercakHitam, showLebarDiameter, showSimetri)).length;
   const allFilled   = varianList.length > 0 && filledCount === varianList.length;
@@ -409,32 +375,33 @@ export default function Vigor() {
 
   const buildPayloads = () => {
     const client_timestamp = new Date().toISOString();
+    const submitDate = new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
     return varianList.map(varian => {
       const d = varianData[varian] || {};
       return {
-        action:             "submitVigor",
+        action:            "submitVigor",
         client_timestamp,
-        tanggal:            todayISO,
-        gh:                 selectedGH,
-        periode:            ghInfo?.periode || "",
-        hst_aktual:         hstAktual ?? "",
-        hst_checkpoint:     selectedHST ?? "",
+        tanggal:           submitDate,
+        gh:                selectedGH,
+        periode:           ghInfo?.periode || "",
+        hst_aktual:        hstAktual ?? "",
+        hst_checkpoint:    selectedHST ?? "",
         varian,
         operator,
-        lebar_daun:         d.lebarDaun      || "",
-        diameter_batang:    d.diameterBatang || "",
-        warna_daun:         d.warnaDaun      || "",
-        warna_akar:         d.warnaAkar      || "",
-        volume_akar:        d.volumeAkar     || "",
-        simetri_buah:       showKualitas  ? (d.simetriBuah     || "") : "",
-        cabang_buah:        showSimetri   ? (d.cabangBuah       || "") : "",
-        buah_bajang:        showPolinasi  ? (d.buahBajang       || "") : "",
-        panjang_tunas_air:  showPolinasi  ? (d.panjangTunasAir || "") : "",
-        kesegaran:          showKesegaran  ? (d.kesegaran        || "") : "",
-        netting_buah:       showNetting    ? (d.nettingBuah      || "") : "",
-        netting_50:         showNetting50  ? (d.netting50        || "") : "",
-        net_bercak_hitam:   showNetBercakHitam ? (d.netBercakHitam || "") : "",
-        selfie_url:         "",
+        lebar_daun:        d.lebarDaun       || "",
+        diameter_batang:   d.diameterBatang  || "",
+        warna_daun:        d.warnaDaun       || "",
+        warna_akar:        d.warnaAkar       || "",
+        volume_akar:       d.volumeAkar      || "",
+        simetri_buah:      showKualitas       ? (d.simetriBuah    || "") : "",
+        cabang_buah:       showSimetri        ? (d.cabangBuah      || "") : "",
+        buah_bajang:       showPolinasi       ? (d.buahBajang      || "") : "",
+        panjang_tunas_air: showPolinasi       ? (d.panjangTunasAir || "") : "",
+        kesegaran:         showKesegaran      ? (d.kesegaran       || "") : "",
+        netting_buah:      showNetting        ? (d.nettingBuah     || "") : "",
+        netting_50:        showNetting50      ? (d.netting50       || "") : "",
+        net_bercak_hitam:  showNetBercakHitam ? (d.netBercakHitam  || "") : "",
+        selfie_url:        "",
       };
     });
   };
@@ -444,6 +411,7 @@ export default function Vigor() {
     setSubmitError(null);
     const payloads = buildPayloads();
 
+    // ── Demo mode ──
     if (isDemoMode) {
       await new Promise(r => setTimeout(r, 600));
       markSubmitted(selectedGH); setSubmittedToday(getSubmittedToday());
@@ -451,6 +419,7 @@ export default function Vigor() {
       return;
     }
 
+    // ── Offline — simpan ke IDB ──
     if (!isOnline) {
       try {
         await idbAdd(DB_NAME, { gh: selectedGH, tanggal: todayISO, createdAt: Date.now(), payloads });
@@ -463,15 +432,16 @@ export default function Vigor() {
       return;
     }
 
+    // ── Online ──
     setSavedOffline(false);
     try {
       // Upload selfie dulu kalau ada
       let resolvedSelfieUrl = selfieUrl;
       if (selfieFile && !selfieUrl) {
         const selfiePayload = {
-          action: "uploadFoto",
-          fileName: `${operator.trim().replace(/\s+/g, "_")}_${todayISO.replace(/\//g, "-")}.jpg`,
-          mimeType: selfieFile.type || "image/jpeg",
+          action:     "uploadFoto",
+          fileName:   `${operator.trim().replace(/\s+/g, "_")}_${todayISO.replace(/\//g, "-")}.jpg`,
+          mimeType:   selfieFile.type || "image/jpeg",
           base64Data: await new Promise((res) => {
             const reader = new FileReader();
             reader.onload = (ev) => res(ev.target.result.split(",")[1]);
@@ -480,25 +450,26 @@ export default function Vigor() {
           sessionKey: "vigor_selfie_" + Date.now(),
         };
         try {
-          const r = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(selfiePayload), redirect: "follow" });
+          const r      = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(selfiePayload), redirect: "follow" });
           const result = await r.json();
           resolvedSelfieUrl = result.url || "";
           setSelfieUrl(resolvedSelfieUrl);
         } catch { resolvedSelfieUrl = ""; }
       }
 
-      // Jadi ini:
-        const res  = await fetch(SCRIPT_URL, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain" },
-            body: JSON.stringify({
-              action: "submitVigorBatch",
-              rows: payloads.map(p => ({ ...p, selfie_url: resolvedSelfieUrl })),
-            }),
-              redirect: "follow",
-            });
-            const json = await res.json();
-if (!json.success) throw new Error(json.error || "Gagal menyimpan");
+      // Kirim semua varian sekaligus dalam satu request batch
+      const res  = await fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({
+          action: "submitVigorBatch",
+          rows: payloads.map(p => ({ ...p, selfie_url: resolvedSelfieUrl })),
+        }),
+        redirect: "follow",
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || "Gagal menyimpan");
+
       markSubmitted(selectedGH); setSubmittedToday(getSubmittedToday());
       clearDraft(); setStep(3);
     } catch (e) {
@@ -535,8 +506,6 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
             <span style={{ width: 8, height: 8, borderRadius: "50%", background: isOnline ? "#69f0ae" : "#f44336", display: "inline-block", boxShadow: isOnline ? "0 0 6px #69f0ae" : "0 0 6px #f44336" }} />
           </div>
         </div>
-
-        {/* Progress bar */}
         <div style={{ display: "flex", gap: 5, marginTop: 12 }}>
           {["Pilih GH", "Input Vigor", "Selesai"].map((label, i) => {
             const s = i + 1;
@@ -575,7 +544,6 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
           <div>
             <div style={{ fontWeight: 700, fontSize: 18, color: "#1b5e20", marginBottom: 4 }}>Pilih Greenhouse</div>
             <div style={{ fontSize: 12, color: "#888", marginBottom: 14 }}>GH aktif HST {HST_MIN}–{HST_MAX}</div>
-
             {loadingGH ? (
               <div style={{ textAlign: "center", padding: "40px 0", color: "#aaa" }}>
                 <div style={{ fontSize: 28 }}>🔄</div>
@@ -586,20 +554,12 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {TIPE_GH.map(tipe => {
-                  const ghDiTipe  = ghAktif.filter(([gh]) => tipe.pattern(gh));
-                  const isOpen    = selectedTipe === tipe.key;
-                  const hasDue    = ghDiTipe.some(([gh, info]) => {
-                    const cs = getCheckpointStatus(info.tanam ? hitungHST(info.tanam) : null);
-                    return cs?.type === "due";
-                  });
-                  const hasSoon   = !hasDue && ghDiTipe.some(([gh, info]) => {
-                    const cs = getCheckpointStatus(info.tanam ? hitungHST(info.tanam) : null);
-                    return cs?.type === "soon";
-                  });
-
+                  const ghDiTipe = ghAktif.filter(([gh]) => tipe.pattern(gh));
+                  const isOpen   = selectedTipe === tipe.key;
+                  const hasDue   = ghDiTipe.some(([, info]) => getCheckpointStatus(info.tanam ? hitungHST(info.tanam) : null)?.type === "due");
+                  const hasSoon  = !hasDue && ghDiTipe.some(([, info]) => getCheckpointStatus(info.tanam ? hitungHST(info.tanam) : null)?.type === "soon");
                   return (
                     <div key={tipe.key} style={{ border: `1.5px solid ${isOpen ? tipe.color + "55" : "#e0e0e0"}`, borderRadius: 14, overflow: "hidden", background: "#fff" }}>
-                      {/* Accordion header */}
                       <button onClick={() => setSelectedTipe(isOpen ? "" : tipe.key)}
                         style={{ width: "100%", padding: "13px 16px", background: isOpen ? `${tipe.color}10` : "#fff", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -615,8 +575,6 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
                           <span style={{ fontSize: 14, color: "#bbb", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "inline-block" }}>▼</span>
                         </div>
                       </button>
-
-                      {/* GH grid */}
                       {isOpen && (
                         <div style={{ padding: "10px 12px 14px", borderTop: `1px solid ${tipe.color}22` }}>
                           {ghDiTipe.length === 0 ? (
@@ -628,6 +586,7 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
                                 const c        = hstGH !== null ? hstColor(hstGH) : hstColor(21);
                                 const dipilih  = selectedGH === gh;
                                 const sudahIsi = submittedToday.includes(gh);
+                                const cs       = getCheckpointStatus(hstGH);
                                 return (
                                   <button key={gh} onClick={() => handleSelectGH(gh)}
                                     style={{ padding: "12px 10px", borderRadius: 12, cursor: "pointer", textAlign: "center", border: dipilih ? `2px solid ${tipe.color}` : sudahIsi ? "1px solid #ffb74d" : "1px solid #e0e0e0", background: dipilih ? `${tipe.color}12` : sudahIsi ? "#fff8e1" : "#fafafa", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, transition: "all 0.2s" }}>
@@ -639,15 +598,11 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
                                         <span style={{ fontSize: 10, color: c.text, marginLeft: 3 }}>HST</span>
                                       </div>
                                     )}
-                                    {(() => {
-                                      const cs = getCheckpointStatus(hstGH);
-                                      if (!cs) return null;
-                                      return (
-                                        <div style={{ width: "100%", fontSize: 10, borderRadius: 7, padding: "3px 6px", fontWeight: 700, background: cs.type === "due" ? "#fff3e0" : "#e8f5e9", border: `1px solid ${cs.type === "due" ? "#ffb74d" : "#a5d6a7"}`, color: cs.type === "due" ? "#e65100" : "#2e7d32" }}>
-                                          {cs.label}
-                                        </div>
-                                      );
-                                    })()}
+                                    {cs && (
+                                      <div style={{ width: "100%", fontSize: 10, borderRadius: 7, padding: "3px 6px", fontWeight: 700, background: cs.type === "due" ? "#fff3e0" : "#e8f5e9", border: `1px solid ${cs.type === "due" ? "#ffb74d" : "#a5d6a7"}`, color: cs.type === "due" ? "#e65100" : "#2e7d32" }}>
+                                        {cs.label}
+                                      </div>
+                                    )}
                                     {sudahIsi && <div style={{ fontSize: 10, background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 8px", color: "#e65100", fontWeight: 600 }}>✓ Sudah diisi</div>}
                                   </button>
                                 );
@@ -667,7 +622,6 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
         {/* ══ STEP 2 — Input Per Varian ══ */}
         {step === 2 && (
           <div>
-            {/* Info GH */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
               <div style={{ background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#2e7d32", fontWeight: 700 }}>{selectedGH}</div>
               <div style={{ background: "#f5f5f5", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#666" }}>P{ghInfo?.periode}</div>
@@ -676,7 +630,6 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
               )}
             </div>
 
-            {/* Checkpoint warning */}
             {(() => {
               const cs = getCheckpointStatus(hstAktual);
               if (!cs) return null;
@@ -687,7 +640,6 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
               );
             })()}
 
-            {/* Checkpoint selector */}
             <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 11, color: "#388e3c", letterSpacing: 1.1, textTransform: "uppercase", fontWeight: 700, marginBottom: 6 }}>Checkpoint HST</div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -700,7 +652,6 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
               </div>
             </div>
 
-            {/* Progress */}
             <div style={{ fontSize: 12, color: "#888", marginBottom: 6 }}>{filledCount}/{varianList.length} varian terisi</div>
             <div style={{ background: "#e0e0e0", borderRadius: 4, height: 5, marginBottom: 14, overflow: "hidden" }}>
               <div style={{ height: "100%", borderRadius: 4, background: "#4CAF50", width: `${varianList.length > 0 ? (filledCount / varianList.length) * 100 : 0}%`, transition: "width 0.3s" }} />
@@ -713,50 +664,40 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
               </div>
             )}
 
-            {/* List varian accordion */}
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-              {varianList.map((varian, i) => {
+              {varianList.map((varian) => {
                 const d      = varianData[varian] || {};
-                const filled = isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNetting, showNetting50, showLebarDiameter, showSimetri);
+                const filled = isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNetting, showNetting50, showNetBercakHitam, showLebarDiameter, showSimetri);
                 const isOpen = activeVarian === varian;
-
                 return (
                   <div key={varian} style={{ background: "#fff", borderRadius: 12, border: `1.5px solid ${filled ? "#a5d6a7" : "#e0e0e0"}`, overflow: "hidden" }}>
-                    {/* Header varian */}
                     <button onClick={() => setActiveVarian(isOpen ? null : varian)}
                       style={{ width: "100%", padding: "12px 14px", background: filled ? "#f1f8e9" : "#fff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ fontWeight: 700, fontSize: 15, color: filled ? "#2e7d32" : "#333" }}>🌾 {varian}</span>
-                      </div>
+                      <span style={{ fontWeight: 700, fontSize: 15, color: filled ? "#2e7d32" : "#333" }}>🌾 {varian}</span>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        {filled && <span style={{ fontSize: 14 }}>✅</span>}
+                        {filled  && <span style={{ fontSize: 14 }}>✅</span>}
                         {!filled && <span style={{ fontSize: 10, background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 8px", color: "#e65100" }}>Belum lengkap</span>}
                         <span style={{ fontSize: 12, color: "#bbb", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
                       </div>
                     </button>
 
-                    {/* Body varian */}
                     {isOpen && (
                       <div style={{ padding: "14px", borderTop: "1px solid #f0f0f0" }}>
 
-                        {/* === ASPEK VIGOR === */}
+                        {/* ASPEK VIGOR */}
                         <div style={{ fontSize: 11, fontWeight: 700, color: "#388e3c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>🌿 Aspek Vigor Tanaman</div>
                         {(() => {
                           const tipeGH = TIPE_GH.find(t => t.pattern(selectedGH));
-                          let samplingText = "";
-                          if (tipeGH?.key === "kolam") {
-                            samplingText = "Sistem Kolam: ambil mulai dari tanaman ke-16 dari baris depan sejumlah 7 tanaman, dan ke-16 dari baris belakang sejumlah 7 tanaman (total 14 tanaman)";
-                          } else if (tipeGH?.key === "dutch") {
-                            samplingText = "Sistem DB: ambil mulai dari bucket/polybag ke-16 dari baris depan sejumlah 7 tanaman, dan ke-16 dari baris belakang sejumlah 7 tanaman (total 14 tanaman)";
-                          } else if (tipeGH?.key === "rnd") {
-                            samplingText = "GH RnD: ambil sampel sesuai protokol riset yang berlaku — pastikan konsistensi titik sampling antar pengamatan";
-                          } else {
-                            samplingText = "Ambil sampel setelah 10 tanaman depan dan 10 tanaman belakang, hindari tanaman yang terpengaruh variabel luar";
-                          }
+                          const samplingText = tipeGH?.key === "kolam"
+                            ? "Sistem Kolam: ambil mulai dari tanaman ke-16 dari baris depan sejumlah 7 tanaman, dan ke-16 dari baris belakang sejumlah 7 tanaman (total 14 tanaman)"
+                            : tipeGH?.key === "dutch"
+                            ? "Sistem DB: ambil mulai dari bucket/polybag ke-16 dari baris depan sejumlah 7 tanaman, dan ke-16 dari baris belakang sejumlah 7 tanaman (total 14 tanaman)"
+                            : tipeGH?.key === "rnd"
+                            ? "GH RnD: ambil sampel sesuai protokol riset yang berlaku — pastikan konsistensi titik sampling antar pengamatan"
+                            : "Ambil sampel setelah 10 tanaman depan dan 10 tanaman belakang, hindari tanaman yang terpengaruh variabel luar";
                           return <div style={{ fontSize: 10, color: "#888", marginBottom: 4 }}>{samplingText}</div>;
                         })()}
 
-                        {/* Lebar Daun — hanya HST 7, 14, 18, 33 */}
                         {showLebarDiameter && (
                           <div style={{ marginBottom: 14 }}>
                             <div style={{ fontSize: 12, color: "#555", marginBottom: 4, fontWeight: 600 }}>1. Lebar Daun (cm)</div>
@@ -767,40 +708,36 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
                           </div>
                         )}
 
-                        {/* Diameter Batang — hanya HST 7, 14, 18, 33 */}
                         {showLebarDiameter && (
                           <div style={{ marginBottom: 14 }}>
-                            <div style={{ fontSize: 12, color: "#555", marginBottom: 4, fontWeight: 600 }}>{showLebarDiameter ? "2." : "1."} Diameter Batang</div>
+                            <div style={{ fontSize: 12, color: "#555", marginBottom: 4, fontWeight: 600 }}>2. Diameter Batang</div>
                             <div style={{ fontSize: 11, color: "#aaa", marginBottom: 8 }}>Penilaian DB pada ruas ke-3 hingga ke-5</div>
-                            <PilihOpsi options={diameterOptions} value={d.diameterBatang} onChange={val => updateVarian(varian, "diameterBatang", val)} color="#1565C0" cols={diameterOptions.length === 2 ? 2 : 2} />
+                            <PilihOpsi options={diameterOptions} value={d.diameterBatang} onChange={val => updateVarian(varian, "diameterBatang", val)} color="#1565C0" cols={2} />
                           </div>
                         )}
 
-                        {/* Warna Daun */}
                         <div style={{ marginBottom: 18 }}>
                           <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>{showLebarDiameter ? "3." : "1."} Warna Daun</div>
                           <PilihOpsi options={WARNA_DAUN_OPTIONS} value={d.warnaDaun} onChange={val => updateVarian(varian, "warnaDaun", val)} color="#f57f17" cols={2} />
                         </div>
 
-                        {/* === ASPEK PERAKARAN === */}
+                        {/* ASPEK PERAKARAN */}
                         <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginBottom: 12 }}>
                           <div style={{ fontSize: 11, fontWeight: 700, color: "#795548", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🪱 Aspek Perakaran</div>
                           <div style={{ fontSize: 10, color: "#888", marginBottom: 12 }}>Sampel 1 tanaman per varian, gali ±2 cm pada media tanam</div>
                         </div>
 
-                        {/* Warna Akar */}
                         <div style={{ marginBottom: 14 }}>
                           <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>1. Warna Akar Serabut</div>
                           <PilihOpsi options={WARNA_AKAR_OPTIONS} value={d.warnaAkar} onChange={val => updateVarian(varian, "warnaAkar", val)} color="#795548" cols={2} />
                         </div>
 
-                        {/* Volume Akar */}
                         <div style={{ marginBottom: showKualitas || showKesegaran || showNetting ? 18 : 6 }}>
                           <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>2. Volume Akar</div>
                           <PilihOpsi options={VOLUME_AKAR_OPTIONS} value={d.volumeAkar} onChange={val => updateVarian(varian, "volumeAkar", val)} color="#795548" cols={3} />
                         </div>
 
-                        {/* === ASPEK KUALITAS BUAH — Simetri (HST 33 saja) === */}
+                        {/* KUALITAS BUAH — Simetri & Cabang (HST 33 & 38) */}
                         {showSimetri && (
                           <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14 }}>
                             <div style={{ fontSize: 11, fontWeight: 700, color: "#AD1457", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🍈 Aspek Kualitas Buah</div>
@@ -811,26 +748,20 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
                                 const active = d.simetriBuah === opt;
                                 return (
                                   <button key={idx} onClick={() => updateVarian(varian, "simetriBuah", opt)}
-                                    style={{ padding: "10px 10px", textAlign: "center", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#AD1457" : "#e0e0e0"}`, background: active ? "#FCE4EC" : "#fff", color: active ? "#AD1457" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, transition: "all 0.15s", lineHeight: 1.4 }}>
+                                    style={{ padding: "10px", textAlign: "center", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#AD1457" : "#e0e0e0"}`, background: active ? "#FCE4EC" : "#fff", color: active ? "#AD1457" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4 }}>
                                     <div style={{ fontSize: 16, marginBottom: 4 }}>{active ? "●" : "○"}</div>
                                     {opt}
                                   </button>
                                 );
                               })}
                             </div>
-                          </div>
-                        )}
-
-                        {/* === CABANG BUAH (HST 33 saja, bagian Kualitas Buah) === */}
-                        {showSimetri && (
-                          <div style={{ marginTop: 14 }}>
-                            <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>2. Cabang Buah</div>
+                            <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600, marginTop: 14 }}>2. Cabang Buah</div>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                               {CABANG_BUAH_OPTIONS.map((opt, idx) => {
                                 const active = d.cabangBuah === opt;
                                 return (
                                   <button key={idx} onClick={() => updateVarian(varian, "cabangBuah", opt)}
-                                    style={{ padding: "10px 10px", textAlign: "center", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#AD1457" : "#e0e0e0"}`, background: active ? "#FCE4EC" : "#fff", color: active ? "#AD1457" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, transition: "all 0.15s", lineHeight: 1.4 }}>
+                                    style={{ padding: "10px", textAlign: "center", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#AD1457" : "#e0e0e0"}`, background: active ? "#FCE4EC" : "#fff", color: active ? "#AD1457" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4 }}>
                                     <div style={{ fontSize: 16, marginBottom: 4 }}>{active ? "●" : "○"}</div>
                                     {opt}
                                   </button>
@@ -840,42 +771,34 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
                           </div>
                         )}
 
-                        {/* === ASPEK POLINASI (HST 18 saja) === */}
+                        {/* POLINASI (HST 18) */}
                         {showPolinasi && (
                           <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginTop: showKualitas ? 14 : 0 }}>
                             <div style={{ fontSize: 11, fontWeight: 700, color: "#1565C0", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🌸 Aspek Penilaian Keberhasilan Polinasi</div>
                             <div style={{ fontSize: 10, color: "#888", marginBottom: 12 }}>Ambil sampel setelah 10 tanaman depan dan 10 tanaman belakang, hindari tanaman yang terpengaruh variabel luar</div>
-
-                            {/* Catatan HST 18 */}
                             <div style={{ marginBottom: 12, padding: "9px 12px", background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 8, fontSize: 11, color: "#7a6000", lineHeight: 1.5 }}>
                               ⚠️ Umur 18 HST belum selesai dilakukan polinasi, untuk itu penilaian keberhasilan cabang polinasi belum dapat dilakukan.
                             </div>
-
-                            {/* Buah Bajang — 1 kolom */}
                             <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>1. Buah Bajang</div>
                             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
                               {BUAH_BAJANG_OPTIONS.map((opt, idx) => {
                                 const active = d.buahBajang === opt;
                                 return (
                                   <button key={idx} onClick={() => updateVarian(varian, "buahBajang", opt)}
-                                    style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#1565C0" : "#e0e0e0"}`, background: active ? "#E3F2FD" : "#fff", color: active ? "#1565C0" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, transition: "all 0.15s", lineHeight: 1.4, display: "flex", alignItems: "center", gap: 8 }}>
-                                    <span style={{ flexShrink: 0 }}>{active ? "●" : "○"}</span>
-                                    <span>{opt}</span>
+                                    style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#1565C0" : "#e0e0e0"}`, background: active ? "#E3F2FD" : "#fff", color: active ? "#1565C0" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4, display: "flex", alignItems: "center", gap: 8 }}>
+                                    <span style={{ flexShrink: 0 }}>{active ? "●" : "○"}</span><span>{opt}</span>
                                   </button>
                                 );
                               })}
                             </div>
-
-                            {/* Panjang Tunas Air — 4 kolom */}
                             <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>2. Panjang Tunas Air</div>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
                               {PANJANG_TUNAS_AIR_OPTIONS.map((opt, idx) => {
                                 const active = d.panjangTunasAir === opt;
                                 return (
                                   <button key={idx} onClick={() => updateVarian(varian, "panjangTunasAir", opt)}
-                                    style={{ padding: "10px 6px", textAlign: "center", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#1565C0" : "#e0e0e0"}`, background: active ? "#E3F2FD" : "#fff", color: active ? "#1565C0" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, transition: "all 0.15s", lineHeight: 1.4 }}>
-                                    <div style={{ fontSize: 16, marginBottom: 4 }}>{active ? "●" : "○"}</div>
-                                    {opt}
+                                    style={{ padding: "10px 6px", textAlign: "center", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#1565C0" : "#e0e0e0"}`, background: active ? "#E3F2FD" : "#fff", color: active ? "#1565C0" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4 }}>
+                                    <div style={{ fontSize: 16, marginBottom: 4 }}>{active ? "●" : "○"}</div>{opt}
                                   </button>
                                 );
                               })}
@@ -883,7 +806,7 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
                           </div>
                         )}
 
-                        {/* === KESEGARAN TANAMAN (HST 38, 45, 54) === */}
+                        {/* KESEGARAN (HST 38, 45, 54) */}
                         {showKesegaran && (
                           <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginTop: 14 }}>
                             <div style={{ fontSize: 11, fontWeight: 700, color: "#2E7D32", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🌿 Aspek Vigor Tambahan</div>
@@ -892,21 +815,18 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
                           </div>
                         )}
 
-                        {/* === NETTING BUAH (HST 45 dan 54) === */}
+                        {/* NETTING BUAH (HST 45 & 54) */}
                         {showNetting && (
                           <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginTop: 14 }}>
                             <div style={{ fontSize: 11, fontWeight: 700, color: "#AD1457", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🍈 Kualitas Buah Tambahan</div>
-                            <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>
-                              {selectedHST === 54 ? "Netting Buah (Crack Basah)" : "Netting Buah"}
-                            </div>
+                            <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>{selectedHST === 54 ? "Netting Buah (Crack Basah)" : "Netting Buah"}</div>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
                               {(selectedHST === 54 ? NETTING_BUAH_54_OPTIONS : NETTING_BUAH_45_OPTIONS).map((opt, idx) => {
                                 const active = d.nettingBuah === opt;
                                 return (
                                   <button key={idx} onClick={() => updateVarian(varian, "nettingBuah", opt)}
-                                    style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#AD1457" : "#e0e0e0"}`, background: active ? "#FCE4EC" : "#fff", color: active ? "#AD1457" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, transition: "all 0.15s", lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 8 }}>
-                                    <span style={{ flexShrink: 0, marginTop: 1 }}>{active ? "●" : "○"}</span>
-                                    <span>{opt}</span>
+                                    style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#AD1457" : "#e0e0e0"}`, background: active ? "#FCE4EC" : "#fff", color: active ? "#AD1457" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 8 }}>
+                                    <span style={{ flexShrink: 0, marginTop: 1 }}>{active ? "●" : "○"}</span><span>{opt}</span>
                                   </button>
                                 );
                               })}
@@ -914,7 +834,7 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
                           </div>
                         )}
 
-                        {/* === NETTING 50% (HST 54 saja) === */}
+                        {/* NETTING 50% (HST 54) */}
                         {showNetting50 && (
                           <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginTop: 14 }}>
                             <div style={{ fontSize: 11, fontWeight: 700, color: "#6A1B9A", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🍈 Netting 50%</div>
@@ -924,9 +844,8 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
                                 const active = d.netting50 === opt;
                                 return (
                                   <button key={idx} onClick={() => updateVarian(varian, "netting50", opt)}
-                                    style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#6A1B9A" : "#e0e0e0"}`, background: active ? "#F3E5F5" : "#fff", color: active ? "#6A1B9A" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, transition: "all 0.15s", lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 8 }}>
-                                    <span style={{ flexShrink: 0, marginTop: 1 }}>{active ? "●" : "○"}</span>
-                                    <span>{opt}</span>
+                                    style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#6A1B9A" : "#e0e0e0"}`, background: active ? "#F3E5F5" : "#fff", color: active ? "#6A1B9A" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 8 }}>
+                                    <span style={{ flexShrink: 0, marginTop: 1 }}>{active ? "●" : "○"}</span><span>{opt}</span>
                                   </button>
                                 );
                               })}
@@ -934,7 +853,7 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
                           </div>
                         )}
 
-                        {/* === NET/BERCAK HITAM (HST 54 saja) === */}
+                        {/* NET/BERCAK HITAM (HST 54) */}
                         {showNetBercakHitam && (
                           <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginTop: 14 }}>
                             <div style={{ fontSize: 11, fontWeight: 700, color: "#BF360C", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🍈 Kualitas Buah Tambahan</div>
@@ -944,15 +863,15 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
                                 const active = d.netBercakHitam === opt;
                                 return (
                                   <button key={idx} onClick={() => updateVarian(varian, "netBercakHitam", opt)}
-                                    style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#BF360C" : "#e0e0e0"}`, background: active ? "#FBE9E7" : "#fff", color: active ? "#BF360C" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, transition: "all 0.15s", lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 8 }}>
-                                    <span style={{ flexShrink: 0, marginTop: 1 }}>{active ? "●" : "○"}</span>
-                                    <span>{opt}</span>
+                                    style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#BF360C" : "#e0e0e0"}`, background: active ? "#FBE9E7" : "#fff", color: active ? "#BF360C" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 8 }}>
+                                    <span style={{ flexShrink: 0, marginTop: 1 }}>{active ? "●" : "○"}</span><span>{opt}</span>
                                   </button>
                                 );
                               })}
                             </div>
                           </div>
                         )}
+
                       </div>
                     )}
                   </div>
@@ -960,7 +879,6 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
               })}
             </div>
 
-            {/* Operator */}
             <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 11, color: "#388e3c", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
                 👤 Nama Operator <span style={{ color: "#e53935" }}>*</span>
@@ -969,14 +887,11 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
                 style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: "#fff", border: `1.5px solid ${operator.trim() ? "#81c784" : "#e0e0e0"}`, borderRadius: 10, color: "#333", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
             </div>
 
-            {/* Selfie Operator */}
             <FotoSelfie
-              fotoFile={selfieFile}
-              fotoPreview={selfiePreview}
+              fotoFile={selfieFile} fotoPreview={selfiePreview}
               onChange={(file, preview) => { setSelfieFile(file); setSelfiePreview(preview); setSelfieUrl(""); }}
               onClear={() => { setSelfieFile(null); setSelfiePreview(null); setSelfieUrl(""); }}
-              isOffline={!isOnline}
-              darkMode={false}
+              isOffline={!isOnline} darkMode={false}
             />
 
             {!allFilled && varianList.length > 0 && (
@@ -998,9 +913,7 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
               {isDemoMode ? "Demo Selesai!" : savedOffline ? "Tersimpan Lokal!" : "Data Tersimpan!"}
             </div>
             <div style={{ fontSize: 13, color: "#888", marginBottom: 20 }}>
-              {isDemoMode ? "Data tidak dikirim (mode demo)"
-                : savedOffline ? "Otomatis terkirim ke Google Sheets saat online."
-                : `${varianList.length} varian berhasil dikirim ke Google Sheets`}
+              {isDemoMode ? "Data tidak dikirim (mode demo)" : savedOffline ? "Otomatis terkirim ke Google Sheets saat online." : `${varianList.length} varian berhasil dikirim ke Google Sheets`}
             </div>
             <div style={{ background: savedOffline ? "#e3f2fd" : "#e8f5e9", border: `1px solid ${savedOffline ? "#90CAF9" : "#a5d6a7"}`, borderRadius: 14, padding: 16, textAlign: "left", marginBottom: 20 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "#333" }}>{selectedGH} · P{ghInfo?.periode} · {hstAktual} HST</div>
@@ -1030,9 +943,7 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
           {step === 2 && (
             <button onClick={() => setConfirmOpen(true)} disabled={!canSubmit || submitting}
               style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: canSubmit && !submitting ? (!isOnline ? "linear-gradient(135deg,#1565C0,#1976D2)" : "linear-gradient(135deg,#1b5e20,#2e7d32)") : "#e0e0e0", color: canSubmit && !submitting ? "#fff" : "#aaa", fontSize: 15, fontWeight: 700, cursor: canSubmit && !submitting ? "pointer" : "not-allowed" }}>
-              {submitting ? "⏳ Menyimpan..."
-                : !isOnline && canSubmit ? `💾 Simpan Offline`
-                : `Submit ${varianList.length} Varian ✓`}
+              {submitting ? "⏳ Menyimpan..." : !isOnline && canSubmit ? "💾 Simpan Offline" : `Submit ${varianList.length} Varian ✓`}
             </button>
           )}
         </div>
@@ -1042,9 +953,7 @@ if (!json.success) throw new Error(json.error || "Gagal menyimpan");
         open={confirmOpen}
         onCancel={() => setConfirmOpen(false)}
         onConfirm={() => { setConfirmOpen(false); handleSubmit(); }}
-        color="#43A047"
-        isOffline={!isOnline}
-        isDemoMode={isDemoMode}
+        color="#43A047" isOffline={!isOnline} isDemoMode={isDemoMode}
         summary={[
           { label: "Tanggal",  value: todayISO },
           { label: "GH",       value: selectedGH },
