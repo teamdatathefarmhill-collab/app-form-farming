@@ -36,6 +36,11 @@ const VARIAN_LIST = [
   "Servo F1","Tombatu F1","Inko F1","Lainnya",
 ];
 
+// ─── Checkpoint SO ────────────────────────────────────────────────────────────
+// Checkpoint 1: HST 35 (sebelumnya 30), Checkpoint 2: HST 50
+const SO_CHECKPOINT_1 = 35;
+const SO_CHECKPOINT_2 = 50;
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function hitungHST(tglStr) {
   const cleaned = tglStr?.trim();
@@ -77,16 +82,31 @@ function hitungHST(tglStr) {
   return Math.floor((nowLocal - tanam) / 86400000);
 }
 
+// Status keterlambatan terhadap checkpoint SO
+// - tepat waktu : HST <= 35, atau HST == 50
+// - terlambat   : HST 36–49 (lewat checkpoint 35) atau HST > 50 (lewat checkpoint 50)
+function getSOStatus(hst) {
+  if (hst === null) return { late: false, checkpoint: null, daysLate: 0 };
+  if (hst > SO_CHECKPOINT_1 && hst < SO_CHECKPOINT_2) {
+    return { late: true, checkpoint: SO_CHECKPOINT_1, daysLate: hst - SO_CHECKPOINT_1 };
+  }
+  if (hst > SO_CHECKPOINT_2) {
+    return { late: true, checkpoint: SO_CHECKPOINT_2, daysLate: hst - SO_CHECKPOINT_2 };
+  }
+  return { late: false, checkpoint: hst === SO_CHECKPOINT_1 || hst === SO_CHECKPOINT_2 ? hst : null, daysLate: 0 };
+}
+
 function hstChipStyle(hst) {
   if (hst === null) return { bg: "#f5f5f5", color: "#999", border: "#e0e0e0" };
-  if (hst === 29 || hst === 49) return { bg: "#fff3e0", color: "#e65100", border: "#ffb74d" };
-  if (hst === 30 || hst === 50) return { bg: "#fbe9e7", color: "#bf360c", border: "#ffab91" };
-  if (hst > 50) return { bg: "#fce4ec", color: "#880e4f", border: "#f48fb1" };
+  if (hst === SO_CHECKPOINT_1 - 1 || hst === SO_CHECKPOINT_2 - 1) return { bg: "#fff3e0", color: "#e65100", border: "#ffb74d" };
+  if (hst === SO_CHECKPOINT_1 || hst === SO_CHECKPOINT_2) return { bg: "#fbe9e7", color: "#bf360c", border: "#ffab91" };
+  if (getSOStatus(hst).late) return { bg: "#fce4ec", color: "#880e4f", border: "#f48fb1" };
   return { bg: "#e8f5e9", color: "#2e7d32", border: "#a5d6a7" };
 }
 
 function isSODeadlineAlert(hst) {
-  return hst === 29 || hst === 30 || hst === 49 || hst === 50;
+  return hst === SO_CHECKPOINT_1 - 1 || hst === SO_CHECKPOINT_1 ||
+         hst === SO_CHECKPOINT_2 - 1 || hst === SO_CHECKPOINT_2;
 }
 
 function isSOAktif(hst) {
@@ -124,6 +144,7 @@ export default function SO() {
   const [selectedGH, setSelectedGH]     = useState(_draft?.selectedGH || "");
   const [tableData, setTableData]       = useState(_draft?.tableData  || []);
   const [operator, setOperator]         = useState(_draft?.operator   || "");
+  const [keterangan, setKeterangan]     = useState(_draft?.keterangan || "");
 
   const [syncing, setSyncing]           = useState(false);
   const [syncProgress, setSyncProgress] = useState({ done: 0, total: 0 });
@@ -149,8 +170,8 @@ export default function SO() {
 
   useEffect(() => {
     if (step === 3) return;
-    saveDraft({ step, selectedGH, tableData, operator });
-  }, [step, selectedGH, tableData, operator]);
+    saveDraft({ step, selectedGH, tableData, operator, keterangan });
+  }, [step, selectedGH, tableData, operator, keterangan]);
 
   const refreshPendingCount = useCallback(async () => {
     try { setPendingCount(await idbCount(DB_NAME)); } catch { setPendingCount(0); }
@@ -203,16 +224,25 @@ export default function SO() {
       });
   }, [ghData]);
 
-  // ── Reminder banner — GH H-1 dari semua tipe ──
+  // ── Reminder banner — H-1, hari-H, dan yang sudah lewat checkpoint ──
   const reminderGH = useCallback(() => {
     const result = [];
     for (const tipe of TIPE_GH) {
       for (const gh of ghAktifPerTipe(tipe.key)) {
-        if (gh.hst === 29 || gh.hst === 49) result.push(gh);
+        const st = getSOStatus(gh.hst);
+        if (gh.hst === SO_CHECKPOINT_1 - 1 || gh.hst === SO_CHECKPOINT_2 - 1) {
+          result.push({ ...gh, reminderType: "h1" });
+        } else if (gh.hst === SO_CHECKPOINT_1 || gh.hst === SO_CHECKPOINT_2) {
+          if (!submittedToday.includes(gh.name)) result.push({ ...gh, reminderType: "hariH" });
+        } else if (st.late) {
+          if (!submittedToday.includes(gh.name)) {
+            result.push({ ...gh, reminderType: "late", daysLate: st.daysLate, checkpoint: st.checkpoint });
+          }
+        }
       }
     }
     return result;
-  }, [ghAktifPerTipe]);
+  }, [ghAktifPerTipe, submittedToday]);
 
   // ── Pilih GH ──
   const handleSelectGH = (gh) => {
@@ -227,6 +257,7 @@ export default function SO() {
     setSelectedGH(gh);
     const info = ghData[gh];
     setTableData((info?.baris || []).map(b => ({ baris: b.baris, varian: b.varian, populasi: "", isManual: false })));
+    setKeterangan("");
     setShowDoubleWarn(false);
     setPendingGH("");
     setStep(2);
@@ -250,6 +281,13 @@ export default function SO() {
     setTableData(prev => prev.filter((_, idx) => idx !== i));
   };
 
+  // ── Derived values (dipakai juga oleh validasi) ──
+  const ghInfo    = ghData[selectedGH];
+  const hstAktif  = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : null;
+  const chipStyle = hstChipStyle(hstAktif);
+  const soStatus  = getSOStatus(hstAktif);
+  const reminders = reminderGH();
+
   // ── Validasi ──
   const normalRows    = tableData.filter(r => !r.isManual);
   const manualRows    = tableData.filter(r => r.isManual);
@@ -259,14 +297,16 @@ export default function SO() {
   const filledCount   = filledNormal + filledManual;
   const allNormalFilled = normalRows.length > 0 && filledNormal === normalRows.length;
   const manualOK      = manualRows.every(r => r.baris.trim() && r.varian && r.populasi !== "");
-  const canSubmit     = allNormalFilled && manualOK && operator.trim().length > 0;
+  const keteranganOK  = !soStatus.late || keterangan.trim().length > 0;
+  const canSubmit     = allNormalFilled && manualOK && operator.trim().length > 0 && keteranganOK;
 
   // ── Build payloads ──
   const buildPayloads = () => {
-    const ghInfo           = ghData[selectedGH];
-    const hst              = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : "";
-    const ts               = todayTimestamp();
-    const client_timestamp = new Date().toISOString();
+    const ghInfoP           = ghData[selectedGH];
+    const hst               = ghInfoP?.tanam ? hitungHST(ghInfoP.tanam) : "";
+    const ts                = todayTimestamp();
+    const client_timestamp  = new Date().toISOString();
+    const ketFinal          = soStatus.late ? keterangan.trim() : "";
     return tableData
       .filter(r => r.populasi !== "")
       .map(r => ({
@@ -276,11 +316,12 @@ export default function SO() {
         tanggal:          todayISO,
         operator:         operator.trim(),
         greenhouse:       selectedGH,
-        periode:          ghInfo?.periode || "",
+        periode:          ghInfoP?.periode || "",
         hst:              hst ?? "",
         baris:            r.baris,
         varian:           r.varian,
         populasi:         parseInt(r.populasi) || 0,
+        keterangan:       ketFinal,
       }));
   };
 
@@ -347,15 +388,9 @@ export default function SO() {
   const resetForm = () => {
     clearDraft();
     setStep(1); setOpenTipe(null); setSelectedGH(""); setTableData([]);
-    setOperator(""); setSyncing(false); setSyncProgress({ done: 0, total: 0 });
+    setOperator(""); setKeterangan(""); setSyncing(false); setSyncProgress({ done: 0, total: 0 });
     setSubmitError(null); setSavedOffline(false);
   };
-
-  // ── Derived values ──
-  const ghInfo    = ghData[selectedGH];
-  const hstAktif  = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : null;
-  const chipStyle = hstChipStyle(hstAktif);
-  const reminders = reminderGH();
 
   return (
     <div style={{ minHeight: "100vh", background: "#f5f5f5", fontFamily: "'DM Sans','Segoe UI',sans-serif" }}>
@@ -422,10 +457,13 @@ export default function SO() {
           <div>
             {reminders.length > 0 && (
               <div style={{ background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 12, padding: "12px 14px", marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#e65100", marginBottom: 6 }}>🔔 Reminder SO — H-1 Deadline</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#e65100", marginBottom: 6 }}>🔔 Reminder SO</div>
                 {reminders.map(gh => (
-                  <div key={gh.name} style={{ fontSize: 12, color: "#bf360c", lineHeight: 1.7 }}>
-                    • <strong>{gh.name}</strong> — HST {gh.hst} (deadline SO besok)
+                  <div key={gh.name} style={{ fontSize: 12, color: gh.reminderType === "late" ? "#880e4f" : "#bf360c", lineHeight: 1.7 }}>
+                    • <strong>{gh.name}</strong> — HST {gh.hst}{" "}
+                    {gh.reminderType === "h1" && "(deadline SO besok)"}
+                    {gh.reminderType === "hariH" && "(deadline SO hari ini!)"}
+                    {gh.reminderType === "late" && `(terlambat ${gh.daysLate} hari dari checkpoint HST ${gh.checkpoint})`}
                   </div>
                 ))}
               </div>
@@ -443,7 +481,7 @@ export default function SO() {
             )}
 
             <div style={{ fontWeight: 700, fontSize: 18, color: "#1b5e20", marginBottom: 4 }}>Pilih Greenhouse</div>
-            <div style={{ fontSize: 12, color: "#888", marginBottom: 16 }}>Stock opname dilakukan sekitar HST 30 &amp; HST 50</div>
+            <div style={{ fontSize: 12, color: "#888", marginBottom: 16 }}>Stock opname dilakukan pada checkpoint HST {SO_CHECKPOINT_1} &amp; HST {SO_CHECKPOINT_2}</div>
 
             {loadingRef ? (
               <div style={{ textAlign: "center", padding: "40px 0", color: "#aaa" }}>
@@ -455,7 +493,8 @@ export default function SO() {
                 {TIPE_GH.map(tipe => {
                   const aktif       = ghAktifPerTipe(tipe.key);
                   const isOpen      = openTipe === tipe.key;
-                  const hasReminder = aktif.some(g => g.hst === 29 || g.hst === 49);
+                  const hasReminder = aktif.some(g => g.hst === SO_CHECKPOINT_1 - 1 || g.hst === SO_CHECKPOINT_2 - 1);
+                  const hasLate     = aktif.some(g => getSOStatus(g.hst).late && !submittedToday.includes(g.name));
                   return (
                     <div key={tipe.key} style={{ borderRadius: 14, border: `1.5px solid ${isOpen ? tipe.color : "#e0e0e0"}`, background: "#fff", overflow: "hidden", transition: "border-color 0.2s" }}>
                       <button onClick={() => setOpenTipe(isOpen ? null : tipe.key)}
@@ -465,6 +504,7 @@ export default function SO() {
                           <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{aktif.length} GH aktif saat ini</div>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          {hasLate && <div style={{ fontSize: 10, fontWeight: 700, background: "#fce4ec", border: "1px solid #f48fb1", borderRadius: 20, padding: "2px 8px", color: "#880e4f" }}>Terlambat ⏰</div>}
                           {hasReminder && <div style={{ fontSize: 10, fontWeight: 700, background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 8px", color: "#e65100" }}>H-1 ⚠</div>}
                           <span style={{ fontSize: 18, color: tipe.color, transition: "transform 0.2s", display: "inline-block", transform: isOpen ? "rotate(90deg)" : "rotate(0deg)" }}>›</span>
                         </div>
@@ -480,9 +520,10 @@ export default function SO() {
                                 const chip     = hstChipStyle(gh.hst);
                                 const sudahIsi = submittedToday.includes(gh.name);
                                 const alert    = isSODeadlineAlert(gh.hst);
+                                const lateInfo = getSOStatus(gh.hst);
                                 return (
                                   <button key={gh.name} onClick={() => handleSelectGH(gh.name)}
-                                    style={{ padding: "10px 8px", borderRadius: 12, cursor: "pointer", textAlign: "center", border: sudahIsi ? "1px solid #ffb74d" : alert ? `2px solid ${chip.border}` : "1px solid #e0e0e0", background: sudahIsi ? "#fff8e1" : "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, transition: "all 0.2s" }}>
+                                    style={{ padding: "10px 8px", borderRadius: 12, cursor: "pointer", textAlign: "center", border: sudahIsi ? "1px solid #ffb74d" : (alert || lateInfo.late) ? `2px solid ${chip.border}` : "1px solid #e0e0e0", background: sudahIsi ? "#fff8e1" : "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, transition: "all 0.2s" }}>
                                     <div style={{ fontSize: 12, fontWeight: 700, color: "#333", lineHeight: 1.3 }}>{gh.name}</div>
                                     <div style={{ fontSize: 10, color: "#aaa" }}>P{gh.periode} · {gh.baris?.length || 0} baris</div>
                                     {gh.hst !== null && (
@@ -493,6 +534,7 @@ export default function SO() {
                                     )}
                                     {sudahIsi && <div style={{ fontSize: 10, background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 8px", color: "#e65100", fontWeight: 600 }}>✓ Sudah diisi</div>}
                                     {alert && !sudahIsi && <div style={{ fontSize: 10, background: "#fbe9e7", border: "1px solid #ffab91", borderRadius: 20, padding: "2px 8px", color: "#bf360c", fontWeight: 600 }}>⚠ Deadline</div>}
+                                    {lateInfo.late && !sudahIsi && <div style={{ fontSize: 10, background: "#fce4ec", border: "1px solid #f48fb1", borderRadius: 20, padding: "2px 8px", color: "#880e4f", fontWeight: 600 }}>⏰ Terlambat {lateInfo.daysLate} hari</div>}
                                   </button>
                                 );
                               })}
@@ -520,7 +562,19 @@ export default function SO() {
               {hstAktif !== null && (
                 <div style={{ background: chipStyle.bg, border: `1px solid ${chipStyle.border}`, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: chipStyle.color, fontWeight: 700 }}>{hstAktif} HST</div>
               )}
+              {soStatus.late && (
+                <div style={{ background: "#fce4ec", border: "1px solid #f48fb1", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#880e4f", fontWeight: 700 }}>⏰ Terlambat {soStatus.daysLate} hari</div>
+              )}
             </div>
+
+            {/* Banner terlambat */}
+            {soStatus.late && (
+              <div style={{ marginBottom: 12, padding: "8px 12px", background: "#fce4ec", border: "1px solid #f48fb1", borderRadius: 9 }}>
+                <span style={{ fontSize: 12, color: "#880e4f" }}>
+                  ⏰ SO ini terlambat <strong>{soStatus.daysLate} hari</strong> dari checkpoint HST {soStatus.checkpoint}. Wajib isi alasan keterlambatan sebelum submit.
+                </span>
+              </div>
+            )}
 
             {!isOnline && (
               <div style={{ marginBottom: 12, padding: "8px 12px", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 9, display: "flex", alignItems: "center", gap: 8 }}>
@@ -629,7 +683,8 @@ export default function SO() {
 
               const clipboardText = [
                 `SO ${selectedGH} - ${todayISO}`,
-                `Periode ${ghData[selectedGH]?.periode || ""} | ${ghAktifPerTipe ? (hitungHST(ghData[selectedGH]?.tanam) ?? "") : ""} HST`,
+                `Periode ${ghData[selectedGH]?.periode || ""} | ${hstAktif ?? ""} HST`,
+                ...(soStatus.late ? [`TERLAMBAT ${soStatus.daysLate} hari dari checkpoint HST ${soStatus.checkpoint}${keterangan.trim() ? ` — Alasan: ${keterangan.trim()}` : ""}`] : []),
                 "",
                 ...lines,
                 "",
@@ -683,9 +738,27 @@ export default function SO() {
                 style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: "#fff", border: `1.5px solid ${operator.trim() ? "#81c784" : "#e0e0e0"}`, borderRadius: 10, color: "#333", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
             </div>
 
+            {/* Input alasan keterlambatan — hanya muncul kalau lewat checkpoint */}
+            {soStatus.late && (
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ fontSize: 11, color: "#880e4f", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
+                  ⏰ Alasan Terlambat Mengisi SO <span style={{ color: "#e53935" }}>*</span>
+                </label>
+                <textarea value={keterangan} onChange={e => setKeterangan(e.target.value)}
+                  placeholder={`Tulis alasan kenapa SO terlambat ${soStatus.daysLate} hari dari checkpoint HST ${soStatus.checkpoint}...`}
+                  rows={3}
+                  style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: "#fff", border: `1.5px solid ${keterangan.trim() ? "#f48fb1" : "#e0e0e0"}`, borderRadius: 10, color: "#333", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit", resize: "vertical" }} />
+              </div>
+            )}
+
             {!allNormalFilled && normalRows.length > 0 && (
               <div style={{ fontSize: 12, color: "#e65100", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
                 ⚠️ {normalRows.length - filledNormal} baris referensi belum diisi
+              </div>
+            )}
+            {soStatus.late && !keterangan.trim() && (
+              <div style={{ fontSize: 12, color: "#880e4f", background: "#fce4ec", border: "1px solid #f48fb1", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
+                ⏰ Alasan keterlambatan wajib diisi sebelum submit
               </div>
             )}
             {submitError && (
@@ -737,6 +810,12 @@ export default function SO() {
               <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>
                 Total populasi: {tableData.reduce((sum, r) => sum + (parseInt(r.populasi) || 0), 0).toLocaleString("id-ID")} tanaman
               </div>
+              {soStatus.late && (
+                <div style={{ fontSize: 13, color: "#880e4f", marginTop: 6, paddingTop: 6, borderTop: "1px dashed #f48fb1" }}>
+                  ⏰ Terlambat {soStatus.daysLate} hari (checkpoint HST {soStatus.checkpoint})<br />
+                  <span style={{ color: "#666" }}>Alasan: {keterangan}</span>
+                </div>
+              )}
             </div>
 
             <button onClick={resetForm} style={{ width: "100%", padding: "15px", background: isDemoMode ? "#fff8e1" : savedOffline ? "#e3f2fd" : "#e8f5e9", border: `2px solid ${isDemoMode ? "#ffb74d" : savedOffline ? "#90CAF9" : "#81c784"}`, borderRadius: 12, color: isDemoMode ? "#e65100" : savedOffline ? "#1565C0" : "#2e7d32", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
@@ -773,6 +852,7 @@ export default function SO() {
           { label: "GH",        value: selectedGH },
           { label: "Jml Baris", value: `${tableData.filter(r => r.populasi !== "").length} baris terisi` },
           { label: "Operator",  value: operator },
+          ...(soStatus.late ? [{ label: "Keterangan", value: `Terlambat ${soStatus.daysLate} hari — ${keterangan.trim()}` }] : []),
         ]}
       />
 
