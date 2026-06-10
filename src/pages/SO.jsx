@@ -455,19 +455,70 @@ export default function SO() {
         {/* ══ STEP 1 — Pilih GH (Accordion) ══ */}
         {step === 1 && (
           <div>
-            {reminders.length > 0 && (
-              <div style={{ background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 12, padding: "12px 14px", marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#e65100", marginBottom: 6 }}>🔔 Reminder SO</div>
-                {reminders.map(gh => (
-                  <div key={gh.name} style={{ fontSize: 12, color: gh.reminderType === "late" ? "#880e4f" : "#bf360c", lineHeight: 1.7 }}>
-                    • <strong>{gh.name}</strong> — HST {gh.hst}{" "}
-                    {gh.reminderType === "h1" && "(deadline SO besok)"}
-                    {gh.reminderType === "hariH" && "(deadline SO hari ini!)"}
-                    {gh.reminderType === "late" && `(terlambat ${gh.daysLate} hari dari checkpoint HST ${gh.checkpoint})`}
-                  </div>
-                ))}
-              </div>
-            )}
+            {(() => {
+              const deadline = reminders.filter(r => r.reminderType === "h1" || r.reminderType === "hariH");
+              const late1    = reminders.filter(r => r.reminderType === "late" && r.checkpoint === SO_CHECKPOINT_1).sort((a, b) => b.daysLate - a.daysLate);
+              const late2    = reminders.filter(r => r.reminderType === "late" && r.checkpoint === SO_CHECKPOINT_2).sort((a, b) => b.daysLate - a.daysLate);
+              if (deadline.length === 0 && late1.length === 0 && late2.length === 0) return null;
+
+              const chipBase = { display: "inline-flex", alignItems: "center", gap: 4, borderRadius: 7, padding: "3px 8px", fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" };
+
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+
+                  {/* Card 1 — Deadline hari ini / besok */}
+                  {deadline.length > 0 && (
+                    <div style={{ background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 12, padding: "10px 12px" }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#e65100", marginBottom: 8 }}>
+                        🔔 Deadline SO <span style={{ fontWeight: 600, opacity: 0.7 }}>({deadline.length} GH)</span>
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {deadline.map(gh => (
+                          <div key={gh.name} style={{ ...chipBase, background: gh.reminderType === "hariH" ? "#fbe9e7" : "#fff8e1", border: `1px solid ${gh.reminderType === "hariH" ? "#ffab91" : "#ffe082"}`, color: gh.reminderType === "hariH" ? "#bf360c" : "#e65100" }}>
+                            {gh.name}
+                            <span style={{ fontWeight: 600, fontSize: 10, opacity: 0.85 }}>{gh.reminderType === "hariH" ? "hari ini!" : "besok"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Card 2 — Lewat checkpoint HST 35 */}
+                  {late1.length > 0 && (
+                    <div style={{ background: "#fce4ec", border: "1px solid #f48fb1", borderRadius: 12, padding: "10px 12px" }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#880e4f", marginBottom: 8 }}>
+                        ⏰ Lewat Checkpoint HST {SO_CHECKPOINT_1} <span style={{ fontWeight: 600, opacity: 0.7 }}>({late1.length} GH)</span>
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {late1.map(gh => (
+                          <div key={gh.name} style={{ ...chipBase, background: "#fff", border: "1px solid #f48fb1", color: "#880e4f" }}>
+                            {gh.name}
+                            <span style={{ fontWeight: 600, fontSize: 10, opacity: 0.85 }}>+{gh.daysLate} hari</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Card 3 — Lewat checkpoint HST 50 */}
+                  {late2.length > 0 && (
+                    <div style={{ background: "#fce4ec", border: "1px solid #f48fb1", borderRadius: 12, padding: "10px 12px" }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#880e4f", marginBottom: 8 }}>
+                        ⏰ Lewat Checkpoint HST {SO_CHECKPOINT_2} <span style={{ fontWeight: 600, opacity: 0.7 }}>({late2.length} GH)</span>
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {late2.map(gh => (
+                          <div key={gh.name} style={{ ...chipBase, background: "#fff", border: "1px solid #f48fb1", color: "#880e4f" }}>
+                            {gh.name}
+                            <span style={{ fontWeight: 600, fontSize: 10, opacity: 0.85 }}>+{gh.daysLate} hari</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {isDemoMode && (
               <div style={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 10, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
