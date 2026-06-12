@@ -16,7 +16,29 @@ import { gasFetch } from "../utils/idb";
 
 const SO_URL       = import.meta.env.VITE_GAS_SO_URL;
 const LS_CACHE_KEY = "farmhill_sohistory_cache";
-const LS_CACHE_TTL = 1000 * 60 * 15; // 15 menit — SO history perlu lebih fresh dari GH ref
+const LS_CACHE_TTL = 1000 * 60 * 15; // 15 menit
+
+// Normalize periode ke format "26.2"
+// GAS kadang return periode sebagai Date object yang ke-serialize jadi string panjang
+function normalizePeriode(val) {
+  if (!val) return "";
+  if (typeof val === "number") return val.toFixed(1);
+  const s = String(val).trim();
+  // Sudah format yang benar
+  if (/^\d+\.\d+$/.test(s)) return s;
+  // Coba parse sebagai number (misal "26.2")
+  const n = parseFloat(s);
+  if (!isNaN(n) && isFinite(n)) return n.toFixed(1);
+  // Fallback — return apa adanya (tidak akan match, tapi tidak crash)
+  return s;
+}
+
+// Cek apakah semua key di summary sudah format "GH::26.2"
+function isCacheValid(summary) {
+  const keys = Object.keys(summary);
+  if (keys.length === 0) return true;
+  return keys.every(k => /^.+::\d+\.\d+$/.test(k));
+}
 
 function saveCache(summary) {
   try {
@@ -29,8 +51,13 @@ function loadCache() {
     const raw = localStorage.getItem(LS_CACHE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (Date.now() - parsed.savedAt < LS_CACHE_TTL) return parsed.summary;
-    return null; // cache kedaluwarsa, jangan pakai
+    if (Date.now() - parsed.savedAt >= LS_CACHE_TTL) return null;
+    // Cache lama dengan format key yang salah (Date string) — buang
+    if (!isCacheValid(parsed.summary)) {
+      localStorage.removeItem(LS_CACHE_KEY);
+      return null;
+    }
+    return parsed.summary;
   } catch {
     return null;
   }
@@ -40,7 +67,8 @@ function loadCache() {
 function buildSummary(rows) {
   const summary = {};
   for (const row of rows) {
-    const key = `${row.gh}::${row.periode}`;
+    const periode = normalizePeriode(row.periode);
+    const key = `${row.gh}::${periode}`;
     if (!summary[key]) {
       summary[key] = { minHST: row.hst, checkpoints: [] };
     } else {
@@ -54,13 +82,10 @@ function buildSummary(rows) {
 }
 
 // ─── Exported helper ─────────────────────────────────────────────────────────
-// Cek apakah GH sudah pernah submit SO pada atau sebelum checkpoint tertentu
-// di periode yang sama. Kalau iya, berarti checkpoint sudah terpenuhi — tidak terlambat.
 export function hasCompletedCheckpoint(soHistory, gh, periode, checkpoint) {
   const key = `${gh}::${periode}`;
   const entry = soHistory[key];
   if (!entry) return false;
-  // Ada submit dengan HST <= checkpoint → checkpoint sudah terpenuhi tepat waktu
   return entry.checkpoints.some(hst => hst <= checkpoint);
 }
 
@@ -80,7 +105,6 @@ export function useSOHistory() {
       saveCache(summary);
       setSoHistory(summary);
     } catch {
-      // Coba pakai cache kalau fetch gagal
       const cached = loadCache();
       if (cached) setSoHistory(cached);
       else setSoHistory({});
