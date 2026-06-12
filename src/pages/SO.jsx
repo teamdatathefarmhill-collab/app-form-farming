@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useDraft } from "../hooks/useDraft";
 import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
+import { useSOHistory, hasCompletedCheckpoint } from "../hooks/useSOHistory";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 
 const DB_NAME    = "SOOfflineDB";
@@ -30,14 +31,13 @@ function buildGHNames() {
 
 const GH_NAMES = buildGHNames();
 
-// ─── Varian list untuk manual entry ──────────────────────────────────────────
+// ─── Varian list ──────────────────────────────────────────────────────────────
 const VARIAN_LIST = [
-  "Greeniegal","Midori","Elysia","Sunray","Sarasuka","Aruni",
-  "Servo F1","Tombatu F1","Inko F1","Lainnya",
+  "Greeniegal","Sunray","Midori","Elysia","Aruni",
+  "Greenie Sweet","Sarasuka","Daegoji","Sagami","S7","Lainnya",
 ];
 
 // ─── Checkpoint SO ────────────────────────────────────────────────────────────
-// Checkpoint 1: HST 35 (sebelumnya 30), Checkpoint 2: HST 50
 const SO_CHECKPOINT_1 = 35;
 const SO_CHECKPOINT_2 = 50;
 
@@ -82,25 +82,38 @@ function hitungHST(tglStr) {
   return Math.floor((nowLocal - tanam) / 86400000);
 }
 
-// Status keterlambatan terhadap checkpoint SO
-// - tepat waktu : HST <= 35, atau HST == 50
-// - terlambat   : HST 36–49 (lewat checkpoint 35) atau HST > 50 (lewat checkpoint 50)
-function getSOStatus(hst) {
+// ─── getSOStatus — dengan soHistory check ────────────────────────────────────
+// Sekarang menerima soHistory + info GH untuk cek apakah checkpoint sudah
+// pernah dipenuhi di periode yang sama. Kalau sudah, tidak dianggap terlambat.
+function getSOStatus(hst, soHistory, gh, periode) {
   if (hst === null) return { late: false, checkpoint: null, daysLate: 0 };
+
   if (hst > SO_CHECKPOINT_1 && hst < SO_CHECKPOINT_2) {
+    // Lewat checkpoint 1 — cek apakah sudah pernah submit di HST <= 35 periode ini
+    const alreadyDone = hasCompletedCheckpoint(soHistory, gh, periode, SO_CHECKPOINT_1);
+    if (alreadyDone) return { late: false, checkpoint: SO_CHECKPOINT_1, daysLate: 0 };
     return { late: true, checkpoint: SO_CHECKPOINT_1, daysLate: hst - SO_CHECKPOINT_1 };
   }
+
   if (hst > SO_CHECKPOINT_2) {
+    // Lewat checkpoint 2 — cek apakah sudah pernah submit di HST <= 50 periode ini
+    const alreadyDone = hasCompletedCheckpoint(soHistory, gh, periode, SO_CHECKPOINT_2);
+    if (alreadyDone) return { late: false, checkpoint: SO_CHECKPOINT_2, daysLate: 0 };
     return { late: true, checkpoint: SO_CHECKPOINT_2, daysLate: hst - SO_CHECKPOINT_2 };
   }
-  return { late: false, checkpoint: hst === SO_CHECKPOINT_1 || hst === SO_CHECKPOINT_2 ? hst : null, daysLate: 0 };
+
+  return {
+    late: false,
+    checkpoint: hst === SO_CHECKPOINT_1 || hst === SO_CHECKPOINT_2 ? hst : null,
+    daysLate: 0,
+  };
 }
 
-function hstChipStyle(hst) {
+function hstChipStyle(hst, soStatus) {
   if (hst === null) return { bg: "#f5f5f5", color: "#999", border: "#e0e0e0" };
   if (hst === SO_CHECKPOINT_1 - 1 || hst === SO_CHECKPOINT_2 - 1) return { bg: "#fff3e0", color: "#e65100", border: "#ffb74d" };
   if (hst === SO_CHECKPOINT_1 || hst === SO_CHECKPOINT_2) return { bg: "#fbe9e7", color: "#bf360c", border: "#ffab91" };
-  if (getSOStatus(hst).late) return { bg: "#fce4ec", color: "#880e4f", border: "#f48fb1" };
+  if (soStatus?.late) return { bg: "#fce4ec", color: "#880e4f", border: "#f48fb1" };
   return { bg: "#e8f5e9", color: "#2e7d32", border: "#a5d6a7" };
 }
 
@@ -139,6 +152,7 @@ export default function SO() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const { ghData, loading: loadingRef, isDemoMode, refetch: fetchRefData } = useGHData();
+  const { soHistory, loading: loadingHistory, refetch: fetchSOHistory }    = useSOHistory();
 
   const [openTipe, setOpenTipe]         = useState(null);
   const [selectedGH, setSelectedGH]     = useState(_draft?.selectedGH || "");
@@ -180,10 +194,14 @@ export default function SO() {
   useEffect(() => { refreshPendingCount(); }, [refreshPendingCount]);
 
   // ── Auto-sync saat kembali online ──
-  useEffect(() => { if (isOnline) syncPendingData(); }, [isOnline]);
+  useEffect(() => {
+    if (isOnline) {
+      syncPendingData();
+      fetchSOHistory(); // refresh SO history saat online kembali
+    }
+  }, [isOnline]);
 
-
-  // ── Sync pending offline — kirim batch sekaligus ──
+  // ── Sync pending offline ──
   const syncPendingData = useCallback(async () => {
     const allPending = await idbGetAll(DB_NAME);
     if (allPending.length === 0) return;
@@ -200,12 +218,18 @@ export default function SO() {
         setSubmittedToday(getSubmittedToday());
         await idbDelete(DB_NAME, record.id);
       } catch {
-        // Gagal sync record ini, skip dulu — coba lagi nanti
+        // Gagal sync record ini, skip — coba lagi nanti
       }
     }
     await refreshPendingCount();
     setIsSyncingPending(false);
   }, [refreshPendingCount]);
+
+  // ── Helper: getSOStatus dengan soHistory ──
+  // Wrapper agar tidak perlu pass soHistory manual setiap kali
+  const getStatus = useCallback((hst, gh, periode) => {
+    return getSOStatus(hst, soHistory, gh, periode);
+  }, [soHistory]);
 
   // ── GH aktif per tipe ──
   const ghAktifPerTipe = useCallback((tipe) => {
@@ -224,12 +248,12 @@ export default function SO() {
       });
   }, [ghData]);
 
-  // ── Reminder banner — H-1, hari-H, dan yang sudah lewat checkpoint ──
+  // ── Reminder banner ──
   const reminderGH = useCallback(() => {
     const result = [];
     for (const tipe of TIPE_GH) {
       for (const gh of ghAktifPerTipe(tipe.key)) {
-        const st = getSOStatus(gh.hst);
+        const st = getStatus(gh.hst, gh.name, gh.periode);
         if (gh.hst === SO_CHECKPOINT_1 - 1 || gh.hst === SO_CHECKPOINT_2 - 1) {
           result.push({ ...gh, reminderType: "h1" });
         } else if (gh.hst === SO_CHECKPOINT_1 || gh.hst === SO_CHECKPOINT_2) {
@@ -242,7 +266,7 @@ export default function SO() {
       }
     }
     return result;
-  }, [ghAktifPerTipe, submittedToday]);
+  }, [ghAktifPerTipe, submittedToday, getStatus]);
 
   // ── Pilih GH ──
   const handleSelectGH = (gh) => {
@@ -281,24 +305,24 @@ export default function SO() {
     setTableData(prev => prev.filter((_, idx) => idx !== i));
   };
 
-  // ── Derived values (dipakai juga oleh validasi) ──
+  // ── Derived values ──
   const ghInfo    = ghData[selectedGH];
   const hstAktif  = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : null;
-  const chipStyle = hstChipStyle(hstAktif);
-  const soStatus  = getSOStatus(hstAktif);
+  const soStatus  = getStatus(hstAktif, selectedGH, ghInfo?.periode);
+  const chipStyle = hstChipStyle(hstAktif, soStatus);
   const reminders = reminderGH();
 
   // ── Validasi ──
-  const normalRows    = tableData.filter(r => !r.isManual);
-  const manualRows    = tableData.filter(r => r.isManual);
-  const filledNormal  = normalRows.filter(r => r.populasi !== "").length;
-  const filledManual  = manualRows.filter(r => r.baris.trim() && r.varian && r.populasi !== "").length;
-  const totalRows     = tableData.length;
-  const filledCount   = filledNormal + filledManual;
+  const normalRows      = tableData.filter(r => !r.isManual);
+  const manualRows      = tableData.filter(r => r.isManual);
+  const filledNormal    = normalRows.filter(r => r.populasi !== "").length;
+  const filledManual    = manualRows.filter(r => r.baris.trim() && r.varian && r.populasi !== "").length;
+  const totalRows       = tableData.length;
+  const filledCount     = filledNormal + filledManual;
   const allNormalFilled = normalRows.length > 0 && filledNormal === normalRows.length;
-  const manualOK      = manualRows.every(r => r.baris.trim() && r.varian && r.populasi !== "");
-  const keteranganOK  = !soStatus.late || keterangan.trim().length > 0;
-  const canSubmit     = allNormalFilled && manualOK && operator.trim().length > 0 && keteranganOK;
+  const manualOK        = manualRows.every(r => r.baris.trim() && r.varian && r.populasi !== "");
+  const keteranganOK    = !soStatus.late || keterangan.trim().length > 0;
+  const canSubmit       = allNormalFilled && manualOK && operator.trim().length > 0 && keteranganOK;
 
   // ── Build payloads ──
   const buildPayloads = () => {
@@ -363,7 +387,7 @@ export default function SO() {
       return;
     }
 
-    // Online — kirim semua baris sekaligus dalam satu request
+    // Online
     setSavedOffline(false);
     try {
       setSyncProgress({ done: 0, total: payloads.length });
@@ -377,6 +401,8 @@ export default function SO() {
       markSubmitted(selectedGH);
       setSubmittedToday(getSubmittedToday());
       clearDraft();
+      // Refresh SO history setelah submit berhasil supaya status langsung update
+      fetchSOHistory();
       setStep(3);
     } catch {
       setSubmitError("Gagal mengirim data. Cek koneksi dan coba lagi.");
@@ -391,6 +417,8 @@ export default function SO() {
     setOperator(""); setKeterangan(""); setSyncing(false); setSyncProgress({ done: 0, total: 0 });
     setSubmitError(null); setSavedOffline(false);
   };
+
+  const loadingAll = loadingRef || loadingHistory;
 
   return (
     <div style={{ minHeight: "100vh", background: "#f5f5f5", fontFamily: "'DM Sans','Segoe UI',sans-serif" }}>
@@ -452,7 +480,7 @@ export default function SO() {
 
       <div style={{ padding: "16px" }}>
 
-        {/* ══ STEP 1 — Pilih GH (Accordion) ══ */}
+        {/* ══ STEP 1 — Pilih GH ══ */}
         {step === 1 && (
           <div>
             {(() => {
@@ -465,8 +493,6 @@ export default function SO() {
 
               return (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-
-                  {/* Card 1 — Deadline hari ini / besok */}
                   {deadline.length > 0 && (
                     <div style={{ background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 12, padding: "10px 12px" }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color: "#e65100", marginBottom: 8 }}>
@@ -483,7 +509,6 @@ export default function SO() {
                     </div>
                   )}
 
-                  {/* Card 2 — Lewat checkpoint HST 35 */}
                   {late1.length > 0 && (
                     <div style={{ background: "#fce4ec", border: "1px solid #f48fb1", borderRadius: 12, padding: "10px 12px" }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color: "#880e4f", marginBottom: 8 }}>
@@ -500,7 +525,6 @@ export default function SO() {
                     </div>
                   )}
 
-                  {/* Card 3 — Lewat checkpoint HST 50 */}
                   {late2.length > 0 && (
                     <div style={{ background: "#fce4ec", border: "1px solid #f48fb1", borderRadius: 12, padding: "10px 12px" }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color: "#880e4f", marginBottom: 8 }}>
@@ -534,10 +558,10 @@ export default function SO() {
             <div style={{ fontWeight: 700, fontSize: 18, color: "#1b5e20", marginBottom: 4 }}>Pilih Greenhouse</div>
             <div style={{ fontSize: 12, color: "#888", marginBottom: 16 }}>Stock opname dilakukan pada checkpoint HST {SO_CHECKPOINT_1} &amp; HST {SO_CHECKPOINT_2}</div>
 
-            {loadingRef ? (
+            {loadingAll ? (
               <div style={{ textAlign: "center", padding: "40px 0", color: "#aaa" }}>
                 <div style={{ fontSize: 28 }}>🔄</div>
-                <div style={{ fontSize: 13, marginTop: 8 }}>Memuat data referensi...</div>
+                <div style={{ fontSize: 13, marginTop: 8 }}>Memuat data...</div>
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -545,7 +569,7 @@ export default function SO() {
                   const aktif       = ghAktifPerTipe(tipe.key);
                   const isOpen      = openTipe === tipe.key;
                   const hasReminder = aktif.some(g => g.hst === SO_CHECKPOINT_1 - 1 || g.hst === SO_CHECKPOINT_2 - 1);
-                  const hasLate     = aktif.some(g => getSOStatus(g.hst).late && !submittedToday.includes(g.name));
+                  const hasLate     = aktif.some(g => getStatus(g.hst, g.name, g.periode).late && !submittedToday.includes(g.name));
                   return (
                     <div key={tipe.key} style={{ borderRadius: 14, border: `1.5px solid ${isOpen ? tipe.color : "#e0e0e0"}`, background: "#fff", overflow: "hidden", transition: "border-color 0.2s" }}>
                       <button onClick={() => setOpenTipe(isOpen ? null : tipe.key)}
@@ -568,10 +592,10 @@ export default function SO() {
                           ) : (
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 12 }}>
                               {aktif.map(gh => {
-                                const chip     = hstChipStyle(gh.hst);
+                                const lateInfo = getStatus(gh.hst, gh.name, gh.periode);
+                                const chip     = hstChipStyle(gh.hst, lateInfo);
                                 const sudahIsi = submittedToday.includes(gh.name);
                                 const alert    = isSODeadlineAlert(gh.hst);
-                                const lateInfo = getSOStatus(gh.hst);
                                 return (
                                   <button key={gh.name} onClick={() => handleSelectGH(gh.name)}
                                     style={{ padding: "10px 8px", borderRadius: 12, cursor: "pointer", textAlign: "center", border: sudahIsi ? "1px solid #ffb74d" : (alert || lateInfo.late) ? `2px solid ${chip.border}` : "1px solid #e0e0e0", background: sudahIsi ? "#fff8e1" : "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, transition: "all 0.2s" }}>
@@ -698,7 +722,7 @@ export default function SO() {
               + Tambah baris / varian tidak terdaftar
             </button>
 
-            {/* Ringkasan & Copy to Clipboard */}
+            {/* Ringkasan & Copy */}
             {filledCount > 0 && (() => {
               const totalPerVarian = {};
               let totalAll = 0;
@@ -757,11 +781,9 @@ export default function SO() {
                       📋 Copy
                     </button>
                   </div>
-
                   <div style={{ fontFamily: "monospace", fontSize: 12, color: "#333", marginBottom: 10, whiteSpace: "pre-wrap", lineHeight: 1.7 }}>
                     {lines.join("\n")}
                   </div>
-
                   <div style={{ borderTop: "1px solid #dce775", paddingTop: 8 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: "#558b2f", marginBottom: 6 }}>Total per varian</div>
                     {Object.entries(totalPerVarian).sort((a,b) => b[1]-a[1]).map(([v, t]) => (
@@ -789,7 +811,7 @@ export default function SO() {
                 style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: "#fff", border: `1.5px solid ${operator.trim() ? "#81c784" : "#e0e0e0"}`, borderRadius: 10, color: "#333", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
             </div>
 
-            {/* Input alasan keterlambatan — hanya muncul kalau lewat checkpoint */}
+            {/* Input alasan keterlambatan */}
             {soStatus.late && (
               <div style={{ marginBottom: 12 }}>
                 <label style={{ fontSize: 11, color: "#880e4f", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
