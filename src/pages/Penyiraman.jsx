@@ -26,6 +26,67 @@ const GH_PER_TIPE = {
 const TIPE_LIST = Object.keys(GH_PER_TIPE);
 const isMultiSuhuRH = (gh) => gh === "SAWAHAN 3" || gh === "SAWAHAN 4";
 const isDutchBucket = (tipe) => tipe === "Dutch Bucket";
+const isSawahanGH   = (gh)  => gh?.startsWith("SAWAHAN");
+
+function getECInRange(hst) {
+  if (hst === null || hst === undefined) return { min: 0.5, max: 5.0 };
+  if (hst <= 3)  return { min: 1.5, max: 1.8 };
+  if (hst <= 14) return { min: 2.3, max: 2.7 };
+  if (hst <= 23) return { min: 2.5, max: 2.9 };
+  if (hst <= 50) return { min: 2.8, max: 3.2 };
+  return { min: 2.3, max: 2.7 };
+}
+
+function getVarianErrors(d, hst, tipe, gh) {
+  const errors = {};
+  const ecIn  = d.ecIn  !== "" ? parseFloat(d.ecIn)  : null;
+  const ecOut = d.ecOut !== "" ? parseFloat(d.ecOut) : null;
+  const phIn  = d.phIn  !== "" ? parseFloat(d.phIn)  : null;
+  const phOut = d.phOut !== "" ? parseFloat(d.phOut) : null;
+
+  if (ecIn !== null) {
+    const r = getECInRange(hst);
+    if (isNaN(ecIn) || ecIn < r.min || ecIn > r.max)
+      errors.ecIn = `Harus ${r.min}–${r.max} mS/cm${hst != null ? ` (HST ${hst})` : ""}`;
+  }
+
+  if (ecOut !== null && !isDutchBucket(tipe)) {
+    const airBakuMax = isSawahanGH(gh) ? 0.9 : 0.7;
+    if (ecOut > airBakuMax) {
+      const ecOutMin = ecIn !== null && !isNaN(ecIn) ? Math.max(0, ecIn - 1) : 0;
+      if (isNaN(ecOut) || ecOut < ecOutMin || ecOut > 4)
+        errors.ecOut = `Harus ${ecOutMin.toFixed(1)}–4.0 mS/cm`;
+    }
+  }
+
+  if (phIn !== null) {
+    if (isNaN(phIn) || phIn < 5.8 || phIn > 6.2)
+      errors.phIn = "Harus 5.8–6.2";
+  }
+
+  if (phOut !== null) {
+    if (isNaN(phOut) || phOut < 4.8 || phOut > 7.2)
+      errors.phOut = "Harus 4.8–7.2";
+  }
+
+  return errors;
+}
+
+function getDbErrors(dbData) {
+  const errors = {};
+  const checks = {
+    ecTandon: { min: 2.6, max: 3.4 },
+    ecBucket: { min: 2.6, max: 3.4 },
+    phTandon: { min: 5.8, max: 6.2 },
+    phBucket: { min: 4.8, max: 7.2 },
+  };
+  for (const [key, rule] of Object.entries(checks)) {
+    const val = dbData[key] !== "" ? parseFloat(dbData[key]) : null;
+    if (val !== null && (isNaN(val) || val < rule.min || val > rule.max))
+      errors[key] = `Harus ${rule.min}–${rule.max}`;
+  }
+  return errors;
+}
 
 const todayISO   = new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
 const todayLabel = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -41,11 +102,12 @@ function initVarianData() {
   return { ecIn: "", ecOut: "", phIn: "", phOut: "", volume: "", volNutrisi: "", suhu: "", rh: "", suhuArr: ["","","",""], rhArr: ["","","",""] };
 }
 
-function Field({ label, value, onChange, placeholder, satuan, type = "number" }) {
+function Field({ label, value, onChange, placeholder, satuan, type = "number", error }) {
   const filled = value !== "";
+  const hasError = !!error;
   return (
     <div style={{ marginBottom: 6 }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: "#0277bd", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 3 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: hasError ? "#c62828" : "#0277bd", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 3 }}>
         {label} {satuan && <span style={{ fontWeight: 400, color: "#aaa", textTransform: "none" }}>({satuan})</span>}
       </div>
       <input
@@ -53,12 +115,13 @@ function Field({ label, value, onChange, placeholder, satuan, type = "number" })
         onChange={e => onChange(e.target.value)} placeholder={placeholder || "0"}
         style={{
           width: "100%", height: 38, padding: "0 10px",
-          border: `1.5px solid ${filled ? "#81c784" : "#e0e0e0"}`,
+          border: `1.5px solid ${hasError ? "#e53935" : filled ? "#81c784" : "#e0e0e0"}`,
           borderRadius: 8, fontSize: 13, fontWeight: 600,
-          color: filled ? "#2e7d32" : "#bbb", outline: "none",
-          background: "#fff", boxSizing: "border-box", fontFamily: "inherit",
+          color: hasError ? "#c62828" : filled ? "#2e7d32" : "#bbb", outline: "none",
+          background: hasError ? "#ffebee" : "#fff", boxSizing: "border-box", fontFamily: "inherit",
         }}
       />
+      {hasError && <div style={{ fontSize: 10, color: "#c62828", marginTop: 2 }}>⚠ {error}</div>}
     </div>
   );
 }
@@ -110,6 +173,14 @@ export default function Penyiraman() {
   const isDB        = isDutchBucket(tipe);
   const multiSuhuRH = isMultiSuhuRH(gh);
   const varianList  = !isDB && gh ? (refData[gh]?.varian?.length > 0 ? refData[gh].varian : ["Elysia", "Greeniegal"]) : [];
+
+  const hst = refData[gh]?.hst ?? null;
+  const allVarianErrors = {};
+  if (!isDB) varianList.forEach(v => { allVarianErrors[v] = getVarianErrors(varianData[v] || initVarianData(), hst, tipe, gh); });
+  const dbErrors = isDB ? getDbErrors(dbData) : {};
+  const hasValidationError = isDB
+    ? Object.keys(dbErrors).length > 0
+    : Object.values(allVarianErrors).some(e => Object.keys(e).length > 0);
 
   const handleSelectGH = (g) => {
     setGh(g);
@@ -199,6 +270,7 @@ export default function Penyiraman() {
     if (step === 1) return tipe !== "" && gh !== "";
     if (step === 2) {
       if (operator.trim().length < 2) return false;
+      if (hasValidationError) return false;
       if (isDB) return Object.values(dbData).every(v => v !== "");
       return varianList.every(v => {
         const d = varianData[v];
@@ -393,10 +465,10 @@ export default function Penyiraman() {
               <div style={{ background: "#fff", borderRadius: 12, border: "1.5px solid #e0e0e0", padding: 14 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#0277bd", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>💧 Data Tandon & Bucket</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  <Field label="EC Tandon"  value={dbData.ecTandon}  onChange={v => updateDb("ecTandon",  v)} satuan="mS/cm" />
-                  <Field label="EC Bucket"  value={dbData.ecBucket}  onChange={v => updateDb("ecBucket",  v)} satuan="mS/cm" />
-                  <Field label="pH Tandon"  value={dbData.phTandon}  onChange={v => updateDb("phTandon",  v)} />
-                  <Field label="pH Bucket"  value={dbData.phBucket}  onChange={v => updateDb("phBucket",  v)} />
+                  <Field label="EC Tandon"  value={dbData.ecTandon}  onChange={v => updateDb("ecTandon",  v)} satuan="mS/cm" error={dbErrors.ecTandon} />
+                  <Field label="EC Bucket"  value={dbData.ecBucket}  onChange={v => updateDb("ecBucket",  v)} satuan="mS/cm" error={dbErrors.ecBucket} />
+                  <Field label="pH Tandon"  value={dbData.phTandon}  onChange={v => updateDb("phTandon",  v)} error={dbErrors.phTandon} />
+                  <Field label="pH Bucket"  value={dbData.phBucket}  onChange={v => updateDb("phBucket",  v)} error={dbErrors.phBucket} />
                   <Field label="DO Tandon"  value={dbData.doTandon}  onChange={v => updateDb("doTandon",  v)} satuan="mg/L" />
                   <Field label="DO Bucket"  value={dbData.doBucket}  onChange={v => updateDb("doBucket",  v)} satuan="mg/L" />
                   <Field label="Suhu"       value={dbData.suhu}      onChange={v => updateDb("suhu",      v)} satuan="°C" />
@@ -410,25 +482,31 @@ export default function Penyiraman() {
             {!isDB && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {varianList.map(v => {
-              const d  = varianData[v] || initVarianData();
-              const ok = d.ecIn && d.ecOut && d.phIn && d.phOut && d.volume && d.volNutrisi &&
+              const d    = varianData[v] || initVarianData();
+              const errs = allVarianErrors[v] || {};
+              const hasErr = Object.keys(errs).length > 0;
+              const filled = d.ecIn && d.ecOut && d.phIn && d.phOut && d.volume && d.volNutrisi &&
                          (multiSuhuRH ? (d.suhuArr.every(x=>x!=="") && d.rhArr.every(x=>x!=="")) : (d.suhu && d.rh));
+              const ok = filled && !hasErr;
               return (
-                <div key={v} style={{ background: "#fff", borderRadius: 12, border: `1.5px solid ${ok ? "#a5d6a7" : "#e0e0e0"}`, overflow: "hidden" }}>
-                  <div style={{ background: ok ? "#f1f8e9" : "#fafafa", padding: "8px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div key={v} style={{ background: "#fff", borderRadius: 12, border: `1.5px solid ${hasErr ? "#ef9a9a" : ok ? "#a5d6a7" : "#e0e0e0"}`, overflow: "hidden" }}>
+                  <div style={{ background: hasErr ? "#ffebee" : ok ? "#f1f8e9" : "#fafafa", padding: "8px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <div>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: ok ? "#2e7d32" : "#0277bd" }}>🌱 {v}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: hasErr ? "#c62828" : ok ? "#2e7d32" : "#0277bd" }}>🌱 {v}</span>
                       {v === varianList[0] && varianList.length > 1 && (
                         <span style={{ fontSize: 9, color: "#0277bd", background: "#e1f5fe", border: "1px solid #81d4fa", borderRadius: 20, padding: "1px 6px", marginLeft: 6 }}>auto-fill</span>
                       )}
                     </div>
-                    {ok ? <span style={{ fontSize: 11 }}>✅</span> : <span style={{ fontSize: 9, color: "#e65100", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 6px" }}>Belum</span>}
+                    {hasErr
+                      ? <span style={{ fontSize: 9, color: "#c62828", background: "#ffebee", border: "1px solid #ef9a9a", borderRadius: 20, padding: "2px 6px" }}>⚠ Di luar standar</span>
+                      : ok ? <span style={{ fontSize: 11 }}>✅</span>
+                      : <span style={{ fontSize: 9, color: "#e65100", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 6px" }}>Belum</span>}
                   </div>
                   <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
-                    <Field label="EC In"        value={d.ecIn}       onChange={val => handleVarianChange(v,"ecIn",val)}       satuan="mS/cm" />
-                    <Field label="EC Out"       value={d.ecOut}      onChange={val => updateVarian(v,"ecOut",val)}             satuan="mS/cm" />
-                    <Field label="pH In"        value={d.phIn}       onChange={val => handleVarianChange(v,"phIn",val)} />
-                    <Field label="pH Out"       value={d.phOut}      onChange={val => updateVarian(v,"phOut",val)} />
+                    <Field label="EC In"        value={d.ecIn}       onChange={val => handleVarianChange(v,"ecIn",val)}       satuan="mS/cm" error={errs.ecIn} />
+                    <Field label="EC Out"       value={d.ecOut}      onChange={val => updateVarian(v,"ecOut",val)}             satuan="mS/cm" error={errs.ecOut} />
+                    <Field label="pH In"        value={d.phIn}       onChange={val => handleVarianChange(v,"phIn",val)}        error={errs.phIn} />
+                    <Field label="pH Out"       value={d.phOut}      onChange={val => updateVarian(v,"phOut",val)}             error={errs.phOut} />
                     <Field label="Volume"       value={d.volume}     onChange={val => handleVarianChange(v,"volume",val)}      satuan="ml/tan" />
                     <Field label="Vol.Nutrisi"  value={d.volNutrisi} onChange={val => handleVarianChange(v,"volNutrisi",val)}  satuan="L" />
                     {!multiSuhuRH && (
@@ -567,10 +645,17 @@ export default function Penyiraman() {
             </button>
           )}
           {step < 3 && (
-            <button onClick={() => setStep(s => s + 1)} disabled={!canNext()}
-              style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: canNext() ? "linear-gradient(135deg,#0277bd,#0288d1)" : "#e0e0e0", color: canNext() ? "#fff" : "#aaa", fontSize: 15, fontWeight: 700, cursor: canNext() ? "pointer" : "not-allowed" }}>
-              {step === 1 ? "Lanjut Input →" : "Lihat Rekap →"}
-            </button>
+            <div style={{ flex: 2, display: "flex", flexDirection: "column", gap: 6 }}>
+              {step === 2 && hasValidationError && (
+                <div style={{ fontSize: 11, color: "#c62828", background: "#ffebee", border: "1px solid #ef9a9a", borderRadius: 8, padding: "6px 10px", textAlign: "center" }}>
+                  ⚠ Ada nilai di luar standar — periksa field merah sebelum melanjutkan
+                </div>
+              )}
+              <button onClick={() => setStep(s => s + 1)} disabled={!canNext()}
+                style={{ width: "100%", padding: 13, border: "none", borderRadius: 12, background: canNext() ? "linear-gradient(135deg,#0277bd,#0288d1)" : "#e0e0e0", color: canNext() ? "#fff" : "#aaa", fontSize: 15, fontWeight: 700, cursor: canNext() ? "pointer" : "not-allowed" }}>
+                {step === 1 ? "Lanjut Input →" : "Lihat Rekap →"}
+              </button>
+            </div>
           )}
           {step === 3 && (
             <button onClick={() => setConfirmOpen(true)} disabled={submitting}
