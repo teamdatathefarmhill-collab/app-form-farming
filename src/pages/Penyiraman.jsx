@@ -26,65 +26,38 @@ const GH_PER_TIPE = {
 const TIPE_LIST = Object.keys(GH_PER_TIPE);
 const isMultiSuhuRH = (gh) => gh === "SAWAHAN 3" || gh === "SAWAHAN 4";
 const isDutchBucket = (tipe) => tipe === "Dutch Bucket";
-const isSawahanGH   = (gh)  => gh?.startsWith("SAWAHAN");
 
-function getECInRange(hst) {
-  if (hst === null || hst === undefined) return { min: 0.5, max: 5.0 };
-  if (hst <= 3)  return { min: 1.5, max: 1.8 };
-  if (hst <= 14) return { min: 2.3, max: 2.7 };
-  if (hst <= 23) return { min: 2.5, max: 2.9 };
-  if (hst <= 50) return { min: 2.8, max: 3.2 };
-  return { min: 2.3, max: 2.7 };
-}
+// Batas deteksi typo: ~2x dari nilai maksimal wajar masing-masing field
+const TYPO_LIMITS = {
+  ph:  { max: 12,  label: "pH (maks wajar ~6)",      hint: "Contoh: tulis 6.0 bukan 60" },
+  ec:  { max: 8,   label: "EC (maks wajar ~4 mS/cm)", hint: "Contoh: tulis 3.2 bukan 32" },
+};
 
-function getVarianErrors(d, hst, tipe, gh) {
+function getVarianErrors(d) {
   const errors = {};
-  const ecIn  = d.ecIn  !== "" ? parseFloat(d.ecIn)  : null;
-  const ecOut = d.ecOut !== "" ? parseFloat(d.ecOut) : null;
-  const phIn  = d.phIn  !== "" ? parseFloat(d.phIn)  : null;
-  const phOut = d.phOut !== "" ? parseFloat(d.phOut) : null;
-
-  if (ecIn !== null) {
-    const r = getECInRange(hst);
-    if (isNaN(ecIn) || ecIn < r.min || ecIn > r.max)
-      errors.ecIn = `Harus ${r.min}–${r.max} mS/cm${hst != null ? ` (HST ${hst})` : ""}`;
-  }
-
-  if (ecOut !== null && !isDutchBucket(tipe)) {
-    const airBakuMax = isSawahanGH(gh) ? 0.9 : 0.7;
-    if (ecOut > airBakuMax) {
-      const ecOutMin = ecIn !== null && !isNaN(ecIn) ? Math.max(0, ecIn - 1) : 0;
-      if (isNaN(ecOut) || ecOut < ecOutMin || ecOut > 4)
-        errors.ecOut = `Harus ${ecOutMin.toFixed(1)}–4.0 mS/cm`;
-    }
-  }
-
-  if (phIn !== null) {
-    if (isNaN(phIn) || phIn < 5.8 || phIn > 6.2)
-      errors.phIn = "Harus 5.8–6.2";
-  }
-
-  if (phOut !== null) {
-    if (isNaN(phOut) || phOut < 4.8 || phOut > 7.2)
-      errors.phOut = "Harus 4.8–7.2";
-  }
-
+  const check = (val, type, key) => {
+    const n = parseFloat(val);
+    if (val !== "" && !isNaN(n) && n > TYPO_LIMITS[type].max)
+      errors[key] = `Kemungkinan typo — ${TYPO_LIMITS[type].hint}`;
+  };
+  check(d.ecIn,  "ec", "ecIn");
+  check(d.ecOut, "ec", "ecOut");
+  check(d.phIn,  "ph", "phIn");
+  check(d.phOut, "ph", "phOut");
   return errors;
 }
 
 function getDbErrors(dbData) {
   const errors = {};
-  const checks = {
-    ecTandon: { min: 2.6, max: 3.4 },
-    ecBucket: { min: 2.6, max: 3.4 },
-    phTandon: { min: 5.8, max: 6.2 },
-    phBucket: { min: 4.8, max: 7.2 },
+  const check = (val, type, key) => {
+    const n = parseFloat(val);
+    if (val !== "" && !isNaN(n) && n > TYPO_LIMITS[type].max)
+      errors[key] = `Kemungkinan typo — ${TYPO_LIMITS[type].hint}`;
   };
-  for (const [key, rule] of Object.entries(checks)) {
-    const val = dbData[key] !== "" ? parseFloat(dbData[key]) : null;
-    if (val !== null && (isNaN(val) || val < rule.min || val > rule.max))
-      errors[key] = `Harus ${rule.min}–${rule.max}`;
-  }
+  check(dbData.ecTandon, "ec", "ecTandon");
+  check(dbData.ecBucket, "ec", "ecBucket");
+  check(dbData.phTandon, "ph", "phTandon");
+  check(dbData.phBucket, "ph", "phBucket");
   return errors;
 }
 
@@ -176,7 +149,7 @@ export default function Penyiraman() {
 
   const hst = refData[gh]?.hst ?? null;
   const allVarianErrors = {};
-  if (!isDB) varianList.forEach(v => { allVarianErrors[v] = getVarianErrors(varianData[v] || initVarianData(), hst, tipe, gh); });
+  if (!isDB) varianList.forEach(v => { allVarianErrors[v] = getVarianErrors(varianData[v] || initVarianData()); });
   const dbErrors = isDB ? getDbErrors(dbData) : {};
   const hasValidationError = isDB
     ? Object.keys(dbErrors).length > 0
@@ -648,7 +621,7 @@ export default function Penyiraman() {
             <div style={{ flex: 2, display: "flex", flexDirection: "column", gap: 6 }}>
               {step === 2 && hasValidationError && (
                 <div style={{ fontSize: 11, color: "#c62828", background: "#ffebee", border: "1px solid #ef9a9a", borderRadius: 8, padding: "6px 10px", textAlign: "center" }}>
-                  ⚠ Ada nilai di luar standar — periksa field merah sebelum melanjutkan
+                  ⚠ Terdeteksi nilai tidak wajar (kemungkinan typo) — periksa field merah
                 </div>
               )}
               <button onClick={() => setStep(s => s + 1)} disabled={!canNext()}
