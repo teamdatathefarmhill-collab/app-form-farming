@@ -6,6 +6,9 @@ import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 const SCRIPT_URL = import.meta.env.VITE_GAS_PENYIRAMAN_URL;
 
 const GH_PER_TIPE = {
+  "RnD": [
+    "SAWAHAN TUNNEL", "TOHUDAN 22", "OPEN FIELD 1"
+  ],
   "Kolam (Tohudan)": [
     "TOHUDAN 1","TOHUDAN 2","TOHUDAN 3","TOHUDAN 4","TOHUDAN 5","TOHUDAN 6",
     "TOHUDAN 7","TOHUDAN 8","TOHUDAN 9","TOHUDAN 10","TOHUDAN 11","TOHUDAN 12","TOHUDAN 13","TOHUDAN 22"
@@ -26,6 +29,7 @@ const GH_PER_TIPE = {
 const TIPE_LIST = Object.keys(GH_PER_TIPE);
 const isMultiSuhuRH = (gh) => gh === "SAWAHAN 3" || gh === "SAWAHAN 4";
 const isDutchBucket = (tipe) => tipe === "Dutch Bucket";
+const isRnD = (tipe) => tipe === "RnD";
 
 // Batas deteksi typo: ~2x dari nilai maksimal wajar masing-masing field
 const TYPO_LIMITS = {
@@ -125,7 +129,8 @@ export default function Penyiraman() {
   const [submitError, setSubmitError] = useState(null);
   const [isOnline] = useState(navigator.onLine);
 
-  const [refData, setRefData]   = useState({});
+  const [refData, setRefData]       = useState({});
+  const [refDataRnd, setRefDataRnd] = useState({});
   const [loadingRef, setLoadingRef] = useState(true);
   const [varianData, setVarianData] = useState(_draft?.varianData || {});
   const [dbData, setDbData]     = useState(_draft?.dbData || { ecTandon: "", ecBucket: "", phTandon: "", phBucket: "", doTandon: "", doBucket: "", suhu: "", rh: "", volNutrisi: "" });
@@ -133,7 +138,7 @@ export default function Penyiraman() {
   useEffect(() => {
     fetch(`${SCRIPT_URL}?action=getREF`)
       .then(r => r.json())
-      .then(json => { if (json.success) setRefData(json.data); })
+      .then(json => { if (json.success) { setRefData(json.data); setRefDataRnd(json.dataRnd || {}); } })
       .catch(() => {})
       .finally(() => setLoadingRef(false));
   }, []);
@@ -145,9 +150,10 @@ export default function Penyiraman() {
 
   const isDB        = isDutchBucket(tipe);
   const multiSuhuRH = isMultiSuhuRH(gh);
-  const varianList  = !isDB && gh ? (refData[gh]?.varian?.length > 0 ? refData[gh].varian : ["Elysia", "Greeniegal"]) : [];
+  const refSource   = isRnD(tipe) ? refDataRnd : refData;
+  const varianList  = !isDB && gh ? (refSource[gh]?.varian?.length > 0 ? refSource[gh].varian : ["Elysia", "Greeniegal"]) : [];
 
-  const hst = refData[gh]?.hst ?? null;
+  const hst = refSource[gh]?.hst ?? null;
   const allVarianErrors = {};
   if (!isDB) varianList.forEach(v => { allVarianErrors[v] = getVarianErrors(varianData[v] || initVarianData()); });
   const dbErrors = isDB ? getDbErrors(dbData) : {};
@@ -157,7 +163,7 @@ export default function Penyiraman() {
 
   const handleSelectGH = (g) => {
     setGh(g);
-    const vList = refData[g]?.varian?.length > 0 ? refData[g].varian : ["Elysia", "Greeniegal"];
+    const vList = refSource[g]?.varian?.length > 0 ? refSource[g].varian : ["Elysia", "Greeniegal"];
     const init = {};
     vList.forEach(v => { init[v] = initVarianData(); });
     setVarianData(init);
@@ -363,8 +369,8 @@ export default function Penyiraman() {
                   {loadingRef && <span style={{ fontSize: 10, fontWeight: 400, color: "#aaa", marginLeft: 8 }}>memuat...</span>}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  {GH_PER_TIPE[tipe].filter(g => refData[g]).map(g => {
-                    const info = refData[g];
+                  {GH_PER_TIPE[tipe].filter(g => refSource[g]).map(g => {
+                    const info = refSource[g];
                     const hst  = info?.hst ?? null;
                     const c    = hstColor(hst);
                     const sel  = gh === g;
@@ -428,8 +434,8 @@ export default function Penyiraman() {
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
               <div style={{ background: "#e1f5fe", border: "1px solid #81d4fa", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#0277bd", fontWeight: 700 }}>{gh}</div>
               <div style={{ background: "#f5f5f5", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#666" }}>{tipe}</div>
-              {refData[gh]?.hst != null && (() => { const c = hstColor(refData[gh].hst); return (
-                <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: c.text, fontWeight: 700 }}>{refData[gh].hst} HST</div>
+              {refSource[gh]?.hst != null && (() => { const c = hstColor(refSource[gh].hst); return (
+                <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: c.text, fontWeight: 700 }}>{refSource[gh].hst} HST</div>
               ); })()}
             </div>
 

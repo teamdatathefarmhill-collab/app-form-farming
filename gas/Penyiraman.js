@@ -43,7 +43,84 @@ function doGet(e) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-// ── Handler: Get REF Data ────────────────────────────────────
+// ── Helper: bangun ghMap dari rows mentah + index kolom ──────
+function buildGhMapFromRows(rows, colIdx) {
+  const ghMap = {};
+
+  for (let i = 1; i < rows.length; i++) {
+    const gh      = String(rows[i][colIdx.gh] || "").trim();
+    const periode = parseFloat(rows[i][colIdx.periode]);
+    const varian  = String(rows[i][colIdx.varian] || "").trim();
+    const tanamRaw = rows[i][colIdx.tanam];
+
+    if (!gh || isNaN(periode)) continue;
+
+    let tanamDate = null;
+    if (tanamRaw instanceof Date) {
+      tanamDate = tanamRaw;
+    } else if (tanamRaw) {
+      tanamDate = new Date(tanamRaw);
+    }
+
+    if (!ghMap[gh]) {
+      ghMap[gh] = { maxPeriode: periode, maxTanam: tanamDate, varianSet: new Set() };
+    }
+
+    const entry = ghMap[gh];
+
+    if (periode > entry.maxPeriode) {
+      entry.maxPeriode = periode;
+      entry.maxTanam   = tanamDate;
+      entry.varianSet  = new Set();
+    }
+
+    if (periode === entry.maxPeriode) {
+      if (tanamDate && (!entry.maxTanam || tanamDate > entry.maxTanam)) {
+        entry.maxTanam = tanamDate;
+      }
+      if (varian) entry.varianSet.add(varian);
+    }
+  }
+
+  return ghMap;
+}
+
+// ── Helper: ubah ghMap jadi struktur data final (hst, varian, dst) ──
+function ghMapToData(ghMap) {
+  const data = {};
+  const tz   = Session.getScriptTimeZone();
+  const today = new Date();
+  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+  for (const [gh, entry] of Object.entries(ghMap)) {
+    const tanamStr = entry.maxTanam
+      ? Utilities.formatDate(entry.maxTanam, tz, "yyyy-MM-dd")
+      : null;
+
+    let hst = null;
+    if (entry.maxTanam) {
+      const tanamMidnight = new Date(
+        entry.maxTanam.getFullYear(),
+        entry.maxTanam.getMonth(),
+        entry.maxTanam.getDate()
+      );
+      hst = Math.floor((todayMidnight - tanamMidnight) / 86400000);
+    }
+
+    if (hst !== null && hst >= 70) continue;
+
+    data[gh] = {
+      periode: entry.maxPeriode,
+      tanam:   tanamStr,
+      hst:     hst,
+      varian:  Array.from(entry.varianSet).sort(),
+    };
+  }
+
+  return data;
+}
+
+// ── Handler: Get REF Data (REF biasa + REF RND) ──────────────
 function handleGetREF() {
   try {
     const ss    = getSSRef();
@@ -53,75 +130,23 @@ function handleGetREF() {
     const rows = sheet.getRange("A:L").getValues();
     if (rows.length < 2) return jsonError("Sheet REF kosong.");
 
-    const ghMap = {};
+    const ghMap = buildGhMapFromRows(rows, { gh: 0, periode: 1, varian: 8, tanam: 11 });
+    const data  = ghMapToData(ghMap);
 
-    for (let i = 1; i < rows.length; i++) {
-      const gh      = String(rows[i][0] || "").trim();
-      const periode = parseFloat(rows[i][1]);
-      const varian  = String(rows[i][8] || "").trim();
-      const tanamRaw = rows[i][11];
-
-      if (!gh || isNaN(periode)) continue;
-
-      let tanamDate = null;
-      if (tanamRaw instanceof Date) {
-        tanamDate = tanamRaw;
-      } else if (tanamRaw) {
-        tanamDate = new Date(tanamRaw);
+    // Sheet REF RND — kolom: Greenhouse(A), Periode(B), GH Code(C), Sample Code(D),
+    // Var Code(E), Baris(F), Varian(G), True Var(H), Tanam(I)
+    let dataRnd = {};
+    const sheetRnd = ss.getSheetByName("REF RND");
+    if (sheetRnd) {
+      const rowsRnd = sheetRnd.getRange("A:I").getValues();
+      if (rowsRnd.length >= 2) {
+        const ghMapRnd = buildGhMapFromRows(rowsRnd, { gh: 0, periode: 1, varian: 7, tanam: 8 });
+        dataRnd = ghMapToData(ghMapRnd);
       }
-
-      if (!ghMap[gh]) {
-        ghMap[gh] = { maxPeriode: periode, maxTanam: tanamDate, varianSet: new Set() };
-      }
-
-      const entry = ghMap[gh];
-
-      if (periode > entry.maxPeriode) {
-        entry.maxPeriode = periode;
-        entry.maxTanam   = tanamDate;
-        entry.varianSet  = new Set();
-      }
-
-      if (periode === entry.maxPeriode) {
-        if (tanamDate && (!entry.maxTanam || tanamDate > entry.maxTanam)) {
-          entry.maxTanam = tanamDate;
-        }
-        if (varian) entry.varianSet.add(varian);
-      }
-    }
-
-    const data = {};
-    const tz   = Session.getScriptTimeZone();
-    const today = new Date();
-    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-
-    for (const [gh, entry] of Object.entries(ghMap)) {
-      const tanamStr = entry.maxTanam
-        ? Utilities.formatDate(entry.maxTanam, tz, "yyyy-MM-dd")
-        : null;
-
-      let hst = null;
-      if (entry.maxTanam) {
-        const tanamMidnight = new Date(
-          entry.maxTanam.getFullYear(),
-          entry.maxTanam.getMonth(),
-          entry.maxTanam.getDate()
-        );
-        hst = Math.floor((todayMidnight - tanamMidnight) / 86400000);
-      }
-
-      if (hst !== null && hst > 65) continue;
-
-      data[gh] = {
-        periode: entry.maxPeriode,
-        tanam:   tanamStr,
-        hst:     hst,
-        varian:  Array.from(entry.varianSet).sort(),
-      };
     }
 
     return ContentService
-      .createTextOutput(JSON.stringify({ success: true, data }))
+      .createTextOutput(JSON.stringify({ success: true, data, dataRnd }))
       .setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {
