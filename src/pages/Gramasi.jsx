@@ -23,9 +23,14 @@ function getTodayLabel() {
 const LS_PREFIX = "gramasi_submitted_";
 
 // Key selalu fresh pakai tanggal saat ini (bukan frozen di module load)
+// PENTING: pakai tanggal lokal, bukan toISOString() (itu UTC) — kalau pakai UTC,
+// di WIB (UTC+7) cache baru "ganti hari" jam 7 pagi, bukan jam 12 malam lokal.
 function getLSKey() {
-  // Pakai format ISO (YYYY-MM-DD) supaya tidak ambigu lintas locale & timezone
-  return `${LS_PREFIX}${new Date().toISOString().split("T")[0]}`;
+  const d = new Date();
+  const y   = d.getFullYear();
+  const m   = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${LS_PREFIX}${y}-${m}-${day}`;
 }
 
 // Hapus cache hari-hari sebelumnya supaya tidak numpuk & tidak bocor ke hari lain

@@ -192,8 +192,14 @@ function isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNettin
 // ─── localStorage helpers — pakai fungsi supaya tanggal selalu fresh ─────────
 const LS_PREFIX = "vigor_submitted_";
 
+// PENTING: pakai tanggal lokal, bukan toISOString() (itu UTC) — kalau pakai UTC,
+// di WIB (UTC+7) cache baru "ganti hari" jam 7 pagi, bukan jam 12 malam lokal.
 function getLSKey() {
-  return `${LS_PREFIX}${new Date().toISOString().split("T")[0]}`;
+  const d = new Date();
+  const y   = d.getFullYear();
+  const m   = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${LS_PREFIX}${y}-${m}-${day}`;
 }
 function cleanOldKeys() {
   try {
