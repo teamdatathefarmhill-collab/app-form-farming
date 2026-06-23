@@ -10,6 +10,7 @@ const SCRIPT_URL = import.meta.env.VITE_GAS_VIGOR_URL;
 
 // ─── Changelog ───────────────────────────────────────────────────────────────
 export const CHANGELOG = [
+  "Tambah Kesegaran Tanaman (Kelayuan) di checkpoint HST 7 (sebelumnya hanya HST 38/45/54)",
   "GH RnD: tambah Open Field 1 ke daftar GH RnD",
   "HST aktif sekarang mulai dari HST 1 (sebelumnya HST 5)",
   "GH RnD (Tohudan 22 & Sawahan Tunnel) kini tampil sebagai tipe tersendiri di Pilih GH — tidak lagi bergabung di Kolam",
@@ -363,7 +364,9 @@ export default function Vigor() {
   const showKualitas       = selectedHST !== null && selectedHST > 30;
   const showSimetri        = selectedHST === 33 || selectedHST === 38;
   const showPolinasi       = selectedHST === 18;
-  const showKesegaran      = selectedHST === 38 || selectedHST === 45 || selectedHST === 54;
+  const showKesegaranVigor = selectedHST === 7;
+  const showKesegaranAkar  = selectedHST === 38 || selectedHST === 45 || selectedHST === 54;
+  const showKesegaran      = showKesegaranVigor || showKesegaranAkar;
   const showNetting        = selectedHST === 45 || selectedHST === 54;
   const showNetting50      = selectedHST === 54;
   const showNetBercakHitam = selectedHST === 54;
@@ -729,6 +732,14 @@ export default function Vigor() {
                           <PilihOpsi options={WARNA_DAUN_OPTIONS} value={d.warnaDaun} onChange={val => updateVarian(varian, "warnaDaun", val)} color="#f57f17" cols={2} />
                         </div>
 
+                        {/* KESEGARAN — bagian Aspek Vigor (HST 7) */}
+                        {showKesegaranVigor && (
+                          <div style={{ marginBottom: 18 }}>
+                            <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>{showLebarDiameter ? "4." : "2."} Kesegaran Tanaman (Kelayuan)</div>
+                            <PilihOpsi options={KESEGARAN_OPTIONS} value={d.kesegaran} onChange={val => updateVarian(varian, "kesegaran", val)} color="#2E7D32" cols={3} />
+                          </div>
+                        )}
+
                         {/* ASPEK PERAKARAN */}
                         <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginBottom: 12 }}>
                           <div style={{ fontSize: 11, fontWeight: 700, color: "#795548", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🪱 Aspek Perakaran</div>
@@ -815,7 +826,7 @@ export default function Vigor() {
                         )}
 
                         {/* KESEGARAN (HST 38, 45, 54) */}
-                        {showKesegaran && (
+                        {showKesegaranAkar && (
                           <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginTop: 14 }}>
                             <div style={{ fontSize: 11, fontWeight: 700, color: "#2E7D32", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🌿 Aspek Vigor Tambahan</div>
                             <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>Kesegaran Tanaman (Kelayuan)</div>
