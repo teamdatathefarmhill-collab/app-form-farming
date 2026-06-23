@@ -10,6 +10,7 @@ const SCRIPT_URL = import.meta.env.VITE_GAS_VIGOR_URL;
 
 // ─── Changelog ───────────────────────────────────────────────────────────────
 export const CHANGELOG = [
+  "GH RnD: tambah Open Field 1 ke daftar GH RnD",
   "HST aktif sekarang mulai dari HST 1 (sebelumnya HST 5)",
   "GH RnD (Tohudan 22 & Sawahan Tunnel) kini tampil sebagai tipe tersendiri di Pilih GH — tidak lagi bergabung di Kolam",
   "Revisi label Warna Akar: sekarang lebih deskriptif (Mati/Busuk & Sehat)",
@@ -58,6 +59,7 @@ const TIPE_GH = [
     pattern: (gh) => {
       const upper = gh.toUpperCase().trim();
       if (upper === "SAWAHAN TUNNEL") return true;
+      if (upper === "OPEN FIELD 1") return true;
       if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return n === 22; }
       return false;
     },
@@ -81,7 +83,7 @@ function hstTerdekat(hst) {
   );
 }
 
-const RND_GH_LIST = ["TOHUDAN 22", "SAWAHAN TUNNEL"];
+const RND_GH_LIST = ["TOHUDAN 22", "SAWAHAN TUNNEL", "OPEN FIELD 1"];
 const LEBAR_DAUN_RND_OPTIONS = ["Buruk", "Sedang", "Baik"];
 
 function isRndGH(gh) {
