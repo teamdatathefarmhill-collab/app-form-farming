@@ -10,7 +10,7 @@ const SCRIPT_URL = import.meta.env.VITE_GAS_VIGOR_URL;
 
 // ─── Changelog ───────────────────────────────────────────────────────────────
 export const CHANGELOG = [
-  "Tambah Kesegaran Tanaman (Kelayuan) di checkpoint HST 7 (sebelumnya hanya HST 38/45/54)",
+  "Tambah Kesegaran Tanaman (Kelayuan) di checkpoint HST 7, 14, 18, 33 (sebelumnya hanya HST 38/45/54)",
   "GH RnD: tambah Open Field 1 ke daftar GH RnD",
   "HST aktif sekarang mulai dari HST 1 (sebelumnya HST 5)",
   "GH RnD (Tohudan 22 & Sawahan Tunnel) kini tampil sebagai tipe tersendiri di Pilih GH — tidak lagi bergabung di Kolam",
@@ -364,7 +364,7 @@ export default function Vigor() {
   const showKualitas       = selectedHST !== null && selectedHST > 30;
   const showSimetri        = selectedHST === 33 || selectedHST === 38;
   const showPolinasi       = selectedHST === 18;
-  const showKesegaranVigor = selectedHST === 7;
+  const showKesegaranVigor = selectedHST === 7 || selectedHST === 14 || selectedHST === 18 || selectedHST === 33;
   const showKesegaranAkar  = selectedHST === 38 || selectedHST === 45 || selectedHST === 54;
   const showKesegaran      = showKesegaranVigor || showKesegaranAkar;
   const showNetting        = selectedHST === 45 || selectedHST === 54;
