@@ -178,6 +178,20 @@ export default function Gramasi() {
     if (step === 1) fetchSubmittedToday();
   }, [step, fetchSubmittedToday]);
 
+  // ── Fetch data pengukuran terakhir (sebelum hari ini) per baris ──
+  const fetchLastGramasi = useCallback(async (gh) => {
+    setLastGramasi({});
+    if (!isOnline || isDemoMode || !gh) return;
+    try {
+      const url = `${SCRIPT_URL}?action=getLastGramasi&gh=${encodeURIComponent(gh)}&tanggal=${encodeURIComponent(todayISO)}`;
+      const res  = await fetch(url, { redirect: "follow" });
+      const data = await res.json();
+      if (data.success) setLastGramasi(data.data || {});
+    } catch {
+      // Gagal fetch — biarkan kosong, tidak ada warning ditampilkan
+    }
+  }, [isOnline, isDemoMode, todayISO]);
+
   // ── Fetch pengukuran terakhir (untuk cek kenaikan/penurunan ekstrem) saat GH dipilih ──
   useEffect(() => {
     if (step === 2 && selectedGH) fetchLastGramasi(selectedGH);
@@ -241,20 +255,6 @@ export default function Gramasi() {
     setShowWarning(false);
     setPendingGH("");
   };
-
-  // ── Fetch data pengukuran terakhir (sebelum hari ini) per baris ──
-  const fetchLastGramasi = useCallback(async (gh) => {
-    setLastGramasi({});
-    if (!isOnline || isDemoMode || !gh) return;
-    try {
-      const url = `${SCRIPT_URL}?action=getLastGramasi&gh=${encodeURIComponent(gh)}&tanggal=${encodeURIComponent(todayISO)}`;
-      const res  = await fetch(url, { redirect: "follow" });
-      const data = await res.json();
-      if (data.success) setLastGramasi(data.data || {});
-    } catch {
-      // Gagal fetch — biarkan kosong, tidak ada warning ditampilkan
-    }
-  }, [isOnline, isDemoMode, todayISO]);
 
   const updateCell = (i, field, val) => {
     if (val !== "" && !/^\d*\.?\d*$/.test(val)) return;
