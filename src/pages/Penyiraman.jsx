@@ -176,7 +176,7 @@ export default function Penyiraman() {
 
   // Auto-fill: varian pertama sebar ke semua varian lain setelah berhenti ketik 400ms
   // Varian lain bebas diedit sendiri tanpa mempengaruhi siapapun
-  const autoFillFields = ["ecIn", "phIn", "volume", "volNutrisi", "suhu", "rh"];
+  const autoFillFields = ["ecIn", "ecOut", "phIn", "phOut", "volume", "volNutrisi", "suhu", "rh"];
   const autoFillTimer = useRef({});
 
   const handleVarianChange = (v, key, val) => {
@@ -299,22 +299,21 @@ export default function Penyiraman() {
     setSubmitError(null);
     const payloads = buildPayloads();
     setSubmitProgress({ done: 0, total: payloads.length });
-    let done = 0;
-    for (const payload of payloads) {
-      try {
-        const res  = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload), redirect: "follow" });
-        const json = await res.json();
-        if (!json.success) throw new Error(json.error || "GAS error");
-        done++;
-        setSubmitProgress({ done, total: payloads.length });
-      } catch (err) {
-        setSubmitError(`Gagal kirim${payload.varian ? " varian " + payload.varian : ""}. ${err.message}`);
-        setSubmitting(false);
-        return;
-      }
+    try {
+      const res  = await fetch(SCRIPT_URL, {
+        method: "POST", headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({ action: "submitPenyiramanBatch", rows: payloads }),
+        redirect: "follow",
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || "GAS error");
+      setSubmitProgress({ done: payloads.length, total: payloads.length });
+      clearDraft(); setStep(4);
+    } catch (err) {
+      setSubmitError(`Gagal mengirim data. ${err.message}`);
+    } finally {
+      setSubmitting(false);
     }
-    clearDraft(); setStep(4);
-    setSubmitting(false);
   };
 
   return (
@@ -483,9 +482,9 @@ export default function Penyiraman() {
                   </div>
                   <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
                     <Field label="EC In"        value={d.ecIn}       onChange={val => handleVarianChange(v,"ecIn",val)}       satuan="mS/cm" error={errs.ecIn} />
-                    <Field label="EC Out"       value={d.ecOut}      onChange={val => updateVarian(v,"ecOut",val)}             satuan="mS/cm" error={errs.ecOut} />
+                    <Field label="EC Out"       value={d.ecOut}      onChange={val => handleVarianChange(v,"ecOut",val)}       satuan="mS/cm" error={errs.ecOut} />
                     <Field label="pH In"        value={d.phIn}       onChange={val => handleVarianChange(v,"phIn",val)}        error={errs.phIn} />
-                    <Field label="pH Out"       value={d.phOut}      onChange={val => updateVarian(v,"phOut",val)}             error={errs.phOut} />
+                    <Field label="pH Out"       value={d.phOut}      onChange={val => handleVarianChange(v,"phOut",val)}       error={errs.phOut} />
                     <Field label="Volume"       value={d.volume}     onChange={val => handleVarianChange(v,"volume",val)}      satuan="ml/tan" />
                     <Field label="Vol.Nutrisi"  value={d.volNutrisi} onChange={val => handleVarianChange(v,"volNutrisi",val)}  satuan="L" />
                     {!multiSuhuRH && (
@@ -575,9 +574,9 @@ export default function Penyiraman() {
 
             {submitting && (
               <div style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 12, color: "#666", marginBottom: 6 }}>Mengirim {submitProgress.done}/{submitProgress.total} varian...</div>
+                <div style={{ fontSize: 12, color: "#666", marginBottom: 6 }}>Mengirim {submitProgress.total} varian sekaligus...</div>
                 <div style={{ background: "#e0e0e0", borderRadius: 4, height: 6, overflow: "hidden" }}>
-                  <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#0277bd,#0288d1)", width: `${submitProgress.total > 0 ? (submitProgress.done/submitProgress.total)*100 : 0}%`, transition: "width 0.3s" }} />
+                  <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#0277bd,#0288d1)", width: "100%", animation: "pulse-bar 1.2s ease-in-out infinite" }} />
                 </div>
               </div>
             )}
@@ -639,7 +638,7 @@ export default function Penyiraman() {
           {step === 3 && (
             <button onClick={() => setConfirmOpen(true)} disabled={submitting}
               style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: submitting ? "#e0e0e0" : "linear-gradient(135deg,#0277bd,#0288d1)", color: submitting ? "#aaa" : "#fff", fontSize: 15, fontWeight: 700, cursor: submitting ? "not-allowed" : "pointer" }}>
-              {submitting ? `⏳ ${submitProgress.done}/${submitProgress.total}...` : `Submit ${isDB ? "" : varianList.length + " Varian"} ✓`}
+              {submitting ? `⏳ Mengirim...` : `Submit ${isDB ? "" : varianList.length + " Varian"} ✓`}
             </button>
           )}
         </div>
@@ -664,6 +663,7 @@ export default function Penyiraman() {
         input[type=number]::-webkit-outer-spin-button,
         input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+        @keyframes pulse-bar { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
       `}</style>
     </div>
   );

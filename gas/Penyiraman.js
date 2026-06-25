@@ -27,7 +27,8 @@ function getSSRef() { if (!_ssRef) _ssRef = SpreadsheetApp.openById(SS_REF_ID); 
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
-    if (data.action === "submitPenyiraman") return handlePenyiraman(data);
+    if (data.action === "submitPenyiraman")      return handlePenyiraman(data);
+    if (data.action === "submitPenyiramanBatch") return handlePenyiramanBatch(data);
     return jsonError("Action tidak dikenal: " + data.action);
   } catch (err) {
     return jsonError(err.toString());
@@ -173,6 +174,32 @@ function handlePenyiraman(data) {
   return jsonOk();
 }
 
+// ── Handler: Submit Penyiraman Batch (semua varian sekaligus) ─
+function handlePenyiramanBatch(data) {
+  const rows = data.rows || [];
+  if (rows.length === 0) return jsonError("Tidak ada data yang dikirim");
+
+  const ss  = getSS();
+  let sheet = ss.getSheetByName(SHEET_PENYIRAMAN);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_PENYIRAMAN);
+    setupHeaderPenyiraman(sheet);
+  }
+  if (sheet.getLastRow() === 0) setupHeaderPenyiraman(sheet);
+
+  const builtRows = rows.map(buildRowPenyiraman);
+  const lastRow   = sheet.getLastRow();
+  sheet.getRange(lastRow + 1, 1, builtRows.length, builtRows[0].length).setValues(builtRows);
+
+  for (let i = 0; i < builtRows.length; i++) {
+    formatLastRowPenyiraman(sheet, rows[i].tipe, lastRow + 1 + i);
+  }
+
+  return ContentService
+    .createTextOutput(JSON.stringify({ success: true, count: builtRows.length }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
 // ── Build baris ──────────────────────────────────────────────
 function buildRowPenyiraman(d) {
   // Pakai waktu submit operator jika ada (penting untuk data offline)
@@ -234,8 +261,8 @@ function setupHeaderPenyiraman(sheet) {
 }
 
 // ── Format baris baru ─────────────────────────────────────────
-function formatLastRowPenyiraman(sheet, tipe) {
-  const lastRow = sheet.getLastRow();
+function formatLastRowPenyiraman(sheet, tipe, rowNum) {
+  const lastRow = rowNum || sheet.getLastRow();
   const numCols = sheet.getLastColumn();
 
   const bg = lastRow % 2 === 0 ? "#e1f5fe" : "#ffffff";
