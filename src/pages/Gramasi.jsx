@@ -75,6 +75,22 @@ function calcAvg(s1, s2, s3) {
   return vals.length > 0 ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2) : "0.00";
 }
 
+// ─── Cek kenaikan/penurunan ekstrem dibanding pengukuran terakhir ───────────
+// > 200 lebih besar dari sebelumnya → "naik". < 0 (turun) → "turun".
+// Boleh ada gap berapa hari pun (tidak peduli sudah lama tidak diukur).
+const DELTA_NAIK_EKSTREM = 200;
+
+function getDeltaWarning(currVal, prevVal) {
+  if (currVal === "" || currVal === undefined || currVal === null) return null;
+  if (prevVal === null || prevVal === undefined) return null;
+  const curr = parseFloat(currVal);
+  if (isNaN(curr)) return null;
+  const delta = curr - prevVal;
+  if (delta > DELTA_NAIK_EKSTREM) return { type: "naik", delta, curr, prev: prevVal };
+  if (delta < 0)                  return { type: "turun", delta, curr, prev: prevVal };
+  return null;
+}
+
 function hstColor(hst) {
   if (hst <= 40) return { bg: "#e8f5e9", border: "#a5d6a7", text: "#2e7d32", badge: "#c8e6c9" };
   if (hst <= 50) return { bg: "#fff8e1", border: "#ffe082", text: "#f57f17", badge: "#fff9c4" };
@@ -96,6 +112,7 @@ export default function Gramasi() {
 
   const [selectedGH, setSelectedGH]     = useState(_draft?.selectedGH || "");
   const [tableData, setTableData]       = useState(_draft?.tableData  || []);
+  const [lastGramasi, setLastGramasi]   = useState({});
   const [operator, setOperator]         = useState(_draft?.operator   || "");
   const [keterangan, setKeterangan]     = useState(_draft?.keterangan || "");
   const [syncing, setSyncing]           = useState(false);
@@ -161,6 +178,11 @@ export default function Gramasi() {
     if (step === 1) fetchSubmittedToday();
   }, [step, fetchSubmittedToday]);
 
+  // ── Fetch pengukuran terakhir (untuk cek kenaikan/penurunan ekstrem) saat GH dipilih ──
+  useEffect(() => {
+    if (step === 2 && selectedGH) fetchLastGramasi(selectedGH);
+  }, [step, selectedGH, fetchLastGramasi]);
+
   useEffect(() => {
     const on  = () => setIsOnline(true);
     const off = () => setIsOnline(false);
@@ -219,6 +241,20 @@ export default function Gramasi() {
     setShowWarning(false);
     setPendingGH("");
   };
+
+  // ── Fetch data pengukuran terakhir (sebelum hari ini) per baris ──
+  const fetchLastGramasi = useCallback(async (gh) => {
+    setLastGramasi({});
+    if (!isOnline || isDemoMode || !gh) return;
+    try {
+      const url = `${SCRIPT_URL}?action=getLastGramasi&gh=${encodeURIComponent(gh)}&tanggal=${encodeURIComponent(todayISO)}`;
+      const res  = await fetch(url, { redirect: "follow" });
+      const data = await res.json();
+      if (data.success) setLastGramasi(data.data || {});
+    } catch {
+      // Gagal fetch — biarkan kosong, tidak ada warning ditampilkan
+    }
+  }, [isOnline, isDemoMode, todayISO]);
 
   const updateCell = (i, field, val) => {
     if (val !== "" && !/^\d*\.?\d*$/.test(val)) return;
@@ -325,7 +361,7 @@ export default function Gramasi() {
     clearDraft();
     setStep(1); setSelectedGH(""); setTableData([]); setOperator(""); setKeterangan("");
     setSyncing(false); setSyncProgress({ done: 0, total: 0 });
-    setSubmitError(null); setSavedOffline(false);
+    setSubmitError(null); setSavedOffline(false); setLastGramasi({});
   };
 
   return (
@@ -491,43 +527,88 @@ export default function Gramasi() {
               />
             </div>
 
-            <div style={{ overflowX: "auto", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.08)", marginBottom: 16 }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                <thead>
-                  <tr style={{ background: "#2e7d32", color: "#fff" }}>
-                    {["Baris","Varian","S1 (g)","S2 (g)","S3 (g)","Avg"].map(h => (
-                      <th key={h} style={{ padding: "9px 6px", textAlign: ["Baris","Varian"].includes(h) ? "left" : "center", fontWeight: 700, fontSize: 11, whiteSpace: "nowrap" }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {tableData.map((row, i) => {
-                    const avg     = calcAvg(row.s1, row.s2, row.s3);
-                    const rowFull = row.s1 !== "" && row.s2 !== "" && row.s3 !== "";
-                    return (
-                      <tr key={i} style={{ background: rowFull ? "#f1f8e9" : i % 2 === 0 ? "#fff" : "#fafafa", transition: "background 0.2s" }}>
-                        <td style={{ padding: "6px 8px", fontWeight: 700, color: "#2e7d32", whiteSpace: "nowrap" }}>{row.baris}</td>
-                        <td style={{ padding: "6px 6px", fontSize: 11, color: "#666", whiteSpace: "nowrap" }}>{row.varian}</td>
-                        {["s1","s2","s3"].map(s => (
-                          <td key={s} style={{ padding: "4px 3px", textAlign: "center" }}>
-                            <input
-                              type="number" inputMode="decimal"
-                              value={row[s]}
-                              onChange={e => updateCell(i, s, e.target.value)}
-                              placeholder="—"
-                              style={{ width: 52, height: 32, textAlign: "center", border: `1.5px solid ${row[s] !== "" ? "#81c784" : "#e0e0e0"}`, borderRadius: 7, fontSize: 13, fontWeight: 600, color: row[s] !== "" ? "#2e7d32" : "#bbb", outline: "none", background: "#fff" }}
-                            />
-                          </td>
-                        ))}
-                        <td style={{ padding: "6px 8px", textAlign: "center", fontWeight: 700, color: avg ? "#1b5e20" : "#ccc", fontSize: 13 }}>
-                          {avg || "—"}
-                        </td>
-                      </tr>
+            {(() => {
+              // ── Kumpulkan semua warning kenaikan/penurunan ekstrem dibanding pengukuran terakhir ──
+              const rowWarnings = tableData.map(row => {
+                const prev = lastGramasi[row.baris];
+                const prevMatch = prev && (!prev.varian || prev.varian === row.varian) ? prev : null;
+                if (!prevMatch) return { s1: null, s2: null, s3: null, avg: null };
+                const avg = calcAvg(row.s1, row.s2, row.s3);
+                return {
+                  s1:  getDeltaWarning(row.s1, prevMatch.s1),
+                  s2:  getDeltaWarning(row.s2, prevMatch.s2),
+                  s3:  getDeltaWarning(row.s3, prevMatch.s3),
+                  avg: avg !== "" ? getDeltaWarning(avg, prevMatch.avg) : null,
+                };
+              });
+              const flatWarnings = [];
+              tableData.forEach((row, i) => {
+                const w = rowWarnings[i];
+                ["s1", "s2", "s3", "avg"].forEach(key => {
+                  if (w[key]) {
+                    const labelKey = key === "avg" ? "Avg" : key.toUpperCase();
+                    flatWarnings.push(
+                      w[key].type === "naik"
+                        ? `Baris ${row.baris} (${labelKey}): naik ekstrem ke ${w[key].curr}g (sebelumnya ${w[key].prev}g)`
+                        : `Baris ${row.baris} (${labelKey}): turun ke ${w[key].curr}g (sebelumnya ${w[key].prev}g)`
                     );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                  }
+                });
+              });
+
+              return (
+                <>
+                  {flatWarnings.length > 0 && (
+                    <div style={{ fontSize: 11, color: "#e65100", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 8, padding: "8px 12px", marginBottom: 10, lineHeight: 1.6 }}>
+                      ⚠️ <strong>Cek lagi — {flatWarnings.length} nilai beda jauh dari pengukuran sebelumnya:</strong>
+                      <ul style={{ margin: "4px 0 0", paddingLeft: 16 }}>
+                        {flatWarnings.map((msg, idx) => <li key={idx}>{msg}</li>)}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div style={{ overflowX: "auto", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.08)", marginBottom: 16 }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ background: "#2e7d32", color: "#fff" }}>
+                          {["Baris","Varian","S1 (g)","S2 (g)","S3 (g)","Avg"].map(h => (
+                            <th key={h} style={{ padding: "9px 6px", textAlign: ["Baris","Varian"].includes(h) ? "left" : "center", fontWeight: 700, fontSize: 11, whiteSpace: "nowrap" }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tableData.map((row, i) => {
+                          const avg     = calcAvg(row.s1, row.s2, row.s3);
+                          const rowFull = row.s1 !== "" && row.s2 !== "" && row.s3 !== "";
+                          const w       = rowWarnings[i];
+                          return (
+                            <tr key={i} style={{ background: rowFull ? "#f1f8e9" : i % 2 === 0 ? "#fff" : "#fafafa", transition: "background 0.2s" }}>
+                              <td style={{ padding: "6px 8px", fontWeight: 700, color: "#2e7d32", whiteSpace: "nowrap" }}>{row.baris}</td>
+                              <td style={{ padding: "6px 6px", fontSize: 11, color: "#666", whiteSpace: "nowrap" }}>{row.varian}</td>
+                              {["s1","s2","s3"].map(s => (
+                                <td key={s} style={{ padding: "4px 3px", textAlign: "center" }}>
+                                  <input
+                                    type="number" inputMode="decimal"
+                                    value={row[s]}
+                                    onChange={e => updateCell(i, s, e.target.value)}
+                                    placeholder="—"
+                                    title={w[s] ? (w[s].type === "naik" ? `Naik ekstrem dari ${w[s].prev}g` : `Turun dari ${w[s].prev}g`) : undefined}
+                                    style={{ width: 52, height: 32, textAlign: "center", border: `1.5px solid ${w[s] ? "#e53935" : row[s] !== "" ? "#81c784" : "#e0e0e0"}`, borderRadius: 7, fontSize: 13, fontWeight: 600, color: w[s] ? "#c62828" : row[s] !== "" ? "#2e7d32" : "#bbb", outline: "none", background: w[s] ? "#ffebee" : "#fff" }}
+                                  />
+                                </td>
+                              ))}
+                              <td style={{ padding: "6px 8px", textAlign: "center", fontWeight: 700, color: w.avg ? "#c62828" : avg ? "#1b5e20" : "#ccc", fontSize: 13 }}>
+                                {w.avg ? "⚠️ " : ""}{avg || "—"}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              );
+            })()}
 
             <div style={{ marginBottom: 12, marginTop: 4 }}>
               <label style={{ fontSize: 11, color: "#388e3c", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
