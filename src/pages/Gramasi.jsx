@@ -76,18 +76,25 @@ function calcAvg(s1, s2, s3) {
 }
 
 // ─── Cek kenaikan/penurunan ekstrem dibanding pengukuran terakhir ───────────
-// > 200 lebih besar dari sebelumnya → "naik". < 0 (turun) → "turun".
-// Boleh ada gap berapa hari pun (tidak peduli sudah lama tidak diukur).
-const DELTA_NAIK_EKSTREM = 200;
+// Naik lebih dari threshold (beda-beda per fase HST, makin tua makin sensitif
+// karena pertumbuhan harian wajarnya makin kecil) → "naik". Turun (delta < 0,
+// fase berapapun) → "turun". Boleh ada gap berapa hari pun, tetap dibandingkan
+// ke pengukuran terakhir yang ada.
+function getNaikThreshold(hst) {
+  if (hst !== null && hst !== undefined && hst > 35) return 100;
+  if (hst !== null && hst !== undefined && hst >= 30) return 200;
+  return 200; // fase HST < 30 (atau HST tidak diketahui) — default
+}
 
-function getDeltaWarning(currVal, prevVal) {
+function getDeltaWarning(currVal, prevVal, hst) {
   if (currVal === "" || currVal === undefined || currVal === null) return null;
   if (prevVal === null || prevVal === undefined) return null;
   const curr = parseFloat(currVal);
   if (isNaN(curr)) return null;
   const delta = curr - prevVal;
-  if (delta > DELTA_NAIK_EKSTREM) return { type: "naik", delta, curr, prev: prevVal };
-  if (delta < 0)                  return { type: "turun", delta, curr, prev: prevVal };
+  const naikThreshold = getNaikThreshold(hst);
+  if (delta > naikThreshold) return { type: "naik", delta, curr, prev: prevVal };
+  if (delta < 0)             return { type: "turun", delta, curr, prev: prevVal };
   return null;
 }
 
@@ -535,10 +542,10 @@ export default function Gramasi() {
                 if (!prevMatch) return { s1: null, s2: null, s3: null, avg: null };
                 const avg = calcAvg(row.s1, row.s2, row.s3);
                 return {
-                  s1:  getDeltaWarning(row.s1, prevMatch.s1),
-                  s2:  getDeltaWarning(row.s2, prevMatch.s2),
-                  s3:  getDeltaWarning(row.s3, prevMatch.s3),
-                  avg: avg !== "" ? getDeltaWarning(avg, prevMatch.avg) : null,
+                  s1:  getDeltaWarning(row.s1, prevMatch.s1, hst),
+                  s2:  getDeltaWarning(row.s2, prevMatch.s2, hst),
+                  s3:  getDeltaWarning(row.s3, prevMatch.s3, hst),
+                  avg: avg !== "" ? getDeltaWarning(avg, prevMatch.avg, hst) : null,
                 };
               });
               const flatWarnings = [];
