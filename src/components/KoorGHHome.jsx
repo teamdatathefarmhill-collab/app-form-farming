@@ -35,6 +35,16 @@ function getVigorSubmittedToday() {
   }
 }
 
+// Nama GH di sheet DAILY TASK bisa beda kapitalisasi dari key di ghData
+// (misal "Tohudan 9" vs "TOHUDAN 9"), jadi cari case-insensitive.
+function findGHInfo(ghData, ghName) {
+  if (!ghName) return null;
+  if (ghData[ghName]) return ghData[ghName];
+  const target = ghName.trim().toUpperCase();
+  const matchedKey = Object.keys(ghData).find(k => k.toUpperCase() === target);
+  return matchedKey ? ghData[matchedKey] : null;
+}
+
 function hitungHST(tgl) {
   if (!tgl) return null;
   const [y, m, d] = tgl.split("-").map(Number);
@@ -162,7 +172,7 @@ export default function KoorGHHome({ user, logout }) {
             const menuDef = MENU_MAP[menuKey];
             const color   = menuDef?.color || "#666";
             const icon    = menuDef?.icon  || "📌";
-            const hst     = hitungHST(ghData[t.gh]?.tanam);
+            const hst     = hitungHST(findGHInfo(ghData, t.gh)?.tanam);
             const hstC    = hstBadgeColor(hst);
             const isVigor = menuKey === "vigor";
             const sudahIsi = isVigor && vigorSubmittedToday.includes(t.gh);
