@@ -247,7 +247,9 @@ function PilihOpsi({ options, value, onChange, color = "#2e7d32", cols = 1 }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function Vigor() {
+// initialGH/onDone — opsional, dipakai oleh Home Koor GH untuk auto-pilih GH
+// dari jadwal harian. Tidak mempengaruhi cara form ini dipakai biasa (tanpa props).
+export default function Vigor({ initialGH, onDone } = {}) {
   const [step, setStep]         = useState(1);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
@@ -352,6 +354,19 @@ export default function Vigor() {
     setShowWarning(false);
     setPendingGH("");
   };
+
+  // ── Auto-pilih GH dari jadwal harian (Home Koor GH) — tidak mengubah alur normal ──
+  useEffect(() => {
+    if (!initialGH || selectedGH || loadingGH) return;
+    const target = initialGH.trim().toUpperCase();
+    const matchedGH = Object.keys(ghData).find(g => g.toUpperCase() === target);
+    if (!matchedGH) return;
+    const matchedTipe = TIPE_GH.find(t => t.pattern(matchedGH));
+    if (matchedTipe) setSelectedTipe(matchedTipe.key);
+    doSelectGH(matchedGH);
+    setStep(2);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialGH, loadingGH, ghData]);
 
   const updateVarian = (varian, field, val) => {
     setVarianData(prev => ({ ...prev, [varian]: { ...prev[varian], [field]: val } }));
@@ -508,6 +523,11 @@ export default function Vigor() {
       <div style={{ background: "linear-gradient(135deg, #1b5e20, #2e7d32)", padding: "14px 16px 12px", position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
+            {onDone && (
+              <button onClick={onDone} style={{ background: "none", border: "none", padding: 0, marginBottom: 6, color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                ← Kembali ke Home
+              </button>
+            )}
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", letterSpacing: 2, textTransform: "uppercase" }}>Form Vigor Harian</div>
             <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{todayLabel}</div>
           </div>
@@ -935,9 +955,15 @@ export default function Vigor() {
               <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>Operator: {operator}</div>
               <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>{varianList.length} varian · {todayISO}</div>
             </div>
-            <button onClick={resetForm} style={{ width: "100%", padding: 15, background: "#e8f5e9", border: "2px solid #81c784", borderRadius: 12, color: "#2e7d32", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-              + Input GH Berikutnya
-            </button>
+            {onDone ? (
+              <button onClick={onDone} style={{ width: "100%", padding: 15, background: "#e8f5e9", border: "2px solid #81c784", borderRadius: 12, color: "#2e7d32", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+                ← Kembali ke Home
+              </button>
+            ) : (
+              <button onClick={resetForm} style={{ width: "100%", padding: 15, background: "#e8f5e9", border: "2px solid #81c784", borderRadius: 12, color: "#2e7d32", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+                + Input GH Berikutnya
+              </button>
+            )}
           </div>
         )}
       </div>

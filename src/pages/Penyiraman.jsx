@@ -113,7 +113,9 @@ function RekapRow({ label, value, satuan }) {
   );
 }
 
-export default function Penyiraman() {
+// initialGH/onDone — opsional, dipakai oleh Home Koor GH untuk auto-pilih GH
+// dari jadwal harian. Tidak mempengaruhi cara form ini dipakai biasa (tanpa props).
+export default function Penyiraman({ initialGH, onDone } = {}) {
   const { user } = useAuth();
 
   const { getDraft, saveDraft, clearDraft } = useDraft("penyiraman");
@@ -168,6 +170,22 @@ export default function Penyiraman() {
     vList.forEach(v => { init[v] = initVarianData(); });
     setVarianData(init);
   };
+
+  // ── Auto-pilih tipe+GH dari jadwal harian (Home Koor GH) — tidak mengubah alur normal ──
+  useEffect(() => {
+    if (!initialGH || gh || loadingRef) return;
+    const target = initialGH.trim().toUpperCase();
+    let foundTipe = null, foundGH = null;
+    for (const [t, list] of Object.entries(GH_PER_TIPE)) {
+      const match = list.find(g => g.toUpperCase() === target);
+      if (match) { foundTipe = t; foundGH = match; break; }
+    }
+    if (!foundTipe) return;
+    if (tipe !== foundTipe) { setTipe(foundTipe); return; }
+    handleSelectGH(foundGH);
+    setStep(2);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialGH, loadingRef, tipe, refData, refDataRnd, gh]);
 
   const updateVarian  = (v, key, val) => setVarianData(prev => ({ ...prev, [v]: { ...prev[v], [key]: val } }));
   const updateSuhuArr = (v, idx, val) => setVarianData(prev => { const a = [...(prev[v]?.suhuArr||["","","",""])]; a[idx]=val; return { ...prev, [v]: { ...prev[v], suhuArr: a } }; });
@@ -323,6 +341,11 @@ export default function Penyiraman() {
       <div style={{ background: "#0277bd", color: "#fff", padding: "14px 16px 10px", position: "sticky", top: 0, zIndex: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
+            {onDone && (
+              <button onClick={onDone} style={{ background: "none", border: "none", padding: 0, marginBottom: 6, color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                ← Kembali ke Home
+              </button>
+            )}
             <div style={{ fontSize: 10, opacity: 0.75, letterSpacing: 1.5, textTransform: "uppercase" }}>Form Penyiraman</div>
             <div style={{ fontSize: 13, opacity: 0.65, marginTop: 1 }}>{todayLabel}</div>
           </div>
@@ -605,9 +628,15 @@ export default function Penyiraman() {
               )}
               <div style={{ fontSize: 13, color: "#666", marginTop: 8 }}>Operator: {operator || user?.nama} · {todayISO}</div>
             </div>
-            <button onClick={resetForm} style={{ width: "100%", padding: 15, background: "#e1f5fe", border: "2px solid #81d4fa", borderRadius: 12, color: "#0277bd", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-              + Input Penyiraman Berikutnya
-            </button>
+            {onDone ? (
+              <button onClick={onDone} style={{ width: "100%", padding: 15, background: "#e1f5fe", border: "2px solid #81d4fa", borderRadius: 12, color: "#0277bd", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+                ← Kembali ke Home
+              </button>
+            ) : (
+              <button onClick={resetForm} style={{ width: "100%", padding: 15, background: "#e1f5fe", border: "2px solid #81d4fa", borderRadius: 12, color: "#0277bd", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+                + Input Penyiraman Berikutnya
+              </button>
+            )}
           </div>
         )}
 

@@ -17,13 +17,79 @@
 const SS_ID   = "1tIJzuTBXcM7Wks03pgsyVicJUCtDs9Ak0N89K9GlKe4";
 const REF_GID = 1769062373;
 
+// Spreadsheet "REF OPERATOR" — beda file dari SS_ID di atas. Dibaca langsung
+// pakai openById (tidak perlu di-bind / publish-to-web), khusus untuk jadwal
+// harian Koor GH.
+const DAILY_TASK_SS_ID    = "16DLPD-_Zsl1g4FJ4jFsWUYHVCdZvgonO9qf1b5qS3D4";
+const DAILY_TASK_SHEET    = "DAILY TASK";
+
 // ============================================================
 // doGet
 // ============================================================
 function doGet(e) {
   const action = (e.parameter || {}).action;
-  if (action === "getGH") return jsonResponse(getGHData());
+  if (action === "getGH")        return jsonResponse(getGHData());
+  if (action === "getDailyTask") return jsonResponse(getDailyTaskData(e));
   return jsonResponse({ success: true, app: "GHRef GAS", status: "active" });
+}
+
+// ============================================================
+// getDailyTaskData — baca sheet "DAILY TASK", filter operator + hari ini
+// ?action=getDailyTask&operator=Zaman
+// ============================================================
+function getDailyTaskData(e) {
+  try {
+    const operator = ((e && e.parameter && e.parameter.operator) || "").trim().toLowerCase();
+    if (!operator) return { success: false, error: "Parameter operator wajib diisi" };
+
+    const ss    = SpreadsheetApp.openById(DAILY_TASK_SS_ID);
+    const sheet = ss.getSheetByName(DAILY_TASK_SHEET);
+    if (!sheet) return { success: false, error: "Sheet '" + DAILY_TASK_SHEET + "' tidak ditemukan" };
+
+    const rows = sheet.getDataRange().getValues();
+    if (rows.length < 2) return { success: true, tasks: [] };
+
+    const headers = rows[0].map(function(h) { return String(h).trim().toLowerCase(); });
+    const iTanggal = headers.indexOf("tanggal");
+    const iOperator = headers.indexOf("operator");
+    const iGH = headers.indexOf("gh");
+    const iMenu = headers.indexOf("menu");
+    const iJamMulai = headers.indexOf("jam mulai");
+    const iJamSelesai = headers.indexOf("jam selesai");
+
+    const tz = "Asia/Jakarta";
+    const todayStr = Utilities.formatDate(new Date(), tz, "yyyy-MM-dd");
+
+    const tasks = [];
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      const rowOperator = String(row[iOperator] || "").trim().toLowerCase();
+      if (rowOperator !== operator) continue;
+
+      const tglRaw = row[iTanggal];
+      if (!(tglRaw instanceof Date)) continue; // kolom Tanggal harus Date asli
+      const tglStr = Utilities.formatDate(tglRaw, tz, "yyyy-MM-dd");
+      if (tglStr !== todayStr) continue;
+
+      tasks.push({
+        gh:          iGH >= 0 ? String(row[iGH] || "").trim() : "",
+        menu:        iMenu >= 0 ? String(row[iMenu] || "").trim() : "",
+        jamMulai:    iJamMulai >= 0 ? formatJam(row[iJamMulai]) : "",
+        jamSelesai:  iJamSelesai >= 0 ? formatJam(row[iJamSelesai]) : "",
+      });
+    }
+
+    return { success: true, tasks: tasks };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+// Kolom Jam Mulai/Selesai biasanya kebaca sebagai Date (jam) oleh Sheets
+function formatJam(val) {
+  if (!val) return "";
+  if (val instanceof Date) return Utilities.formatDate(val, "Asia/Jakarta", "HH.mm");
+  return String(val).trim();
 }
 
 // ============================================================

@@ -9,6 +9,7 @@ import SO           from "./pages/SO";
 import Penyemprotan from "./pages/Penyemprotan";
 import Cuaca from "./pages/Cuaca";
 import FarmhillLogin from "./components/FarmhillLogin";
+import KoorGHHome from "./components/KoorGHHome";
 import SOPModal, { isMenuSeen } from "./components/SOPModal";
 import InfoButton from "./components/InfoButton";
 import WAButton from "./components/WAButton";
@@ -107,6 +108,13 @@ export default function App() {
         onLoginSuccess={(userData, remember) => login(userData, remember)}
       />
     );
+  }
+
+  // Role "KOOR_GH" (kolom ROLE di sheet REF OPERATOR) dapat tampilan tersendiri —
+  // cuma Profil + Kegiatan Harian, bukan menu grid biasa. User lain (ROLE kosong)
+  // tidak terpengaruh sama sekali, tetap lanjut ke logic menu di bawah.
+  if (user?.role?.trim().toUpperCase() === "KOOR_GH") {
+    return <KoorGHHome user={user} logout={logout} />;
   }
 
   // Filter submenu HPT yang punya akses
