@@ -54,6 +54,31 @@ function hitungHST(tgl) {
   return Math.floor((nowLocal - tanam) / 86400000);
 }
 
+// Sama persis dengan checkpoint & window "due" di Vigor.jsx (HST_CHECKPOINTS +
+// getCheckpointStatus) — biar Home Koor GH dan form Vigor selalu sepakat soal
+// kapan suatu GH "due" untuk diisi Vigor.
+const VIGOR_CHECKPOINTS = [7, 14, 18, 33, 38, 45, 54];
+const VIGOR_DUE_RANGE   = 3;
+function isVigorDue(hst) {
+  if (hst === null) return false;
+  return VIGOR_CHECKPOINTS.some(cp => hst >= cp && hst <= cp + VIGOR_DUE_RANGE);
+}
+
+// Dari baris DAILY TASK (Tanggal, Operator, GH [, Menu opsional]) → daftar kartu
+// kegiatan. Penyiraman selalu muncul (aktivitas harian). Vigor cuma muncul kalau
+// HST GH itu sedang due checkpoint. Kalau kolom Menu di sheet diisi manual,
+// itu dipakai sebagai override (tidak di-generate otomatis).
+function expandTasks(rows, ghData) {
+  const result = [];
+  rows.forEach(t => {
+    if (t.menu) { result.push(t); return; }
+    const hst = hitungHST(findGHInfo(ghData, t.gh)?.tanam);
+    result.push({ ...t, menu: "Penyiraman" });
+    if (isVigorDue(hst)) result.push({ ...t, menu: "Vigor" });
+  });
+  return result;
+}
+
 function hstBadgeColor(hst) {
   if (hst === null) return { bg: "#f5f5f5", text: "#aaa", border: "#e0e0e0" };
   if (hst <= 21) return { bg: "#e8f5e9", text: "#2e7d32", border: "#a5d6a7" };
@@ -83,8 +108,9 @@ export default function KoorGHHome({ user, logout }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [activeTask, setActiveTask] = useState(null);
-  const { ghData } = useGHData();
+  const { ghData, loading: loadingGH } = useGHData();
   const vigorSubmittedToday = getVigorSubmittedToday();
+  const displayedTasks = loadingGH ? [] : expandTasks(tasks, ghData);
 
   useEffect(() => {
     if (!GHREF_URL || !user?.nama) { setLoading(false); setLoadError(true); return; }
@@ -149,7 +175,7 @@ export default function KoorGHHome({ user, logout }) {
           📋 Kegiatan Hari Ini
         </div>
 
-        {loading && (
+        {(loading || loadingGH) && (
           <div style={{ textAlign: "center", padding: "32px 0", color: "#aaa", fontSize: 13 }}>🔄 Memuat jadwal...</div>
         )}
 
@@ -159,7 +185,7 @@ export default function KoorGHHome({ user, logout }) {
           </div>
         )}
 
-        {!loading && !loadError && tasks.length === 0 && (
+        {!loading && !loadingGH && !loadError && displayedTasks.length === 0 && (
           <div style={{ textAlign: "center", padding: "40px 16px", color: "#aaa" }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>🌤️</div>
             <div style={{ fontSize: 13 }}>Tidak ada kegiatan terjadwal hari ini.</div>
@@ -167,7 +193,7 @@ export default function KoorGHHome({ user, logout }) {
         )}
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {!loading && tasks.map((t, i) => {
+          {!loading && !loadingGH && displayedTasks.map((t, i) => {
             const menuKey = normalizeMenuKey(t.menu);
             const menuDef = MENU_MAP[menuKey];
             const color   = menuDef?.color || "#666";
