@@ -172,8 +172,10 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
   };
 
   // ── Auto-pilih tipe+GH dari jadwal harian (Home Koor GH) — tidak mengubah alur normal ──
+  // Override draft lama (kalau ada) sekali saat form ini dibuka dari jadwal.
+  const initialGHAppliedRef = useRef(false);
   useEffect(() => {
-    if (!initialGH || gh || loadingRef) return;
+    if (!initialGH || initialGHAppliedRef.current || loadingRef) return;
     const target = initialGH.trim().toUpperCase();
     let foundTipe = null, foundGH = null;
     for (const [t, list] of Object.entries(GH_PER_TIPE)) {
@@ -181,11 +183,12 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
       if (match) { foundTipe = t; foundGH = match; break; }
     }
     if (!foundTipe) return;
-    if (tipe !== foundTipe) { setTipe(foundTipe); return; }
+    if (tipe !== foundTipe) { setTipe(foundTipe); return; } // fase 1: set tipe, tunggu re-render
+    initialGHAppliedRef.current = true; // fase 2: tipe sudah cocok, override gh + lanjut step
     handleSelectGH(foundGH);
     setStep(2);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialGH, loadingRef, tipe, refData, refDataRnd, gh]);
+  }, [initialGH, loadingRef, tipe, refData, refDataRnd]);
 
   const updateVarian  = (v, key, val) => setVarianData(prev => ({ ...prev, [v]: { ...prev[v], [key]: val } }));
   const updateSuhuArr = (v, idx, val) => setVarianData(prev => { const a = [...(prev[v]?.suhuArr||["","","",""])]; a[idx]=val; return { ...prev, [v]: { ...prev[v], suhuArr: a } }; });

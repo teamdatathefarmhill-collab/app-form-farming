@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useDraft } from "../hooks/useDraft";
 import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
@@ -356,11 +356,14 @@ export default function Vigor({ initialGH, onDone } = {}) {
   };
 
   // ── Auto-pilih GH dari jadwal harian (Home Koor GH) — tidak mengubah alur normal ──
+  // Override draft lama (kalau ada) sekali saat form ini dibuka dari jadwal.
+  const initialGHAppliedRef = useRef(false);
   useEffect(() => {
-    if (!initialGH || selectedGH || loadingGH) return;
+    if (!initialGH || initialGHAppliedRef.current || loadingGH) return;
     const target = initialGH.trim().toUpperCase();
     const matchedGH = Object.keys(ghData).find(g => g.toUpperCase() === target);
     if (!matchedGH) return;
+    initialGHAppliedRef.current = true;
     const matchedTipe = TIPE_GH.find(t => t.pattern(matchedGH));
     if (matchedTipe) setSelectedTipe(matchedTipe.key);
     doSelectGH(matchedGH);
