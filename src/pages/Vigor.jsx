@@ -10,6 +10,8 @@ const SCRIPT_URL = import.meta.env.VITE_GAS_VIGOR_URL;
 
 // ─── Changelog ───────────────────────────────────────────────────────────────
 export const CHANGELOG = [
+  "Tambah Netting Buah (Crack Basah) di checkpoint HST 45",
+  "Kesegaran Tanaman (Kelayuan) di HST 38/45/54 kini satu section dengan Warna Daun (sebelumnya section terpisah)",
   "Tambah Kesegaran Tanaman (Kelayuan) di checkpoint HST 7, 14, 18, 33 (sebelumnya hanya HST 38/45/54)",
   "GH RnD: tambah Open Field 1 ke daftar GH RnD",
   "HST aktif sekarang mulai dari HST 1 (sebelumnya HST 5)",
@@ -364,11 +366,14 @@ export default function Vigor() {
   const showKualitas       = selectedHST !== null && selectedHST > 30;
   const showSimetri        = selectedHST === 33 || selectedHST === 38;
   const showPolinasi       = selectedHST === 18;
-  const showKesegaranVigor = selectedHST === 7 || selectedHST === 14 || selectedHST === 18 || selectedHST === 33;
-  const showKesegaranAkar  = selectedHST === 38 || selectedHST === 45 || selectedHST === 54;
-  const showKesegaran      = showKesegaranVigor || showKesegaranAkar;
+  // Kesegaran selalu jadi bagian dari Aspek Vigor (sejajar Warna Daun), di semua checkpoint HST yang relevan
+  const showKesegaranVigor = [7, 14, 18, 33, 38, 45, 54].includes(selectedHST);
+  const showKesegaran      = showKesegaranVigor;
   const showNetting        = selectedHST === 45 || selectedHST === 54;
+  // Field "netting50" dipakai dobel: di HST45 untuk Netting Buah (Crack), di HST54 untuk Pencapaian Netting 50%
+  const showNettingCrack45 = selectedHST === 45;
   const showNetting50      = selectedHST === 54;
+  const showNetting50Field = showNettingCrack45 || showNetting50;
   const showNetBercakHitam = selectedHST === 54;
 
   const isRnd = isRndGH(selectedGH);
@@ -380,7 +385,7 @@ export default function Vigor() {
     : LEBAR_DAUN_7_OPTIONS;
   const diameterOptions = selectedHST === 33 ? DIAMETER_33_OPTIONS : DIAMETER_7_14_OPTIONS;
 
-  const filledCount = varianList.filter(v => isVarianFilled(varianData[v] || {}, showKualitas, showPolinasi, showKesegaran, showNetting, showNetting50, showNetBercakHitam, showLebarDiameter, showSimetri)).length;
+  const filledCount = varianList.filter(v => isVarianFilled(varianData[v] || {}, showKualitas, showPolinasi, showKesegaran, showNetting, showNetting50Field, showNetBercakHitam, showLebarDiameter, showSimetri)).length;
   const allFilled   = varianList.length > 0 && filledCount === varianList.length;
   const canSubmit   = allFilled && operator.trim().length > 0;
 
@@ -410,7 +415,7 @@ export default function Vigor() {
         panjang_tunas_air: showPolinasi       ? (d.panjangTunasAir || "") : "",
         kesegaran:         showKesegaran      ? (d.kesegaran       || "") : "",
         netting_buah:      showNetting        ? (d.nettingBuah     || "") : "",
-        netting_50:        showNetting50      ? (d.netting50       || "") : "",
+        netting_50:        showNetting50Field ? (d.netting50       || "") : "",
         net_bercak_hitam:  showNetBercakHitam ? (d.netBercakHitam  || "") : "",
         selfie_url:        "",
       };
@@ -678,7 +683,7 @@ export default function Vigor() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
               {varianList.map((varian) => {
                 const d      = varianData[varian] || {};
-                const filled = isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNetting, showNetting50, showNetBercakHitam, showLebarDiameter, showSimetri);
+                const filled = isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNetting, showNetting50Field, showNetBercakHitam, showLebarDiameter, showSimetri);
                 const isOpen = activeVarian === varian;
                 return (
                   <div key={varian} style={{ background: "#fff", borderRadius: 12, border: `1.5px solid ${filled ? "#a5d6a7" : "#e0e0e0"}`, overflow: "hidden" }}>
@@ -732,7 +737,7 @@ export default function Vigor() {
                           <PilihOpsi options={WARNA_DAUN_OPTIONS} value={d.warnaDaun} onChange={val => updateVarian(varian, "warnaDaun", val)} color="#f57f17" cols={2} />
                         </div>
 
-                        {/* KESEGARAN — bagian Aspek Vigor (HST 7) */}
+                        {/* KESEGARAN — bagian Aspek Vigor (sejajar Warna Daun, semua checkpoint relevan) */}
                         {showKesegaranVigor && (
                           <div style={{ marginBottom: 18 }}>
                             <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>{showLebarDiameter ? "4." : "2."} Kesegaran Tanaman (Kelayuan)</div>
@@ -825,15 +830,6 @@ export default function Vigor() {
                           </div>
                         )}
 
-                        {/* KESEGARAN (HST 38, 45, 54) */}
-                        {showKesegaranAkar && (
-                          <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginTop: 14 }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: "#2E7D32", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🌿 Aspek Vigor Tambahan</div>
-                            <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>Kesegaran Tanaman (Kelayuan)</div>
-                            <PilihOpsi options={KESEGARAN_OPTIONS} value={d.kesegaran} onChange={val => updateVarian(varian, "kesegaran", val)} color="#2E7D32" cols={3} />
-                          </div>
-                        )}
-
                         {/* NETTING BUAH (HST 45 & 54) */}
                         {showNetting && (
                           <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginTop: 14 }}>
@@ -853,13 +849,13 @@ export default function Vigor() {
                           </div>
                         )}
 
-                        {/* NETTING 50% (HST 54) */}
-                        {showNetting50 && (
+                        {/* NETTING 50% (HST 54) / NETTING BUAH CRACK (HST 45) — sama-sama pakai field netting50 */}
+                        {showNetting50Field && (
                           <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginTop: 14 }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: "#6A1B9A", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🍈 Netting 50%</div>
-                            <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>Pencapaian Netting 50%</div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "#6A1B9A", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🍈 {showNettingCrack45 ? "Kualitas Buah Tambahan" : "Netting 50%"}</div>
+                            <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>{showNettingCrack45 ? "Netting Buah (Crack Basah)" : "Pencapaian Netting 50%"}</div>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
-                              {NETTING_50_54_OPTIONS.map((opt, idx) => {
+                              {(showNettingCrack45 ? NETTING_BUAH_54_OPTIONS : NETTING_50_54_OPTIONS).map((opt, idx) => {
                                 const active = d.netting50 === opt;
                                 return (
                                   <button key={idx} onClick={() => updateVarian(varian, "netting50", opt)}
