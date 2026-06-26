@@ -18,8 +18,38 @@ import Penyemprotan from "../pages/Penyemprotan";
 import Sanitasi     from "../pages/Sanitasi";
 import HPT          from "../pages/HPT";
 import Cuaca        from "../pages/Cuaca";
+import { useGHData } from "../hooks/useGHData";
 
 const GHREF_URL = import.meta.env.VITE_GAS_GHREF_URL;
+
+// Sama persis dengan key yang dipakai Vigor.jsx untuk tandai "GH sudah diisi
+// hari ini" (LS_PREFIX di Vigor.jsx) — dibaca di sini juga, tidak perlu GAS baru.
+const VIGOR_LS_PREFIX = "vigor_submitted_";
+function getVigorSubmittedToday() {
+  try {
+    const d   = new Date();
+    const key = `${VIGOR_LS_PREFIX}${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return JSON.parse(localStorage.getItem(key) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function hitungHST(tgl) {
+  if (!tgl) return null;
+  const [y, m, d] = tgl.split("-").map(Number);
+  const tanam = new Date(y, m - 1, d);
+  const now = new Date();
+  const nowLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.floor((nowLocal - tanam) / 86400000);
+}
+
+function hstBadgeColor(hst) {
+  if (hst === null) return { bg: "#f5f5f5", text: "#aaa", border: "#e0e0e0" };
+  if (hst <= 21) return { bg: "#e8f5e9", text: "#2e7d32", border: "#a5d6a7" };
+  if (hst <= 40) return { bg: "#fff8e1", text: "#f57f17", border: "#ffe082" };
+  return            { bg: "#fbe9e7", text: "#bf360c", border: "#ffab91" };
+}
 
 // Menu di sheet "DAILY TASK" dicocokkan ke sini (case-insensitive, tanpa spasi)
 const MENU_MAP = {
@@ -43,6 +73,8 @@ export default function KoorGHHome({ user, logout }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [activeTask, setActiveTask] = useState(null);
+  const { ghData } = useGHData();
+  const vigorSubmittedToday = getVigorSubmittedToday();
 
   useEffect(() => {
     if (!GHREF_URL || !user?.nama) { setLoading(false); setLoadError(true); return; }
@@ -124,25 +156,46 @@ export default function KoorGHHome({ user, logout }) {
           </div>
         )}
 
-        {!loading && tasks.map((t, i) => {
-          const menuDef = MENU_MAP[normalizeMenuKey(t.menu)];
-          const color   = menuDef?.color || "#666";
-          const icon    = menuDef?.icon  || "📌";
-          return (
-            <button key={i} onClick={() => setActiveTask(t)}
-              style={{ width: "100%", textAlign: "left", background: "#fff", border: "1px solid #e0e0e0", borderRadius: 14, padding: "14px 16px", marginBottom: 10, display: "flex", alignItems: "center", gap: 14, cursor: "pointer", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
-              <div style={{ width: 42, height: 42, borderRadius: 12, background: `${color}1a`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>{icon}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#333" }}>{menuDef?.label || t.menu}</div>
-                <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{t.gh}</div>
-                {(t.jamMulai || t.jamSelesai) && (
-                  <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>{t.jamMulai} – {t.jamSelesai}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {!loading && tasks.map((t, i) => {
+            const menuKey = normalizeMenuKey(t.menu);
+            const menuDef = MENU_MAP[menuKey];
+            const color   = menuDef?.color || "#666";
+            const icon    = menuDef?.icon  || "📌";
+            const hst     = hitungHST(ghData[t.gh]?.tanam);
+            const hstC    = hstBadgeColor(hst);
+            const isVigor = menuKey === "vigor";
+            const sudahIsi = isVigor && vigorSubmittedToday.includes(t.gh);
+
+            return (
+              <button key={i} onClick={() => setActiveTask(t)}
+                style={{ textAlign: "left", background: "#fff", border: `1.5px solid ${sudahIsi ? "#ffb74d" : "#e0e0e0"}`, borderRadius: 14, padding: "14px 12px", cursor: "pointer", boxShadow: "0 1px 4px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 10, background: `${color}1a`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{icon}</div>
+                  <span style={{ fontSize: 13, color: "#ccc" }}>›</span>
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#333" }}>{menuDef?.label || t.menu}</div>
+                  <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{t.gh}</div>
+                </div>
+                {hst !== null && (
+                  <div style={{ background: hstC.bg, border: `1px solid ${hstC.border}`, borderRadius: 8, padding: "3px 8px", display: "inline-block", alignSelf: "flex-start" }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: hstC.text }}>{hst}</span>
+                    <span style={{ fontSize: 9, color: hstC.text, marginLeft: 2 }}>HST</span>
+                  </div>
                 )}
-              </div>
-              <span style={{ fontSize: 14, color: "#ccc" }}>›</span>
-            </button>
-          );
-        })}
+                {(t.jamMulai || t.jamSelesai) && (
+                  <div style={{ fontSize: 10, color: "#aaa" }}>{t.jamMulai} – {t.jamSelesai}</div>
+                )}
+                {sudahIsi && (
+                  <div style={{ fontSize: 10, background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 8px", color: "#e65100", fontWeight: 600, alignSelf: "flex-start" }}>
+                    ✓ Sudah diisi hari ini
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

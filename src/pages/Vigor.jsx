@@ -974,7 +974,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
       {/* Bottom Nav */}
       {step < 3 && (
         <div style={{ padding: "12px 16px 24px", borderTop: "1px solid #e0e0e0", background: "#fff", position: "sticky", bottom: 0, display: "flex", gap: 10 }}>
-          {step > 1 && (
+          {step > 1 && !onDone && (
             <button onClick={() => { setStep(s => s - 1); setSubmitError(null); }}
               style={{ flex: 1, padding: 13, background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 12, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>← Kembali</button>
           )}
