@@ -176,10 +176,77 @@ function getGHData() {
       }
     });
 
+    // ── Tambahan: GH yang HANYA ada di sheet "REF RND" (mis. Sawahan Tunnel,
+    // Open Field 1) — kalau GH-nya sudah ada dari REF utama (mis. Tohudan 22),
+    // tidak ditimpa supaya tidak ganggu yang sudah jalan.
+    var rndSheet = ss.getSheetByName("REF RND");
+    if (rndSheet) {
+      var rndRows = rndSheet.getDataRange().getValues();
+      var rndMap  = buildRndMap(rndRows);
+      Object.keys(rndMap).forEach(function(gh) {
+        if (data[gh]) return;
+        data[gh]     = rndMap[gh];
+        produksi[gh] = rndMap[gh];
+      });
+    }
+
     return { success: true, data: data, produksi: produksi, semai: semai };
   } catch (err) {
     return { success: false, error: err.message };
   }
+}
+
+// ============================================================
+// buildRndMap — baca sheet "REF RND", kolom:
+// Greenhouse(A) Periode(B) GH Code(C) Sample Code(D) Var Code(E)
+// Baris(F) Varian(G) True Var(H) Tanam(I)
+// ============================================================
+function buildRndMap(rows) {
+  if (rows.length < 2) return {};
+
+  var latestPeriode = {};
+  var latestTanam   = {};
+  for (var r = 1; r < rows.length; r++) {
+    var gh      = String(rows[r][0] || "").trim();
+    var periode = String(rows[r][1] || "").trim();
+    var tanam   = formatDateISO(rows[r][8]);
+    if (!gh || !periode) continue;
+    var pNew = parseFloat(periode);
+    var pOld = parseFloat(latestPeriode[gh] !== undefined ? latestPeriode[gh] : "-1");
+    if (!isNaN(pNew) && pNew > pOld) {
+      latestPeriode[gh] = periode;
+      latestTanam[gh]   = tanam;
+    }
+  }
+
+  var map = {};
+  for (var r2 = 1; r2 < rows.length; r2++) {
+    var gh2      = String(rows[r2][0] || "").trim();
+    var periode2 = String(rows[r2][1] || "").trim();
+    var baris2   = String(rows[r2][5] || "").trim();
+    var varian2  = String(rows[r2][7] || "").trim(); // True Var
+    if (!gh2 || !periode2) continue;
+    if (periode2 !== latestPeriode[gh2]) continue;
+
+    if (!map[gh2]) {
+      map[gh2] = { periode: latestPeriode[gh2], tanam: latestTanam[gh2] || "", baris: [], _varSet: {} };
+    }
+    if (baris2 && !map[gh2].baris.find(function(b) { return b.baris === baris2; })) {
+      map[gh2].baris.push({ baris: baris2, varian: varian2 });
+      if (varian2) map[gh2]._varSet[varian2] = true;
+    }
+  }
+
+  var result = {};
+  Object.keys(map).forEach(function(gh) {
+    result[gh] = {
+      periode: map[gh].periode,
+      tanam:   map[gh].tanam,
+      baris:   map[gh].baris,
+      varian:  Object.keys(map[gh]._varSet),
+    };
+  });
+  return result;
 }
 
 // ── Helper: format nilai tanggal dari Sheets → "yyyy-MM-dd" ──
