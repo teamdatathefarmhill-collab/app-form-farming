@@ -272,7 +272,6 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
     if (step === 1) return tipe !== "" && gh !== "";
     if (step === 2) {
       if (operator.trim().length < 2) return false;
-      if (nutrisi === "") return false;
       if (hasValidationError) return false;
       if (isDB) return Object.values(dbData).every(v => v !== "");
       return varianList.every(v => {
@@ -469,12 +468,16 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
               ); })()}
             </div>
 
-            {/* Nutrisi — dropdown, auto-fill dari isian sebelumnya untuk GH ini */}
+            {/* Nutrisi — isian bebas (opsional), auto-fill dari isian sebelumnya untuk GH ini */}
             <div style={{ background: "#fff", borderRadius: 12, border: `1.5px solid ${nutrisi ? "#a5d6a7" : "#e0e0e0"}`, padding: 14, marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#0277bd", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>🧪 Nutrisi</div>
-              <select
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#0277bd", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+                🧪 Nutrisi <span style={{ fontWeight: 400, color: "#aaa", textTransform: "none" }}>(opsional)</span>
+              </div>
+              <input
+                type="text"
                 value={nutrisi}
                 onChange={e => setNutrisi(e.target.value)}
+                placeholder="Tulis nutrisi yang digunakan..."
                 style={{
                   width: "100%", height: 42, padding: "0 12px",
                   border: `1.5px solid ${nutrisi ? "#81c784" : "#e0e0e0"}`,
@@ -482,11 +485,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
                   color: nutrisi ? "#2e7d32" : "#bbb", outline: "none",
                   background: "#fff", boxSizing: "border-box", fontFamily: "inherit",
                 }}
-              >
-                <option value="">Pilih nutrisi...</option>
-                <option value="Vegetatif 26">Vegetatif 26</option>
-                <option value="Generatif 26">Generatif 26</option>
-              </select>
+              />
             </div>
 
             {/* Dutch Bucket */}
