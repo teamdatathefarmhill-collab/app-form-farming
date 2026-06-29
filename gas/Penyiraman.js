@@ -121,6 +121,28 @@ function ghMapToData(ghMap) {
   return data;
 }
 
+// ── Helper: cari Nutrisi terakhir per GH dari sheet Form Penyiraman ──
+// Dibaca dari bawah ke atas (data terbaru duluan), ambil nilai pertama yang ketemu per GH.
+function getLastNutrisiPerGh() {
+  const result = {};
+  const ss     = getSS();
+  const sheet  = ss.getSheetByName(SHEET_PENYIRAMAN);
+  if (!sheet) return result;
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return result;
+
+  // Kolom: Nama GH = E (5), Nutrisi = U (21)
+  const rows = sheet.getRange(2, 5, lastRow - 1, 17).getValues(); // E..U relatif terhadap kolom 5
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const gh      = String(rows[i][0] || "").trim();   // kolom E
+    const nutrisi = String(rows[i][16] || "").trim();  // kolom U (5 + 16 = 21)
+    if (!gh || !nutrisi || result[gh]) continue;
+    result[gh] = nutrisi;
+  }
+  return result;
+}
+
 // ── Handler: Get REF Data (REF biasa + REF RND) ──────────────
 function handleGetREF() {
   try {
@@ -145,6 +167,11 @@ function handleGetREF() {
         dataRnd = ghMapToData(ghMapRnd);
       }
     }
+
+    // Sisipkan Nutrisi terakhir (per GH) ke masing-masing entry data/dataRnd
+    const lastNutrisi = getLastNutrisiPerGh();
+    Object.keys(data).forEach(gh    => { data[gh].nutrisi    = lastNutrisi[gh] || ""; });
+    Object.keys(dataRnd).forEach(gh => { dataRnd[gh].nutrisi = lastNutrisi[gh] || ""; });
 
     return ContentService
       .createTextOutput(JSON.stringify({ success: true, data, dataRnd }))
@@ -231,6 +258,8 @@ function buildRowPenyiraman(d) {
     isDB ? (d.phBucket  || "") : "",
     isDB ? (d.doTandon  || "") : "",
     isDB ? (d.doBucket  || "") : "",
+
+    d.nutrisi || "",
   ];
 }
 
@@ -244,6 +273,7 @@ function setupHeaderPenyiraman(sheet) {
     "EC Tandon (mS/cm)", "EC Bucket (mS/cm)",
     "pH Tandon", "pH Bucket",
     "DO Tandon (mg/L)", "DO Bucket (mg/L)",
+    "Nutrisi",
   ];
 
   sheet.appendRow(headers);
@@ -257,7 +287,7 @@ function setupHeaderPenyiraman(sheet) {
   sheet.setColumnWidth(3, 140);
   sheet.setColumnWidth(4, 150);
   sheet.setColumnWidth(5, 120);
-  for (let c = 6; c <= 19; c++) sheet.setColumnWidth(c, 110);
+  for (let c = 6; c <= 21; c++) sheet.setColumnWidth(c, 110);
 }
 
 // ── Format baris baru ─────────────────────────────────────────

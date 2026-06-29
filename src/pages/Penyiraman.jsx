@@ -135,6 +135,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
   const [refDataRnd, setRefDataRnd] = useState({});
   const [loadingRef, setLoadingRef] = useState(true);
   const [varianData, setVarianData] = useState(_draft?.varianData || {});
+  const [nutrisi, setNutrisi]       = useState(_draft?.nutrisi || "");
   const [dbData, setDbData]     = useState(_draft?.dbData || { ecTandon: "", ecBucket: "", phTandon: "", phBucket: "", doTandon: "", doBucket: "", suhu: "", rh: "", volNutrisi: "" });
 
   useEffect(() => {
@@ -147,8 +148,8 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
 
   useEffect(() => {
     if (step === 4) return;
-    saveDraft({ step, tipe, gh, operator, varianData, dbData });
-  }, [step, tipe, gh, operator, varianData, dbData]);
+    saveDraft({ step, tipe, gh, operator, varianData, dbData, nutrisi });
+  }, [step, tipe, gh, operator, varianData, dbData, nutrisi]);
 
   const isDB        = isDutchBucket(tipe);
   const multiSuhuRH = isMultiSuhuRH(gh);
@@ -169,6 +170,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
     const init = {};
     vList.forEach(v => { init[v] = initVarianData(); });
     setVarianData(init);
+    setNutrisi(refSource[g]?.nutrisi || "");
   };
 
   // ── Auto-pilih tipe+GH dari jadwal harian (Home Koor GH) — tidak mengubah alur normal ──
@@ -262,7 +264,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
   const resetForm = () => {
     clearDraft();
     setStep(1); setTipe(""); setGh(""); setSubmitError(null); setOperator("");
-    setVarianData({}); setSubmitProgress({ done: 0, total: 0 });
+    setVarianData({}); setSubmitProgress({ done: 0, total: 0 }); setNutrisi("");
     setDbData({ ecTandon: "", ecBucket: "", phTandon: "", phBucket: "", doTandon: "", doBucket: "", suhu: "", rh: "", volNutrisi: "" });
   };
 
@@ -270,6 +272,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
     if (step === 1) return tipe !== "" && gh !== "";
     if (step === 2) {
       if (operator.trim().length < 2) return false;
+      if (nutrisi === "") return false;
       if (hasValidationError) return false;
       if (isDB) return Object.values(dbData).every(v => v !== "");
       return varianList.every(v => {
@@ -296,6 +299,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
         ecTandon: dbData.ecTandon || "0", ecBucket: dbData.ecBucket || "0",
         phTandon: dbData.phTandon || "0", phBucket: dbData.phBucket || "0",
         doTandon: dbData.doTandon || "0", doBucket: dbData.doBucket || "0",
+        nutrisi: nutrisi || "",
       }];
     }
     return varianList.map(v => {
@@ -311,6 +315,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
         volume: d.volume || "0", volNutrisi: d.volNutrisi || "0",
         suhu: suhuVal, rh: rhVal,
         ecTandon: "", ecBucket: "", phTandon: "", phBucket: "", doTandon: "", doBucket: "",
+        nutrisi: nutrisi || "",
       };
     });
   };
@@ -464,6 +469,26 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
               ); })()}
             </div>
 
+            {/* Nutrisi — dropdown, auto-fill dari isian sebelumnya untuk GH ini */}
+            <div style={{ background: "#fff", borderRadius: 12, border: `1.5px solid ${nutrisi ? "#a5d6a7" : "#e0e0e0"}`, padding: 14, marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#0277bd", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>🧪 Nutrisi</div>
+              <select
+                value={nutrisi}
+                onChange={e => setNutrisi(e.target.value)}
+                style={{
+                  width: "100%", height: 42, padding: "0 12px",
+                  border: `1.5px solid ${nutrisi ? "#81c784" : "#e0e0e0"}`,
+                  borderRadius: 10, fontSize: 14, fontWeight: 600,
+                  color: nutrisi ? "#2e7d32" : "#bbb", outline: "none",
+                  background: "#fff", boxSizing: "border-box", fontFamily: "inherit",
+                }}
+              >
+                <option value="">Pilih nutrisi...</option>
+                <option value="Vegetatif 26">Vegetatif 26</option>
+                <option value="Generatif 26">Generatif 26</option>
+              </select>
+            </div>
+
             {/* Dutch Bucket */}
             {isDB && (
               <div style={{ background: "#fff", borderRadius: 12, border: "1.5px solid #e0e0e0", padding: 14 }}>
@@ -552,6 +577,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
               <RekapRow label="Operator" value={operator || user?.nama} />
               <RekapRow label="Tipe GH"  value={tipe} />
               <RekapRow label="GH"       value={gh} />
+              <RekapRow label="Nutrisi"  value={nutrisi} />
               {!isDB && <RekapRow label="Jumlah Varian" value={`${varianList.length} varian`} />}
             </div>
 
@@ -686,6 +712,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
           { label: "Tanggal",  value: todayISO },
           { label: "GH",       value: gh },
           { label: "Tipe",     value: tipe },
+          { label: "Nutrisi",  value: nutrisi },
           { label: "Varian",   value: isDB ? "Dutch Bucket" : `${varianList.length} varian` },
           { label: "Operator", value: operator || user?.nama || "" },
         ]}
