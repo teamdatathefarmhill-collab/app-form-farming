@@ -128,9 +128,9 @@ function initVarianData(varianList) {
 }
 
 function hstColor(hst) {
-  if (hst <= 30) return { bg: "rgba(76,175,80,0.15)",  border: "rgba(76,175,80,0.4)",  text: "#81c784" };
-  if (hst <= 50) return { bg: "rgba(255,179,0,0.12)",  border: "rgba(255,179,0,0.35)", text: "#FFB300" };
-  return           { bg: "rgba(229,57,53,0.12)",  border: "rgba(229,57,53,0.35)", text: "#ef9a9a" };
+  if (hst <= 30) return { bg: "#e8f5e9", border: "#a5d6a7", text: "#2e7d32" };
+  if (hst <= 50) return { bg: "#fff8e1", border: "#ffe082", text: "#f57f17" };
+  return           { bg: "#fbe9e7", border: "#ffab91", text: "#bf360c" };
 }
 
 // ─── Komponen: Block input satu varian ───────────────────────────────────────
@@ -150,13 +150,13 @@ function VarianBlock({ varian, data, onChange, kategori = KATEGORI, totalFn = to
   };
 
   return (
-    <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 14, overflow: "hidden", marginBottom: 14 }}>
+    <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: 14, overflow: "hidden", marginBottom: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
       {/* Header */}
-      <div style={{ padding: "10px 14px", background: "rgba(76,175,80,0.08)", borderBottom: "1px solid rgba(255,255,255,0.07)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: "#81c784" }}>🌾 {varian}</span>
+      <div style={{ padding: "10px 14px", background: "#e8f5e9", borderBottom: "1px solid #e0e0e0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontSize: 14, fontWeight: 700, color: "#2e7d32" }}>🌾 {varian}</span>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: total > 0 ? "#4CAF50" : "rgba(255,255,255,0.18)", lineHeight: 1 }}>{total || 0}</div>
-          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginTop: 1 }}>total</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: total > 0 ? "#4CAF50" : "#ccc", lineHeight: 1 }}>{total || 0}</div>
+          <div style={{ fontSize: 10, color: "#aaa", marginTop: 1 }}>total</div>
         </div>
       </div>
 
@@ -165,34 +165,34 @@ function VarianBlock({ varian, data, onChange, kategori = KATEGORI, totalFn = to
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, marginBottom: 12 }}>
           {kategori.map((k) => (
             <div key={k.key}>
-              <div style={{ background: data[k.key] > 0 ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.025)", border: `1px solid ${data[k.key] > 0 ? k.color + "55" : "rgba(255,255,255,0.07)"}`, borderRadius: data[k.key] > 0 && k.subkategori.length > 0 ? "9px 9px 0 0" : 9, padding: "7px 10px", display: "flex", alignItems: "center", gap: 7, transition: "all 0.2s" }}>
+              <div style={{ background: data[k.key] > 0 ? k.color + "18" : "#f7f7f7", border: `1px solid ${data[k.key] > 0 ? k.color + "55" : "#e0e0e0"}`, borderRadius: data[k.key] > 0 && k.subkategori.length > 0 ? "9px 9px 0 0" : 9, padding: "7px 10px", display: "flex", alignItems: "center", gap: 7, transition: "all 0.2s" }}>
                 <span style={{ fontSize: 15 }}>{k.icon}</span>
-                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", flex: 1 }}>{k.label}</span>
+                <span style={{ fontSize: 12, color: "#666", flex: 1 }}>{k.label}</span>
                 <input
                   type="number" inputMode="numeric"
                   value={data[k.key] || ""}
                   onChange={(e) => handleNum(k.key, e.target.value)}
                   placeholder="0"
-                  style={{ width: 46, height: 32, textAlign: "center", background: "rgba(0,0,0,0.3)", border: `1px solid ${data[k.key] > 0 ? k.color : "rgba(255,255,255,0.12)"}`, borderRadius: 7, color: data[k.key] > 0 ? k.color : "#fff", fontSize: 15, fontWeight: 700, outline: "none" }}
+                  style={{ width: 46, height: 32, textAlign: "center", background: "#fff", border: `1px solid ${data[k.key] > 0 ? k.color : "#e0e0e0"}`, borderRadius: 7, color: data[k.key] > 0 ? k.color : "#333", fontSize: 15, fontWeight: 700, outline: "none" }}
                 />
               </div>
 
               {k.subkategori.length > 0 && data[k.key] > 0 && (
-                <div style={{ background: "rgba(0,0,0,0.2)", border: `1px solid ${k.color}33`, borderTop: "none", borderRadius: "0 0 9px 9px", padding: "8px 10px 10px" }}>
-                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginBottom: 7, textTransform: "uppercase", letterSpacing: 1 }}>Rincian</div>
+                <div style={{ background: "#fafafa", border: `1px solid ${k.color}33`, borderTop: "none", borderRadius: "0 0 9px 9px", padding: "8px 10px 10px" }}>
+                  <div style={{ fontSize: 10, color: "#aaa", marginBottom: 7, textTransform: "uppercase", letterSpacing: 1 }}>Rincian</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {k.subkategori.map((sub) => {
                       const subKey = `${k.key}_${sub}`;
                       const subVal = (data.sub || {})[subKey] || "";
                       return (
                         <div key={sub} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
-                          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", flex: 1, lineHeight: 1.3 }}>↳ {sub}</span>
+                          <span style={{ fontSize: 11, color: "#888", flex: 1, lineHeight: 1.3 }}>↳ {sub}</span>
                           <input
                             type="number" inputMode="numeric"
                             value={subVal}
                             onChange={(e) => handleSub(k.key, sub, e.target.value)}
                             placeholder="0"
-                            style={{ width: 44, height: 28, textAlign: "center", background: "rgba(0,0,0,0.3)", border: `1px solid ${subVal > 0 ? k.color : "rgba(255,255,255,0.12)"}`, borderRadius: 6, color: subVal > 0 ? k.color : "rgba(255,255,255,0.5)", fontSize: 13, fontWeight: 600, outline: "none" }}
+                            style={{ width: 44, height: 28, textAlign: "center", background: "#fff", border: `1px solid ${subVal > 0 ? k.color : "#e0e0e0"}`, borderRadius: 6, color: subVal > 0 ? k.color : "#999", fontSize: 13, fontWeight: 600, outline: "none" }}
                           />
                         </div>
                       );
@@ -206,11 +206,11 @@ function VarianBlock({ varian, data, onChange, kategori = KATEGORI, totalFn = to
 
         {/* Keterangan */}
         <div>
-          <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: needsKet ? "#FFB300" : "rgba(255,255,255,0.3)" }}>
+          <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: needsKet ? "#f57f17" : "#aaa" }}>
             {needsKet ? "⚠️ Keterangan (wajib)" : "Keterangan (opsional)"}
           </label>
           {needsKet && (
-            <div style={{ marginTop: 5, padding: "6px 10px", fontSize: 11, color: "#FFB300", background: "rgba(255,179,0,0.07)", border: "1px solid rgba(255,179,0,0.2)", borderRadius: 7 }}>
+            <div style={{ marginTop: 5, padding: "6px 10px", fontSize: 11, color: "#f57f17", background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 7 }}>
               {total === 0 ? "Tidak ada sanitasi hari ini, jelaskan alasannya" : "Sanitasi tinggi, jelaskan penyebabnya"}
             </div>
           )}
@@ -219,7 +219,7 @@ function VarianBlock({ varian, data, onChange, kategori = KATEGORI, totalFn = to
             onChange={(e) => onChange("keterangan", e.target.value)}
             placeholder="Catatan untuk varian ini..."
             rows={2}
-            style={{ width: "100%", marginTop: 6, padding: "9px 12px", background: "rgba(255,255,255,0.05)", border: `1px solid ${needsKet && !data.keterangan ? "rgba(255,179,0,0.45)" : "rgba(255,255,255,0.09)"}`, borderRadius: 8, color: "#fff", fontSize: 13, outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+            style={{ width: "100%", marginTop: 6, padding: "9px 12px", background: "#fff", border: `1px solid ${needsKet && !data.keterangan ? "#ffb74d" : "#e0e0e0"}`, borderRadius: 8, color: "#333", fontSize: 13, outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "inherit" }}
           />
         </div>
       </div>
@@ -655,14 +655,14 @@ export default function Sanitasi() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #0a2e1a 0%, #1a4a2a 60%, #0d3320 100%)", fontFamily: "'DM Sans', 'Segoe UI', sans-serif", color: "#e8f5e9", display: "flex", flexDirection: "column", margin: "0 auto" }}>
+    <div style={{ minHeight: "100vh", background: "#f5f5f5", fontFamily: "'DM Sans', 'Segoe UI', sans-serif", display: "flex", flexDirection: "column", margin: "0 auto" }}>
 
       {/* ── Header ── */}
-      <div style={{ padding: "16px 20px 12px", borderBottom: "1px solid rgba(255,255,255,0.08)", background: "rgba(0,0,0,0.25)", position: "sticky", top: 0, zIndex: 10 }}>
+      <div style={{ padding: "14px 16px 10px", background: "#2e7d32", color: "#fff", position: "sticky", top: 0, zIndex: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <div style={{ fontSize: 11, color: "#81c784", letterSpacing: 2, textTransform: "uppercase", fontWeight: 600 }}>Form Sanitasi Harian</div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{todayLabel}</div>
+            <div style={{ fontSize: 10, opacity: 0.75, letterSpacing: 1.5, textTransform: "uppercase" }}>Form Sanitasi Harian</div>
+            <div style={{ fontSize: 13, opacity: 0.65, marginTop: 1 }}>{todayLabel}</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {/* Badge pending offline */}
@@ -672,10 +672,10 @@ export default function Sanitasi() {
                 title={isOnline ? "Klik untuk sync sekarang" : "Akan sync otomatis saat online"}
                 style={{
                   fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
-                  background: isOnline ? "rgba(33,150,243,0.2)" : "rgba(255,179,0,0.15)",
-                  border: `1px solid ${isOnline ? "rgba(33,150,243,0.5)" : "rgba(255,179,0,0.4)"}`,
+                  background: isOnline ? "rgba(33,150,243,0.3)" : "rgba(255,179,0,0.3)",
+                  border: `1px solid ${isOnline ? "rgba(33,150,243,0.6)" : "rgba(255,179,0,0.6)"}`,
                   borderRadius: 20, padding: "3px 9px",
-                  color: isOnline ? "#64B5F6" : "#FFB300",
+                  color: "#fff",
                   cursor: isOnline ? "pointer" : "default",
                   display: "flex", alignItems: "center", gap: 4,
                 }}
@@ -684,25 +684,25 @@ export default function Sanitasi() {
               </button>
             )}
             {isDemoMode && (
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, background: "rgba(255,179,0,0.15)", border: "1px solid rgba(255,179,0,0.4)", borderRadius: 20, padding: "3px 8px", color: "#FFB300" }}>DEMO</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, background: "rgba(255,179,0,0.25)", border: "1px solid rgba(255,179,0,0.5)", borderRadius: 20, padding: "3px 8px", color: "#fff9c4" }}>DEMO</div>
             )}
             {/* Dot online/offline */}
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: isOnline ? "#4CAF50" : "#f44336", boxShadow: isOnline ? "0 0 8px #4CAF50" : "0 0 8px #f44336" }} />
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: isOnline ? "#a5d6a7" : "#ef9a9a", boxShadow: isOnline ? "0 0 8px #a5d6a7" : "0 0 8px #ef9a9a" }} />
           </div>
         </div>
 
         {/* Banner offline */}
         {!isOnline && (
-          <div style={{ marginTop: 10, padding: "7px 12px", background: "rgba(244,67,54,0.1)", border: "1px solid rgba(244,67,54,0.25)", borderRadius: 8, display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ marginTop: 10, padding: "7px 12px", background: "rgba(244,67,54,0.2)", border: "1px solid rgba(244,67,54,0.4)", borderRadius: 8, display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 14 }}>📵</span>
-            <span style={{ fontSize: 11, color: "#ef9a9a" }}>Mode offline — data akan tersimpan lokal & sync otomatis saat online</span>
+            <span style={{ fontSize: 11, color: "#ffcdd2" }}>Mode offline — data akan tersimpan lokal & sync otomatis saat online</span>
           </div>
         )}
 
         {step < 4 && (
           <div style={{ display: "flex", gap: 4, marginTop: 12 }}>
             {[1, 2, 3].map((s) => (
-              <div key={s} style={{ flex: 1, height: 3, borderRadius: 2, background: s <= step ? "#4CAF50" : "rgba(255,255,255,0.1)", transition: "background 0.3s" }} />
+              <div key={s} style={{ flex: 1, height: 3, borderRadius: 2, background: s <= step ? "#a5d6a7" : "rgba(255,255,255,0.25)", transition: "background 0.3s" }} />
             ))}
           </div>
         )}
@@ -714,56 +714,56 @@ export default function Sanitasi() {
         {/* ══ STEP 1 — Pilih GH ══ */}
         {step === 1 && (
           <div>
-            <h2 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px", color: "#fff" }}>Pilih Greenhouse</h2>
-            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginBottom: 16 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px", color: "#1b5e20" }}>Pilih Greenhouse</h2>
+            <p style={{ fontSize: 13, color: "#888", marginBottom: 16 }}>
               {isDemoMode ? "Mode demo aktif — server tidak terjangkau" : `GH aktif dengan HST ≤ ${HST_MAKS} hari`}
             </p>
 
             {isDemoMode && (
-              <div style={{ background: "rgba(255,179,0,0.08)", border: "1px solid rgba(255,179,0,0.25)", borderRadius: 10, padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 10, padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ fontSize: 18 }}>🔌</span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, color: "#FFB300", fontWeight: 600 }}>Server tidak terjangkau</div>
-                  <div style={{ fontSize: 11, color: "rgba(255,179,0,0.7)", marginTop: 2 }}>Pastikan Apps Script sudah di-deploy ulang dengan versi terbaru.</div>
+                  <div style={{ fontSize: 12, color: "#f57f17", fontWeight: 600 }}>Server tidak terjangkau</div>
+                  <div style={{ fontSize: 11, color: "#a67c00", marginTop: 2 }}>Pastikan Apps Script sudah di-deploy ulang dengan versi terbaru.</div>
                 </div>
-                <button onClick={fetchGHData} style={{ padding: "6px 12px", background: "rgba(255,179,0,0.15)", border: "1px solid rgba(255,179,0,0.35)", borderRadius: 8, color: "#FFB300", fontSize: 11, cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}>
+                <button onClick={fetchGHData} style={{ padding: "6px 12px", background: "#ffe082", border: "1px solid #ffca28", borderRadius: 8, color: "#8d6e00", fontSize: 11, cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}>
                   Coba Lagi
                 </button>
               </div>
             )}
 
             {loadingGH ? (
-              <div style={{ textAlign: "center", padding: "40px 0", color: "rgba(255,255,255,0.4)" }}>
+              <div style={{ textAlign: "center", padding: "40px 0", color: "#aaa" }}>
                 <div style={{ fontSize: 28, marginBottom: 8 }}>🔄</div>
                 <div style={{ fontSize: 13 }}>Memuat data GH...</div>
               </div>
             ) : ghAktif.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "32px 0", color: "rgba(255,255,255,0.3)", fontSize: 13 }}>
+              <div style={{ textAlign: "center", padding: "32px 0", color: "#aaa", fontSize: 13 }}>
                 Tidak ada GH aktif (HST ≤ {HST_MAKS})
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {/* Tipe produksi — drip, kolam, dutch */}
+                {/* Tipe produksi — drip, kolam, dutch, rnd */}
                 {TIPE_GH.filter(t => t.key !== "semai").map(tipe => {
                   const ghDiTipe = ghAktif.filter(([gh]) => tipe.pattern(gh));
                   const isOpen   = selectedTipe === tipe.key;
                   return (
-                    <div key={tipe.key} style={{ border: `1.5px solid ${isOpen ? tipe.color + "55" : "rgba(255,255,255,0.1)"}`, borderRadius: 14, overflow: "hidden" }}>
+                    <div key={tipe.key} style={{ border: `1.5px solid ${isOpen ? tipe.color + "55" : "#e0e0e0"}`, borderRadius: 14, overflow: "hidden", background: "#fff" }}>
                       <button onClick={() => setSelectedTipe(isOpen ? "" : tipe.key)}
-                        style={{ width: "100%", padding: "13px 16px", background: isOpen ? `${tipe.color}15` : "rgba(255,255,255,0.03)", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        style={{ width: "100%", padding: "13px 16px", background: isOpen ? `${tipe.color}15` : "#fff", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <span style={{ fontSize: 20 }}>{tipe.icon}</span>
                           <div style={{ textAlign: "left" }}>
-                            <div style={{ fontSize: 14, fontWeight: 800, color: isOpen ? tipe.color : "#fff" }}>{tipe.label}</div>
-                            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 1 }}>{ghDiTipe.length} GH aktif</div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: isOpen ? tipe.color : "#333" }}>{tipe.label}</div>
+                            <div style={{ fontSize: 11, color: "#999", marginTop: 1 }}>{ghDiTipe.length} GH aktif</div>
                           </div>
                         </div>
-                        <span style={{ fontSize: 14, color: "rgba(255,255,255,0.3)", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "inline-block" }}>▼</span>
+                        <span style={{ fontSize: 14, color: "#999", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "inline-block" }}>▼</span>
                       </button>
                       {isOpen && (
                         <div style={{ padding: "10px 12px 14px", borderTop: `1px solid ${tipe.color}22` }}>
                           {ghDiTipe.length === 0 ? (
-                            <div style={{ textAlign: "center", padding: 20, color: "rgba(255,255,255,0.3)", fontSize: 13 }}>Tidak ada GH aktif di tipe ini.</div>
+                            <div style={{ textAlign: "center", padding: 20, color: "#aaa", fontSize: 13 }}>Tidak ada GH aktif di tipe ini.</div>
                           ) : (
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                               {ghDiTipe.map(([gh, info]) => {
@@ -771,9 +771,9 @@ export default function Sanitasi() {
                                 const col     = hstGH !== null ? hstColor(hstGH) : hstColor(0);
                                 const dipilih = selectedGH === gh && !isSemai;
                                 return (
-                                  <button key={gh} onClick={() => handleSelectGH(gh)} style={{ padding: "10px 10px 8px", borderRadius: 12, cursor: "pointer", textAlign: "center", border: dipilih ? `2px solid ${tipe.color}` : "1px solid rgba(255,255,255,0.09)", background: dipilih ? `${tipe.color}18` : "rgba(255,255,255,0.03)", transition: "all 0.2s", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-                                    <div style={{ fontSize: 13, fontWeight: 700, color: dipilih ? tipe.color : "#fff", lineHeight: 1.2 }}>{gh}</div>
-                                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>P{info.periode} · {info.varian?.length || 0} var</div>
+                                  <button key={gh} onClick={() => handleSelectGH(gh)} style={{ padding: "10px 10px 8px", borderRadius: 12, cursor: "pointer", textAlign: "center", border: dipilih ? `2px solid ${tipe.color}` : "1px solid #e0e0e0", background: dipilih ? `${tipe.color}18` : "#fafafa", transition: "all 0.2s", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                                    <div style={{ fontSize: 13, fontWeight: 700, color: dipilih ? tipe.color : "#333", lineHeight: 1.2 }}>{gh}</div>
+                                    <div style={{ fontSize: 10, color: "#999" }}>P{info.periode} · {info.varian?.length || 0} var</div>
                                     {hstGH !== null && (
                                       <div style={{ background: col.bg, border: `1px solid ${col.border}`, borderRadius: 8, padding: "4px 10px", textAlign: "center", width: "100%" }}>
                                         <span style={{ fontSize: 16, fontWeight: 800, color: col.text }}>{hstGH}</span>
@@ -797,36 +797,36 @@ export default function Sanitasi() {
                   const semaiColor = "#00897B";
                   const isOpen = selectedTipe === "semai";
                   return (
-                    <div style={{ border: `1.5px solid ${isOpen ? semaiColor + "55" : "rgba(255,255,255,0.1)"}`, borderRadius: 14, overflow: "hidden" }}>
+                    <div style={{ border: `1.5px solid ${isOpen ? semaiColor + "55" : "#e0e0e0"}`, borderRadius: 14, overflow: "hidden", background: "#fff" }}>
                       <button onClick={() => setSelectedTipe(isOpen ? "" : "semai")}
-                        style={{ width: "100%", padding: "13px 16px", background: isOpen ? `${semaiColor}15` : "rgba(255,255,255,0.03)", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        style={{ width: "100%", padding: "13px 16px", background: isOpen ? `${semaiColor}15` : "#fff", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <span style={{ fontSize: 20 }}>🌱</span>
                           <div style={{ textAlign: "left" }}>
-                            <div style={{ fontSize: 14, fontWeight: 800, color: isOpen ? semaiColor : "#fff" }}>GH Semai</div>
-                            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 1 }}>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: isOpen ? semaiColor : "#333" }}>GH Semai</div>
+                            <div style={{ fontSize: 11, color: "#999", marginTop: 1 }}>
                               {loadingSemai ? "Memuat..." : `${semaiAktif.length} ruang semai aktif`}
                             </div>
                           </div>
                         </div>
-                        <span style={{ fontSize: 14, color: "rgba(255,255,255,0.3)", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "inline-block" }}>▼</span>
+                        <span style={{ fontSize: 14, color: "#999", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "inline-block" }}>▼</span>
                       </button>
                       {isOpen && (
                         <div style={{ padding: "10px 12px 14px", borderTop: `1px solid ${semaiColor}22` }}>
                           {loadingSemai ? (
-                            <div style={{ textAlign: "center", padding: 20, color: "rgba(255,255,255,0.3)", fontSize: 13 }}>⏳ Memuat data semai...</div>
+                            <div style={{ textAlign: "center", padding: 20, color: "#aaa", fontSize: 13 }}>⏳ Memuat data semai...</div>
                           ) : semaiAktif.length === 0 ? (
-                            <div style={{ textAlign: "center", padding: 20, color: "rgba(255,255,255,0.3)", fontSize: 13 }}>Tidak ada ruang semai aktif.</div>
+                            <div style={{ textAlign: "center", padding: 20, color: "#aaa", fontSize: 13 }}>Tidak ada ruang semai aktif.</div>
                           ) : (
                             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                               {semaiAktif.map((item) => {
                                 const dipilih = isSemai && selectedRuangSemai === item.key;
                                 return (
                                   <button key={item.key} onClick={() => handleSelectSemai(item)}
-                                    style={{ padding: "12px 14px", borderRadius: 12, cursor: "pointer", textAlign: "left", border: dipilih ? `2px solid ${semaiColor}` : "1px solid rgba(255,255,255,0.09)", background: dipilih ? `${semaiColor}18` : "rgba(255,255,255,0.03)", transition: "all 0.2s", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                    style={{ padding: "12px 14px", borderRadius: 12, cursor: "pointer", textAlign: "left", border: dipilih ? `2px solid ${semaiColor}` : "1px solid #e0e0e0", background: dipilih ? `${semaiColor}18` : "#fafafa", transition: "all 0.2s", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                     <div>
-                                      <div style={{ fontSize: 13, fontWeight: 700, color: dipilih ? semaiColor : "#fff" }}>{item.gh}</div>
-                                      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>P{item.periode} · {item.varian?.length || 0} varian</div>
+                                      <div style={{ fontSize: 13, fontWeight: 700, color: dipilih ? semaiColor : "#333" }}>{item.gh}</div>
+                                      <div style={{ fontSize: 10, color: "#999", marginTop: 2 }}>P{item.periode} · {item.varian?.length || 0} varian</div>
                                     </div>
                                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                                       {dipilih && <span style={{ fontSize: 14 }}>✅</span>}
@@ -850,9 +850,9 @@ export default function Sanitasi() {
         {step === 2 && (
           <div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
-              {isSemai && <div style={{ background: "rgba(0,137,123,0.2)", border: "1px solid rgba(0,137,123,0.4)", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#4DB6AC", fontWeight: 600 }}>🌱 GH Semai</div>}
-              <div style={{ background: "rgba(76,175,80,0.2)", border: "1px solid rgba(76,175,80,0.4)", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#81c784", fontWeight: 600 }}>{selectedGH}</div>
-              <div style={{ background: "rgba(255,255,255,0.07)", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "rgba(255,255,255,0.6)" }}>
+              {isSemai && <div style={{ background: "#e0f2f1", border: "1px solid #80CBC4", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#00897B", fontWeight: 600 }}>🌱 GH Semai</div>}
+              <div style={{ background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#2e7d32", fontWeight: 600 }}>{selectedGH}</div>
+              <div style={{ background: "#f5f5f5", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#666" }}>
                 Periode {isSemai ? semaiInfo?.periode : ghInfo?.periode}
               </div>
               {hst !== null && (() => {
@@ -861,8 +861,8 @@ export default function Sanitasi() {
               })()}
             </div>
 
-            <h2 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px", color: "#fff" }}>Input Sanitasi {isSemai ? "Semai" : ""}</h2>
-            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginBottom: 16 }}>Isi data untuk semua {varianList.length} varian sekaligus.</p>
+            <h2 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px", color: "#1b5e20" }}>Input Sanitasi {isSemai ? "Semai" : ""}</h2>
+            <p style={{ fontSize: 13, color: "#888", marginBottom: 16 }}>Isi data untuk semua {varianList.length} varian sekaligus.</p>
 
             {varianList.map((v) => (
               <VarianBlock
@@ -875,28 +875,28 @@ export default function Sanitasi() {
               />
             ))}
 
-            <div style={{ background: totalSemuaVarian > 0 ? "rgba(76,175,80,0.08)" : "rgba(255,255,255,0.03)", border: `1px solid ${totalSemuaVarian > 0 ? "rgba(76,175,80,0.25)" : "rgba(255,255,255,0.07)"}`, borderRadius: 12, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Total seluruh varian</span>
-              <span style={{ fontSize: 26, fontWeight: 800, color: totalSemuaVarian > 0 ? "#4CAF50" : "rgba(255,255,255,0.2)" }}>{totalSemuaVarian}</span>
+            <div style={{ background: totalSemuaVarian > 0 ? "#e8f5e9" : "#fafafa", border: `1px solid ${totalSemuaVarian > 0 ? "#a5d6a7" : "#e0e0e0"}`, borderRadius: 12, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <span style={{ fontSize: 13, color: "#666" }}>Total seluruh varian</span>
+              <span style={{ fontSize: 26, fontWeight: 800, color: totalSemuaVarian > 0 ? "#4CAF50" : "#ccc" }}>{totalSemuaVarian}</span>
             </div>
 
             {/* Foto */}
             <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 11, color: "#81c784", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600 }}>
+              <label style={{ fontSize: 11, color: "#2e7d32", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600 }}>
                 📸 Foto Papan {fotoPreview ? "✅" : "(opsional)"}
-                {!isOnline && fotoPreview && <span style={{ color: "#FFB300", marginLeft: 6 }}>· disimpan lokal</span>}
+                {!isOnline && fotoPreview && <span style={{ color: "#f57f17", marginLeft: 6 }}>· disimpan lokal</span>}
               </label>
-              <label style={{ display: "block", marginTop: 8, cursor: "pointer", overflow: "hidden", border: `2px dashed ${fotoPreview ? "rgba(76,175,80,0.5)" : "rgba(255,255,255,0.15)"}`, borderRadius: 12, padding: fotoPreview ? 0 : "20px 0", textAlign: "center", position: "relative" }}>
+              <label style={{ display: "block", marginTop: 8, cursor: "pointer", overflow: "hidden", border: `2px dashed ${fotoPreview ? "#81c784" : "#e0e0e0"}`, borderRadius: 12, padding: fotoPreview ? 0 : "20px 0", textAlign: "center", position: "relative", background: "#fff" }}>
                 {fotoPreview ? (
                   <>
                     <img src={fotoPreview} alt="preview" style={{ width: "100%", display: "block", borderRadius: 10 }} />
-                    <div style={{ position: "absolute", bottom: 8, right: 8, background: "rgba(0,0,0,0.6)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "#81c784" }}>📷 Ganti foto</div>
+                    <div style={{ position: "absolute", bottom: 8, right: 8, background: "rgba(0,0,0,0.6)", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "#fff" }}>📷 Ganti foto</div>
                   </>
                 ) : (
                   <div>
                     <div style={{ fontSize: 28 }}>📸</div>
-                    <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>Ambil foto papan whiteboard</div>
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", marginTop: 3 }}>
+                    <div style={{ fontSize: 13, color: "#888", marginTop: 6 }}>Ambil foto papan whiteboard</div>
+                    <div style={{ fontSize: 11, color: "#aaa", marginTop: 3 }}>
                       {isOnline ? "1 foto untuk seluruh GH · disimpan ke Drive" : "1 foto untuk seluruh GH · diupload otomatis saat online"}
                     </div>
                   </div>
@@ -907,16 +907,16 @@ export default function Sanitasi() {
 
             {/* Operator */}
             <div style={{ marginBottom: 8 }}>
-              <label style={{ fontSize: 11, color: "#81c784", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600 }}>
-                👤 Nama Operator <span style={{ color: "#ef9a9a" }}>*</span>
+              <label style={{ fontSize: 11, color: "#2e7d32", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600 }}>
+                👤 Nama Operator <span style={{ color: "#e53935" }}>*</span>
               </label>
               <input
                 type="text" value={operator}
                 onChange={(e) => setOperator(e.target.value)}
                 placeholder="Tulis nama lengkap..."
-                style={{ width: "100%", marginTop: 8, padding: "12px 14px", background: "rgba(255,255,255,0.06)", border: `1px solid ${operator.trim() ? "rgba(129,199,132,0.4)" : "rgba(255,255,255,0.12)"}`, borderRadius: 10, color: "#fff", fontSize: 15, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+                style={{ width: "100%", marginTop: 8, padding: "12px 14px", background: "#fff", border: `1px solid ${operator.trim() ? "#a5d6a7" : "#e0e0e0"}`, borderRadius: 10, color: "#333", fontSize: 15, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
               />
-              {!operator.trim() && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 5 }}>Wajib diisi sebelum bisa lanjut</div>}
+              {!operator.trim() && <div style={{ fontSize: 11, color: "#aaa", marginTop: 5 }}>Wajib diisi sebelum bisa lanjut</div>}
             </div>
 
             {/* Selfie Operator */}
@@ -926,7 +926,6 @@ export default function Sanitasi() {
               onChange={(file, preview) => { setSelfieFile(file); setSelfiePreview(preview); setSelfieUrl(""); }}
               onClear={() => { setSelfieFile(null); setSelfiePreview(null); setSelfieUrl(""); }}
               isOffline={!isOnline}
-              darkMode={true}
             />
           </div>
         )}
@@ -934,25 +933,25 @@ export default function Sanitasi() {
         {/* ══ STEP 3 — Konfirmasi ══ */}
         {step === 3 && (
           <div>
-            <h2 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px", color: "#fff" }}>Konfirmasi Data</h2>
-            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginBottom: 18 }}>Periksa kembali sebelum submit</p>
+            <h2 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px", color: "#1b5e20" }}>Konfirmasi Data</h2>
+            <p style={{ fontSize: 13, color: "#888", marginBottom: 18 }}>Periksa kembali sebelum submit</p>
 
             {isDemoMode && (
-              <div style={{ background: "rgba(255,179,0,0.08)", border: "1px solid rgba(255,179,0,0.25)", borderRadius: 10, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 10, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
                 <span>⚠️</span>
-                <div style={{ fontSize: 12, color: "#FFB300" }}>Mode Demo — data tidak akan dikirim ke Sheets</div>
+                <div style={{ fontSize: 12, color: "#f57f17" }}>Mode Demo — data tidak akan dikirim ke Sheets</div>
               </div>
             )}
 
             {/* Banner offline di step 3 */}
             {!isOnline && (
-              <div style={{ background: "rgba(255,179,0,0.08)", border: "1px solid rgba(255,179,0,0.25)", borderRadius: 10, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 10, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
                 <span>📵</span>
-                <div style={{ fontSize: 12, color: "#FFB300" }}>Offline — data akan disimpan lokal & dikirim otomatis saat koneksi kembali</div>
+                <div style={{ fontSize: 12, color: "#f57f17" }}>Offline — data akan disimpan lokal & dikirim otomatis saat koneksi kembali</div>
               </div>
             )}
 
-            <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
+            <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
               {[
                 { label: "Greenhouse",     value: selectedGH },
                 { label: "Periode",        value: ghInfo?.periode },
@@ -961,23 +960,23 @@ export default function Sanitasi() {
                 { label: "Operator",       value: operator },
                 { label: "Total Sanitasi", value: `${totalSemuaVarian} tanaman (${varianList.length} varian)` },
               ].map((item, i) => (
-                <div key={i} style={{ display: "flex", padding: "11px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", gap: 12 }}>
-                  <span style={{ fontSize: 13, color: "rgba(255,255,255,0.38)", minWidth: 110 }}>{item.label}</span>
-                  <span style={{ fontSize: 13, color: "#fff", fontWeight: 600, flex: 1 }}>{item.value}</span>
+                <div key={i} style={{ display: "flex", padding: "11px 16px", borderBottom: "1px solid #f0f0f0", gap: 12 }}>
+                  <span style={{ fontSize: 13, color: "#999", minWidth: 110 }}>{item.label}</span>
+                  <span style={{ fontSize: 13, color: "#333", fontWeight: 600, flex: 1 }}>{item.value}</span>
                 </div>
               ))}
             </div>
 
-            <div style={{ fontSize: 11, color: "#81c784", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600, marginBottom: 10 }}>Detail per Varian</div>
+            <div style={{ fontSize: 11, color: "#2e7d32", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600, marginBottom: 10 }}>Detail per Varian</div>
             {varianList.map((v) => {
               const d     = varianData[v] || {};
               const total = totalPerVarian(d);
               const aktif = KATEGORI.filter((k) => parseInt(d[k.key]) > 0);
               return (
-                <div key={v} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "10px 14px", marginBottom: 8 }}>
+                <div key={v} style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: 10, padding: "10px 14px", marginBottom: 8 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: aktif.length > 0 ? 8 : 0 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#81c784" }}>🌾 {v}</span>
-                    <span style={{ fontSize: 16, fontWeight: 800, color: total > 0 ? "#4CAF50" : "rgba(255,255,255,0.25)" }}>{total}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#2e7d32" }}>🌾 {v}</span>
+                    <span style={{ fontSize: 16, fontWeight: 800, color: total > 0 ? "#4CAF50" : "#ccc" }}>{total}</span>
                   </div>
                   {aktif.length > 0 && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: d.keterangan ? 8 : 0 }}>
@@ -989,7 +988,7 @@ export default function Sanitasi() {
                               {k.icon} {k.label}: {d[k.key]}
                             </span>
                             {subAktif.map((sub) => (
-                              <span key={sub} style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginLeft: 8 }}>
+                              <span key={sub} style={{ fontSize: 11, color: "#999", marginLeft: 8 }}>
                                 ↳ {sub}: {(d.sub || {})[`${k.key}_${sub}`]}
                               </span>
                             ))}
@@ -999,7 +998,7 @@ export default function Sanitasi() {
                     </div>
                   )}
                   {d.keterangan ? (
-                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", fontStyle: "italic" }}>
+                    <div style={{ fontSize: 12, color: "#888", fontStyle: "italic" }}>
                       "{d.keterangan}"
                     </div>
                   ) : null}
@@ -1009,13 +1008,13 @@ export default function Sanitasi() {
 
             {fotoPreview && (
               <div style={{ marginBottom: 14, marginTop: 6 }}>
-                <div style={{ fontSize: 11, color: "#81c784", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600, marginBottom: 8 }}>
+                <div style={{ fontSize: 11, color: "#2e7d32", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600, marginBottom: 8 }}>
                   Foto {fotoUrl ? "✅ Tersimpan di Drive" : isOnline ? "📎 Siap diupload" : "📵 Tersimpan lokal (upload otomatis)"}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <img src={fotoPreview} alt="foto" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 8 }} />
                   {fotoUrl && (
-                    <a href={fotoUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "#81c784" }}>
+                    <a href={fotoUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "#2e7d32" }}>
                       Lihat di Drive →
                     </a>
                   )}
@@ -1024,19 +1023,19 @@ export default function Sanitasi() {
             )}
 
             {submitError && (
-              <div style={{ padding: "12px", background: "rgba(244,67,54,0.1)", border: "1px solid rgba(244,67,54,0.3)", borderRadius: 10, fontSize: 13, color: "#ef9a9a", marginBottom: 12 }}>
+              <div style={{ padding: "12px", background: "#ffebee", border: "1px solid #ffcdd2", borderRadius: 10, fontSize: 13, color: "#c62828", marginBottom: 12 }}>
                 ⚠️ {submitError}
               </div>
             )}
 
             {syncing && (
               <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>
+                <div style={{ fontSize: 12, color: "#777", marginBottom: 6 }}>
                   {fotoUploading
                     ? "⏳ Upload foto ke Drive..."
                     : `Menyimpan ${syncProgress.done}/${syncProgress.total} varian...`}
                 </div>
-                <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 4, overflow: "hidden", height: 6 }}>
+                <div style={{ background: "#e0e0e0", borderRadius: 4, overflow: "hidden", height: 6 }}>
                   <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg, #2e7d32, #4CAF50)", width: `${syncProgress.total > 0 ? (syncProgress.done / syncProgress.total) * 100 : 0}%`, transition: "width 0.4s ease" }} />
                 </div>
               </div>
@@ -1050,10 +1049,10 @@ export default function Sanitasi() {
             <div style={{ fontSize: 64, marginBottom: 16 }}>
               {isDemoMode ? "🧪" : savedOffline ? "💾" : "✅"}
             </div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: isDemoMode ? "#FFB300" : savedOffline ? "#64B5F6" : "#4CAF50", margin: "0 0 8px" }}>
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: isDemoMode ? "#f57f17" : savedOffline ? "#1565C0" : "#2e7d32", margin: "0 0 8px" }}>
               {isDemoMode ? "Demo Selesai!" : savedOffline ? "Tersimpan Lokal!" : "Data Tersimpan!"}
             </h2>
-            <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", margin: "0 0 4px" }}>
+            <p style={{ fontSize: 14, color: "#888", margin: "0 0 4px" }}>
               {isDemoMode
                 ? "Data tidak dikirim (mode demo)"
                 : savedOffline
@@ -1063,40 +1062,40 @@ export default function Sanitasi() {
 
             {/* Info pending saat offline */}
             {savedOffline && (
-              <div style={{ background: "rgba(33,150,243,0.08)", border: "1px solid rgba(33,150,243,0.25)", borderRadius: 10, padding: "10px 14px", margin: "12px 0", textAlign: "left" }}>
-                <div style={{ fontSize: 12, color: "#64B5F6", fontWeight: 600, marginBottom: 4 }}>📡 Cara sync:</div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
+              <div style={{ background: "#e3f2fd", border: "1px solid #90CAF9", borderRadius: 10, padding: "10px 14px", margin: "12px 0", textAlign: "left" }}>
+                <div style={{ fontSize: 12, color: "#1565C0", fontWeight: 600, marginBottom: 4 }}>📡 Cara sync:</div>
+                <div style={{ fontSize: 12, color: "#555" }}>
                   Biarkan app terbuka saat koneksi kembali — data akan terkirim otomatis. Atau klik badge "pending" di header.
                 </div>
                 {pendingCount > 0 && (
-                  <div style={{ fontSize: 12, color: "#64B5F6", marginTop: 6 }}>{pendingCount} record menunggu sync.</div>
+                  <div style={{ fontSize: 12, color: "#1565C0", marginTop: 6 }}>{pendingCount} record menunggu sync.</div>
                 )}
               </div>
             )}
 
-            <div style={{ background: isDemoMode ? "rgba(255,179,0,0.08)" : savedOffline ? "rgba(33,150,243,0.08)" : "rgba(76,175,80,0.1)", border: `1px solid ${isDemoMode ? "rgba(255,179,0,0.3)" : savedOffline ? "rgba(33,150,243,0.3)" : "rgba(76,175,80,0.3)"}`, borderRadius: 12, padding: "14px 16px", margin: "20px 0", textAlign: "left" }}>
-              <div style={{ fontSize: 12, color: isDemoMode ? "#FFB300" : savedOffline ? "#64B5F6" : "#81c784", marginBottom: 10, fontWeight: 600 }}>Ringkasan</div>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>{selectedGH} · Periode {ghInfo?.periode} · {hst} HST</div>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>Operator: {operator}</div>
+            <div style={{ background: isDemoMode ? "#fff8e1" : savedOffline ? "#e3f2fd" : "#e8f5e9", border: `1px solid ${isDemoMode ? "#ffe082" : savedOffline ? "#90CAF9" : "#a5d6a7"}`, borderRadius: 12, padding: "14px 16px", margin: "20px 0", textAlign: "left" }}>
+              <div style={{ fontSize: 12, color: isDemoMode ? "#f57f17" : savedOffline ? "#1565C0" : "#2e7d32", marginBottom: 10, fontWeight: 600 }}>Ringkasan</div>
+              <div style={{ fontSize: 13, color: "#333", fontWeight: 600 }}>{selectedGH} · Periode {ghInfo?.periode} · {hst} HST</div>
+              <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>Operator: {operator}</div>
               <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 4 }}>
                 {varianList.map((v) => (
                   <div key={v} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                    <span style={{ color: "rgba(255,255,255,0.5)" }}>🌾 {v}</span>
+                    <span style={{ color: "#666" }}>🌾 {v}</span>
                     <span style={{ color: "#4CAF50", fontWeight: 700 }}>{totalPerVarian(varianData[v] || {})} tan.</span>
                   </div>
                 ))}
               </div>
-              <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                <span style={{ color: "rgba(255,255,255,0.5)" }}>Total</span>
+              <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(0,0,0,0.08)", display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                <span style={{ color: "#666" }}>Total</span>
                 <span style={{ color: "#4CAF50", fontWeight: 800, fontSize: 16 }}>{totalSemuaVarian} tanaman</span>
               </div>
               {fotoUrl && (
-                <a href={fotoUrl} target="_blank" rel="noopener noreferrer" style={{ display: "block", marginTop: 10, fontSize: 13, color: "#81c784" }}>
+                <a href={fotoUrl} target="_blank" rel="noopener noreferrer" style={{ display: "block", marginTop: 10, fontSize: 13, color: "#2e7d32" }}>
                   📎 Lihat foto di Drive →
                 </a>
               )}
             </div>
-            <button onClick={resetForm} style={{ width: "100%", padding: "16px", background: isDemoMode ? "rgba(255,179,0,0.15)" : savedOffline ? "rgba(33,150,243,0.15)" : "rgba(76,175,80,0.2)", border: `2px solid ${isDemoMode ? "rgba(255,179,0,0.4)" : savedOffline ? "rgba(33,150,243,0.4)" : "rgba(76,175,80,0.4)"}`, borderRadius: 12, color: isDemoMode ? "#FFB300" : savedOffline ? "#64B5F6" : "#4CAF50", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+            <button onClick={resetForm} style={{ width: "100%", padding: "16px", background: isDemoMode ? "#fff8e1" : savedOffline ? "#e3f2fd" : "#e8f5e9", border: `2px solid ${isDemoMode ? "#ffb74d" : savedOffline ? "#90CAF9" : "#81c784"}`, borderRadius: 12, color: isDemoMode ? "#e65100" : savedOffline ? "#1565C0" : "#2e7d32", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
               + Input GH Berikutnya
             </button>
           </div>
@@ -1105,9 +1104,9 @@ export default function Sanitasi() {
 
       {/* ── Bottom Nav ── */}
       {step < 4 && (
-        <div style={{ padding: "12px 16px 20px", borderTop: "1px solid rgba(255,255,255,0.08)", background: "rgba(0,0,0,0.3)", display: "flex", gap: 10 }}>
+        <div style={{ padding: "12px 16px 20px", borderTop: "1px solid #e0e0e0", background: "#fff", position: "sticky", bottom: 0, display: "flex", gap: 10 }}>
           {step > 1 && (
-            <button onClick={() => setStep((s) => s - 1)} style={{ flex: 1, padding: "14px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "rgba(255,255,255,0.7)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+            <button onClick={() => setStep((s) => s - 1)} style={{ flex: 1, padding: "14px", background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 12, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
               ← Kembali
             </button>
           )}
@@ -1115,7 +1114,7 @@ export default function Sanitasi() {
             <button
               onClick={() => setStep((s) => s + 1)}
               disabled={step === 1 ? !selectedGH : !canProceedStep2}
-              style={{ flex: 2, padding: "14px", border: "none", borderRadius: 12, background: (step === 1 ? selectedGH : canProceedStep2) ? "linear-gradient(135deg, #2e7d32, #43a047)" : "rgba(255,255,255,0.06)", color: (step === 1 ? selectedGH : canProceedStep2) ? "#fff" : "rgba(255,255,255,0.3)", fontSize: 15, fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}
+              style={{ flex: 2, padding: "14px", border: "none", borderRadius: 12, background: (step === 1 ? selectedGH : canProceedStep2) ? "linear-gradient(135deg, #2e7d32, #43a047)" : "#e0e0e0", color: (step === 1 ? selectedGH : canProceedStep2) ? "#fff" : "#aaa", fontSize: 15, fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}
             >
               {step === 1 ? "Lanjut Input →" : "Review Data →"}
             </button>
