@@ -68,7 +68,7 @@ const TIPE_GH = [
 ];
 
 // ─── Kategori sanitasi ────────────────────────────────────────────────────────
-const HAMA_SUBKATEGORI = ["Nematoda", "Tikus", "Ulat Kompos", "Tungau", "Thrips", "Aphids"];
+const HAMA_SUBKATEGORI = ["Nematoda", "Tikus", "Ulat Kompos", "Tungau", "Thrips", "Aphids","Ulat"];
 
 const KATEGORI_SEMAI = [
   { key: "keriting", label: "Keriting", icon: "🍃", color: "#FFB300", subkategori: [] },
