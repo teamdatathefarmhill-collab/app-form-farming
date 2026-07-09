@@ -43,7 +43,7 @@ const TIPE_GH = [
     key: "kolam", label: "Kolam", icon: "🏊", color: "#00897B",
     pattern: (gh) => {
       const upper = gh.toUpperCase().trim();
-      if (upper === "SAWAHAN TUNNEL") return false;
+      if (upper === "SAWAHAN TUNNEL 1") return false;
       if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return (n >= 1 && n <= 11) || n === 13; }
       if (upper.startsWith("SAWAHAN")) { const n = parseInt(upper.replace("SAWAHAN","").trim()); return n >= 1 && n <= 4; }
       return false;
@@ -61,7 +61,7 @@ const TIPE_GH = [
     key: "rnd", label: "RnD", icon: "🔬", color: "#7B1FA2",
     pattern: (gh) => {
       const upper = gh.toUpperCase().trim();
-      if (upper === "SAWAHAN TUNNEL") return true;
+      if (upper === "SAWAHAN TUNNEL 1") return true;
       if (upper === "OPEN FIELD 1") return true;
       if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return n === 22; }
       return false;
@@ -86,7 +86,7 @@ function hstTerdekat(hst) {
   );
 }
 
-const RND_GH_LIST = ["TOHUDAN 22", "SAWAHAN TUNNEL", "OPEN FIELD 1"];
+const RND_GH_LIST = ["TOHUDAN 22", "SAWAHAN TUNNEL 1", "OPEN FIELD 1"];
 const LEBAR_DAUN_RND_OPTIONS = ["Buruk", "Sedang", "Baik"];
 
 function isRndGH(gh) {

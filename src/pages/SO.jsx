@@ -23,7 +23,7 @@ function buildGHNames() {
   const kolam = [
     ...Array.from({ length: 14 }, (_, i) => `TOHUDAN ${i + 1}`),
     ...["SAWAHAN 1","SAWAHAN 2","SAWAHAN 3","SAWAHAN 4"],
-    "TOHUDAN 22","SAWAHAN TUNNEL",
+    "TOHUDAN 22","SAWAHAN TUNNEL 1",
   ];
   const dutch_bucket = Array.from({ length: 7 }, (_, i) => `TOHUDAN ${i + 15}`);
   return { drip, kolam, dutch_bucket };

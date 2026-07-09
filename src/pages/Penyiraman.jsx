@@ -7,7 +7,7 @@ const SCRIPT_URL = import.meta.env.VITE_GAS_PENYIRAMAN_URL;
 
 const GH_PER_TIPE = {
   "RnD": [
-    "SAWAHAN TUNNEL", "TOHUDAN 22", "OPEN FIELD 1"
+    "SAWAHAN TUNNEL 1", "TOHUDAN 22", "OPEN FIELD 1"
   ],
   "Kolam (Tohudan)": [
     "TOHUDAN 1","TOHUDAN 2","TOHUDAN 3","TOHUDAN 4","TOHUDAN 5","TOHUDAN 6",

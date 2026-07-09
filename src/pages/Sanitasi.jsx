@@ -58,7 +58,7 @@ const TIPE_GH = [
     key: "rnd", label: "RnD", icon: "🧪", color: "#8E24AA",
     pattern: (gh) => {
       const upper = gh.toUpperCase();
-      return upper === "SAWAHAN TUNNEL" || upper === "TOHUDAN 22" || upper === "OPEN FIELD 1";
+      return upper === "SAWAHAN TUNNEL 1" || upper === "TOHUDAN 22" || upper === "OPEN FIELD 1";
     },
   },
   {
