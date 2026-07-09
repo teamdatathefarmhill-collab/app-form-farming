@@ -68,17 +68,19 @@ const TIPE_GH = [
 ];
 
 // ─── Kategori sanitasi ────────────────────────────────────────────────────────
+const HAMA_SUBKATEGORI = ["Nematoda", "Tikus", "Ulat Kompos", "Tungau", "Thrips", "Aphids"];
+
 const KATEGORI_SEMAI = [
   { key: "keriting", label: "Keriting", icon: "🍃", color: "#FFB300", subkategori: [] },
   { key: "mozaik",   label: "Mozaik",   icon: "🦠", color: "#AB47BC", subkategori: [] },
   { key: "gsb",      label: "GSB",      icon: "⚠️", color: "#E53935", subkategori: [] },
-  { key: "hama",     label: "Hama",     icon: "🐛", color: "#FF7043", subkategori: [] },
+  { key: "hama",     label: "Hama",     icon: "🐛", color: "#FF7043", subkategori: HAMA_SUBKATEGORI },
   { key: "fisik",    label: "Fisik",    icon: "🌿", color: "#4CAF50", subkategori: ["Patah Tangkai", "Tanpa Pucuk", "Abnormal","Busuk pangkal & Layu"] },
 ];
 
 const KATEGORI = [
   { key: "fisik",    label: "Fisik",    icon: "🌿", color: "#4CAF50", subkategori: ["Patah Tangkai", "Tanpa Pucuk", "Abnormal","Busuk pangkal & Layu"] },
-  { key: "hama",     label: "Hama",     icon: "🐛", color: "#FF7043", subkategori: [] },
+  { key: "hama",     label: "Hama",     icon: "🐛", color: "#FF7043", subkategori: HAMA_SUBKATEGORI },
   { key: "keriting", label: "Keriting", icon: "🍃", color: "#FFB300", subkategori: [] },
   { key: "mozaik",   label: "Mozaik",   icon: "🦠", color: "#AB47BC", subkategori: [] },
   { key: "dm",       label: "DM",       icon: "💧", color: "#1E88E5", subkategori: [] },
