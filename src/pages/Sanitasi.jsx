@@ -78,8 +78,11 @@ const KATEGORI_SEMAI = [
   { key: "fisik",    label: "Fisik",    icon: "🌿", color: "#4CAF50", subkategori: ["Patah Tangkai", "Tanpa Pucuk", "Abnormal","Busuk pangkal & Layu"] },
 ];
 
+const LAYU_SUBKATEGORI = ["Menyempit Kering", "Menyempit Berlendir", "Busuk Kering", "Busuk Berlendir"];
+
 const KATEGORI = [
-  { key: "fisik",    label: "Fisik",    icon: "🌿", color: "#4CAF50", subkategori: ["Patah Tangkai", "Tanpa Pucuk", "Abnormal","Busuk pangkal & Layu"] },
+  { key: "fisik",    label: "Fisik",    icon: "🌿", color: "#4CAF50", subkategori: ["Patah Tangkai", "Tanpa Pucuk", "Abnormal", "Busuk Pangkal"] },
+  { key: "layu",     label: "Layu",     icon: "🥀", color: "#6D4C41", subkategori: LAYU_SUBKATEGORI },
   { key: "hama",     label: "Hama",     icon: "🐛", color: "#FF7043", subkategori: HAMA_SUBKATEGORI },
   { key: "keriting", label: "Keriting", icon: "🍃", color: "#FFB300", subkategori: [] },
   { key: "mozaik",   label: "Mozaik",   icon: "🦠", color: "#AB47BC", subkategori: [] },
@@ -124,7 +127,7 @@ function totalPerVarianSemai(d = {}) {
 function initVarianData(varianList) {
   const obj = {};
   varianList.forEach((v) => {
-    obj[v] = { fisik: "", hama: "", keriting: "", mozaik: "", dm: "", gsb: "", semai: "", buah: "", keterangan: "", sub: {} };
+    obj[v] = { fisik: "", layu: "", hama: "", keriting: "", mozaik: "", dm: "", gsb: "", semai: "", buah: "", keterangan: "", sub: {} };
   });
   return obj;
 }
@@ -511,7 +514,7 @@ export default function Sanitasi() {
       if (isSemai) {
         return { ...basePayload, keriting: d.keriting || 0, mozaik: d.mozaik || 0, gsb: d.gsb || 0, hama: d.hama || 0, fisik: d.fisik || 0 };
       }
-      return { ...basePayload, fisik: d.fisik || 0, hama: d.hama || 0, keriting: d.keriting || 0, mozaik: d.mozaik || 0, dm: d.dm || 0, gsb: d.gsb || 0, semai: d.semai || 0, buah: d.buah || 0 };
+      return { ...basePayload, fisik: d.fisik || 0, layu: d.layu || 0, hama: d.hama || 0, keriting: d.keriting || 0, mozaik: d.mozaik || 0, dm: d.dm || 0, gsb: d.gsb || 0, semai: d.semai || 0, buah: d.buah || 0 };
     });
   };
 
