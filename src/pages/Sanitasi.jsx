@@ -88,6 +88,7 @@ const KATEGORI = [
   { key: "mozaik",   label: "Mozaik",   icon: "🦠", color: "#AB47BC", subkategori: [] },
   { key: "dm",       label: "DM",       icon: "💧", color: "#1E88E5", subkategori: [] },
   { key: "gsb",      label: "GSB",      icon: "⚠️", color: "#E53935", subkategori: [] },
+  { key: "patogen",  label: "Patogen",  icon: "🦠", color: "#546E7A", subkategori: [] },
   { key: "semai",    label: "Semai",    icon: "🌱", color: "#00897B", subkategori: ["Layu", "Stunting"] },
   { key: "buah",     label: "Buah",     icon: "🍅", color: "#F4511E", subkategori: ["Buah Tidak Produktif", "Crack", "Buah Cacar/Peyang", "Busuk Buah"] },
 ];
@@ -127,7 +128,7 @@ function totalPerVarianSemai(d = {}) {
 function initVarianData(varianList) {
   const obj = {};
   varianList.forEach((v) => {
-    obj[v] = { fisik: "", layu: "", hama: "", keriting: "", mozaik: "", dm: "", gsb: "", semai: "", buah: "", keterangan: "", sub: {} };
+    obj[v] = { fisik: "", layu: "", hama: "", keriting: "", mozaik: "", dm: "", gsb: "", patogen: "", semai: "", buah: "", keterangan: "", sub: {} };
   });
   return obj;
 }
@@ -514,7 +515,7 @@ export default function Sanitasi() {
       if (isSemai) {
         return { ...basePayload, keriting: d.keriting || 0, mozaik: d.mozaik || 0, gsb: d.gsb || 0, hama: d.hama || 0, fisik: d.fisik || 0 };
       }
-      return { ...basePayload, fisik: d.fisik || 0, layu: d.layu || 0, hama: d.hama || 0, keriting: d.keriting || 0, mozaik: d.mozaik || 0, dm: d.dm || 0, gsb: d.gsb || 0, semai: d.semai || 0, buah: d.buah || 0 };
+      return { ...basePayload, fisik: d.fisik || 0, layu: d.layu || 0, hama: d.hama || 0, keriting: d.keriting || 0, mozaik: d.mozaik || 0, dm: d.dm || 0, gsb: d.gsb || 0, patogen: d.patogen || 0, semai: d.semai || 0, buah: d.buah || 0 };
     });
   };
 
