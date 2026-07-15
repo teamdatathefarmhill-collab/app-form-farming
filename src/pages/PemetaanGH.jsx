@@ -36,19 +36,28 @@ function varianDisplayName(nama) {
   return (nama || "").replace(/\s+\d+\s*$/, "").trim();
 }
 
-// ─── Label kartu baris (mis. "G1") cukup ditampilkan hurufnya saja ("G") ──
-// Kode baris asli (dengan angka) tetap dipakai untuk rekap/payload ke sheet.
+// ─── Huruf dasar baris (mis. "G1" → "G", "M2" → "M") — dipakai untuk
+// menggabungkan baris sumber yang terpecah per varian, dan sebagai label kartu. ──
 function barisDisplayLabel(baris) {
   return (baris || "").replace(/\d+\s*$/, "").trim();
 }
 
+// ─── Baris sumber bisa terpecah per varian (mis. "M1", "M2" untuk blok M yang
+// ditanami 2 varian). Baris dengan huruf dasar sama digabung jadi satu kartu
+// dengan beberapa entri varian, supaya rekap otomatis jadi "M Sunray 161, Midori 39". ──
 function buildBarisRows(produksiInfo) {
   const baris = produksiInfo?.baris || [];
-  const reguler = baris.map((b) => ({
-    baris: b.baris,
-    isSulaman: false,
-    entries: [{ varian: b.varian || "", jumlah: "" }],
-  }));
+  const reguler = [];
+  const groupIdx = {};
+  baris.forEach((b) => {
+    const label = barisDisplayLabel(b.baris) || b.baris;
+    if (groupIdx[label] === undefined) {
+      groupIdx[label] = reguler.length;
+      reguler.push({ baris: label, isSulaman: false, entries: [{ varian: b.varian || "", jumlah: "" }] });
+    } else {
+      reguler[groupIdx[label]].entries.push({ varian: b.varian || "", jumlah: "" });
+    }
+  });
   return [
     ...reguler,
     { baris: "Sulaman", isSulaman: true, entries: [emptyEntry()] },
