@@ -29,6 +29,13 @@ function fmtNum(n) {
 
 function emptyEntry() { return { varian: "", jumlah: "" }; }
 
+// ─── Nama varian di sheet bisa punya suffix angka batch (mis. "Greeniegal 1") ──
+// Dropdown cukup tampilkan nama dasarnya; angkanya tetap dipakai apa adanya
+// di value/rekap supaya tetap cocok dengan referensi semai per varian.
+function varianDisplayName(nama) {
+  return (nama || "").replace(/\s+\d+\s*$/, "").trim();
+}
+
 function buildBarisRows(produksiInfo) {
   const baris = produksiInfo?.baris || [];
   const reguler = baris.map((b) => ({
@@ -469,7 +476,7 @@ export default function PemetaanGH() {
                           <select value={entry.varian} onChange={(e) => updateEntry(rowIdx, entryIdx, "varian", e.target.value)}
                             style={{ flex: 1, padding: "8px 9px", borderRadius: 8, border: "1.5px solid #e0e0e0", background: "#fafafa", fontSize: 12.5, fontWeight: 600, color: "#333" }}>
                             <option value="">Pilih varian</option>
-                            {varianOptions.map((v) => <option key={v} value={v}>{v}</option>)}
+                            {varianOptions.map((v) => <option key={v} value={v}>{varianDisplayName(v)}</option>)}
                           </select>
                           <input type="number" inputMode="numeric" value={entry.jumlah}
                             onChange={(e) => updateEntry(rowIdx, entryIdx, "jumlah", e.target.value)}
