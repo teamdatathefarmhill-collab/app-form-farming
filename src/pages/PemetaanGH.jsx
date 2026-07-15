@@ -36,6 +36,12 @@ function varianDisplayName(nama) {
   return (nama || "").replace(/\s+\d+\s*$/, "").trim();
 }
 
+// ─── Label kartu baris (mis. "G1") cukup ditampilkan hurufnya saja ("G") ──
+// Kode baris asli (dengan angka) tetap dipakai untuk rekap/payload ke sheet.
+function barisDisplayLabel(baris) {
+  return (baris || "").replace(/\d+\s*$/, "").trim();
+}
+
 function buildBarisRows(produksiInfo) {
   const baris = produksiInfo?.baris || [];
   const reguler = baris.map((b) => ({
@@ -459,7 +465,7 @@ export default function PemetaanGH() {
                         {!row.isSulaman && (
                           isManualLabel
                             ? <input value={row.baris} onChange={(e) => updateBarisLabel(rowIdx, e.target.value)} placeholder="Nama baris" style={{ width: 90, padding: "3px 6px", borderRadius: 6, border: "1px solid #a5d6a7", fontSize: 12, fontWeight: 700 }} />
-                            : `Baris ${row.baris}`
+                            : `Baris ${barisDisplayLabel(row.baris)}`
                         )}
                         {row.isSulaman && <span style={{ fontWeight: 600, fontSize: 10, opacity: 0.75 }}>(opsional, di luar total)</span>}
                       </span>
