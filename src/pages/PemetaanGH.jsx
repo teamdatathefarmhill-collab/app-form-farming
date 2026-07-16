@@ -260,10 +260,15 @@ export default function PemetaanGH() {
     operator: operator.trim(),
     rows: barisRows
       .filter((r) => r.entries.some((e) => e.varian && e.jumlah !== ""))
-      .map((r) => ({
-        baris: r.baris,
-        text: `${r.baris} ${r.entries.filter((e) => e.varian && e.jumlah !== "").map((e) => `${e.varian} ${e.jumlah}`).join(", ")}`,
-      })),
+      .map((r) => {
+        const validEntries = r.entries.filter((e) => e.varian && e.jumlah !== "");
+        return {
+          baris: r.baris,
+          isSulaman: r.isSulaman,
+          text: `${r.baris} ${validEntries.map((e) => `${e.varian} ${e.jumlah}`).join(", ")}`,
+          entries: validEntries.map((e) => ({ varian: e.varian, jumlah: parseInt(e.jumlah) || 0 })),
+        };
+      }),
     selisih: mismatches.map((v) => ({
       varian: v,
       referensi: referensiMap[v] || 0,

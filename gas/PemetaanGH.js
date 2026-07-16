@@ -2,7 +2,9 @@
 // Google Apps Script — Pemetaan GH Produksi
 // Output spreadsheet :
 //   https://docs.google.com/spreadsheets/d/1BdmHTbxtzEu3PKRJ607Tm4fDJehKAPw1Pbo5mEEqNi8
-//   Sheet "Data"        — dibaca oleh pipeline R (jangan ubah urutan kolom A-D)
+//   Sheet "Data"        — dibaca oleh pipeline R (jangan ubah urutan kolom A-D). Baris reguler saja (Sulaman tidak masuk sini).
+//   Sheet "Rekap"       — baris reguler dipecah per varian. Kalau 1 baris ada >1 varian, label baris diberi angka urut (A1, A2, ...); kalau cuma 1 varian tetap label baris tanpa angka.
+//   Sheet "Sulaman"     — baris Sulaman dipecah per varian, terpisah dari sheet Data.
 //   Sheet "Selisih Log" — catatan selisih realisasi vs referensi semai
 //
 // Referensi ruang semai : Data sprout (New)
@@ -10,17 +12,23 @@
 //
 // ENDPOINT:
 //   GET  ?action=getSemaiRef   → { semai: { [ghTujuan]: { periode, tanam, varian:[{nama,populasi}] } } }
-//   POST { action:"submitPemetaan", tanggal, gh, periode, operator, rows:[{baris,text}], selisih:[{varian,referensi,realisasi,selisih,keterangan}] }
+//   POST { action:"submitPemetaan", tanggal, gh, periode, operator,
+//          rows:[{baris,isSulaman,text,entries:[{varian,jumlah}]}],
+//          selisih:[{varian,referensi,realisasi,selisih,keterangan}] }
 // ============================================================
 
 const SS_OUTPUT_ID  = '1BdmHTbxtzEu3PKRJ607Tm4fDJehKAPw1Pbo5mEEqNi8';
 const SHEET_DATA     = 'Data';
+const SHEET_REKAP    = 'Rekap';
+const SHEET_SULAMAN  = 'Sulaman';
 const SHEET_SELISIH  = 'Selisih Log';
 
 // Kolom sheet "Data" — HARUS tetap A:Tanggal Tanam, B:GH, C:Periode, D:Text
 // karena dibaca langsung by-position oleh pipeline R. Operator ditambah di kolom E
 // (aman, pipeline R cuma baca 4 kolom itu by name).
 const HEADER_DATA    = ['Tanggal Tanam', 'GH', 'Periode', 'Text', 'Operator'];
+const HEADER_REKAP   = ['Tanggal Tanam', 'GH', 'Periode', 'Baris', 'Varian', 'Total'];
+const HEADER_SULAMAN = ['Tanggal Tanam', 'GH', 'Periode', 'Varian', 'Jumlah', 'Operator'];
 const HEADER_SELISIH = ['Tanggal', 'GH', 'Periode', 'Varian', 'Referensi', 'Realisasi', 'Selisih', 'Keterangan', 'Operator'];
 
 const SS_SEMAI_ID   = '1WPHh2-wVLgMBFmV847jSmg-syJgfY_YPTbC5b0Rniuo'; // Data sprout (New)
@@ -76,7 +84,8 @@ function getSemaiRef() {
   const colSemai    = header.indexOf('SEMAI');
   const colTanam    = header.indexOf('TANAM');
   const colVarian   = header.findIndex(function (h) { return h.indexOf('VARIAN') >= 0; });
-  const colPopulasi = header.indexOf('POPULASI');
+  // Referensi harus dari "Populasi akhir", bukan "Populasi" (populasi awal sebelum grading)
+  const colPopulasi = header.findIndex(function (h) { return h.indexOf('POPULASI') >= 0 && h.indexOf('AKHIR') >= 0; });
 
   const parseISO = function (val) {
     if (!val) return '';
@@ -144,9 +153,26 @@ function submitPemetaan(data) {
   const periode   = data.periode || '';
   const operator  = data.operator || '';
 
-  const sheetData = getOrCreateSheet(ss, SHEET_DATA, HEADER_DATA);
+  const sheetData    = getOrCreateSheet(ss, SHEET_DATA, HEADER_DATA);
+  const sheetRekap   = getOrCreateSheet(ss, SHEET_REKAP, HEADER_REKAP);
+  const sheetSulaman = getOrCreateSheet(ss, SHEET_SULAMAN, HEADER_SULAMAN);
+  const ghUpper = gh.toUpperCase();
+
   (data.rows || []).forEach(function (row) {
-    sheetData.appendRow([tglDate, gh.toUpperCase(), periode, row.text || '', operator]);
+    const entries = row.entries || [];
+
+    if (row.isSulaman) {
+      entries.forEach(function (e) {
+        sheetSulaman.appendRow([tglDate, ghUpper, periode, e.varian || '', e.jumlah || 0, operator]);
+      });
+      return;
+    }
+
+    sheetData.appendRow([tglDate, ghUpper, periode, row.text || '', operator]);
+    entries.forEach(function (e, idx) {
+      const label = entries.length > 1 ? (row.baris + (idx + 1)) : row.baris;
+      sheetRekap.appendRow([tglDate, ghUpper, periode, label, e.varian || '', e.jumlah || 0]);
+    });
   });
 
   const selisih = data.selisih || [];
@@ -198,9 +224,9 @@ function testSubmitPemetaan() {
     periode: '26.3',
     operator: 'Test Operator',
     rows: [
-      { baris: 'A', text: 'A Greeniegal 196' },
-      { baris: 'M', text: 'M Sunray 161, Midori 39' },
-      { baris: 'Sulaman', text: 'Sulaman Midori 121, Greeniegal 64' },
+      { baris: 'A', text: 'A Greeniegal 196', entries: [{ varian: 'Greeniegal', jumlah: 196 }] },
+      { baris: 'M', text: 'M Sunray 161, Midori 39', entries: [{ varian: 'Sunray', jumlah: 161 }, { varian: 'Midori', jumlah: 39 }] },
+      { baris: 'Sulaman', isSulaman: true, text: 'Sulaman Midori 121, Greeniegal 64', entries: [{ varian: 'Midori', jumlah: 121 }, { varian: 'Greeniegal', jumlah: 64 }] },
     ],
     selisih: [
       { varian: 'S7', referensi: 210, realisasi: 200, selisih: -10, keterangan: 'Test dari GAS - boleh dihapus' },
