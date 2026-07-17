@@ -341,25 +341,15 @@ export default function Sanitasi() {
           }
         }
 
-        // Kirim semua payload per varian
-        let allSuccess = true;
-        for (const payload of record.payloads) {
-          try {
-            await fetch(SCRIPT_URL, {
-              method: "POST",
-              headers: { "Content-Type": "text/plain" },
-              body: JSON.stringify({ ...payload, fotoUrl: resolvedFotoUrl }),
-              redirect: "follow",
-            });
-          } catch {
-            allSuccess = false;
-            break;
-          }
-        }
+        // Kirim satu payload berisi semua varian
+        await fetch(SCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify({ ...record.payload, fotoUrl: resolvedFotoUrl }),
+          redirect: "follow",
+        });
 
-        if (allSuccess) {
-          await idbDelete(DB_NAME, record.id);
-        }
+        await idbDelete(DB_NAME, record.id);
       } catch {
         // Skip record ini, coba lagi nanti
       }
@@ -483,10 +473,10 @@ export default function Sanitasi() {
     });
   };
 
-  // ── Buat array payload per varian (dipakai saat online dan offline) ──
-  const buildPayloads = () => {
+  // ── Buat satu payload berisi semua varian sekaligus (dipakai saat online dan offline) ──
+  const buildPayload = () => {
     const client_timestamp = new Date().toISOString();
-    return varianList.map((varian) => {
+    const rows = varianList.map((varian) => {
       const d = varianData[varian] || {};
       const subKetArr = [];
       activeKategori.forEach((k) => {
@@ -498,44 +488,43 @@ export default function Sanitasi() {
         }
       });
       const keteranganFinal = [d.keterangan, ...subKetArr].filter(Boolean).join(" | ");
-      const basePayload = {
-        action: "submitSanitasi",
-        client_timestamp,
-        tanggal: todayISO,
-        gh: selectedGH,
-        tipe: isSemai ? "semai" : "produksi",
-        ruang_semai: isSemai ? selectedRuangSemai : "",
-        periode: isSemai ? (semaiInfo?.periode || "") : (ghInfo?.periode || ""),
-        hst: hst ?? "",
-        varian,
-        operator: operator || "",
-        keterangan: keteranganFinal,
-        fotoUrl: "",
-      };
+      const baseRow = { varian, keterangan: keteranganFinal };
       if (isSemai) {
-        return { ...basePayload, keriting: d.keriting || 0, mozaik: d.mozaik || 0, gsb: d.gsb || 0, hama: d.hama || 0, fisik: d.fisik || 0 };
+        return { ...baseRow, keriting: d.keriting || 0, mozaik: d.mozaik || 0, gsb: d.gsb || 0, hama: d.hama || 0, fisik: d.fisik || 0 };
       }
-      return { ...basePayload, fisik: d.fisik || 0, layu: d.layu || 0, hama: d.hama || 0, keriting: d.keriting || 0, mozaik: d.mozaik || 0, dm: d.dm || 0, gsb: d.gsb || 0, semai: d.semai || 0, buah: d.buah || 0 };
+      return { ...baseRow, fisik: d.fisik || 0, layu: d.layu || 0, hama: d.hama || 0, keriting: d.keriting || 0, mozaik: d.mozaik || 0, dm: d.dm || 0, gsb: d.gsb || 0, semai: d.semai || 0, buah: d.buah || 0 };
     });
+
+    return {
+      action: "submitSanitasi",
+      client_timestamp,
+      tanggal: todayISO,
+      gh: selectedGH,
+      tipe: isSemai ? "semai" : "produksi",
+      ruang_semai: isSemai ? selectedRuangSemai : "",
+      periode: isSemai ? (semaiInfo?.periode || "") : (ghInfo?.periode || ""),
+      hst: hst ?? "",
+      operator: operator || "",
+      fotoUrl: "",
+      rows,
+    };
   };
 
   const handleSubmit = async () => {
     setSyncing(true);
     setSubmitError(null);
-    setSyncProgress({ done: 0, total: varianList.length });
+    setSyncProgress({ done: 0, total: 1 });
 
     // ── Mode Demo ──
     if (isDemoMode) {
-      for (let i = 0; i < varianList.length; i++) {
-        await new Promise((r) => setTimeout(r, 700));
-        setSyncProgress({ done: i + 1, total: varianList.length });
-      }
+      await new Promise((r) => setTimeout(r, 700));
+      setSyncProgress({ done: 1, total: 1 });
       setStep(4);
       setSyncing(false);
       return;
     }
 
-    const payloads = buildPayloads();
+    const payload = buildPayload();
 
     // ══ MODE OFFLINE ══════════════════════════════════════════════════════════
     if (!isOnline) {
@@ -563,7 +552,7 @@ export default function Sanitasi() {
           tanggal: todayISO,
           gh: selectedGH,
           createdAt: Date.now(),
-          payloads,
+          payload,
           fotoBase64,
           fotoMimeType,
           fotoFileName,
@@ -616,22 +605,18 @@ export default function Sanitasi() {
       } catch { resolvedSelfieUrl = ""; }
     }
 
-    let done = 0;
-    for (const payload of payloads) {
-      try {
-        await fetch(SCRIPT_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify({ ...payload, fotoUrl: resolvedFotoUrl || "", selfieUrl: resolvedSelfieUrl || "" }),
-          redirect: "follow",
-        });
-        done++;
-        setSyncProgress({ done, total: varianList.length });
-      } catch {
-        setSubmitError(`Gagal mengirim varian ${payload.varian}, cek koneksi`);
-        setSyncing(false);
-        return;
-      }
+    try {
+      await fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({ ...payload, fotoUrl: resolvedFotoUrl || "", selfieUrl: resolvedSelfieUrl || "" }),
+        redirect: "follow",
+      });
+      setSyncProgress({ done: 1, total: 1 });
+    } catch {
+      setSubmitError("Gagal mengirim data, cek koneksi");
+      setSyncing(false);
+      return;
     }
 
     setStep(4);
@@ -1039,7 +1024,7 @@ export default function Sanitasi() {
                 <div style={{ fontSize: 12, color: "#777", marginBottom: 6 }}>
                   {fotoUploading
                     ? "⏳ Upload foto ke Drive..."
-                    : `Menyimpan ${syncProgress.done}/${syncProgress.total} varian...`}
+                    : `Mengirim ${varianList.length} varian...`}
                 </div>
                 <div style={{ background: "#e0e0e0", borderRadius: 4, overflow: "hidden", height: 6 }}>
                   <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg, #2e7d32, #4CAF50)", width: `${syncProgress.total > 0 ? (syncProgress.done / syncProgress.total) * 100 : 0}%`, transition: "width 0.4s ease" }} />
@@ -1132,7 +1117,7 @@ export default function Sanitasi() {
               style={{ flex: 2, padding: "14px", background: syncing ? "rgba(76,175,80,0.3)" : isDemoMode ? "linear-gradient(135deg, #5d4037, #795548)" : !isOnline ? "linear-gradient(135deg, #1565C0, #1976D2)" : "linear-gradient(135deg, #1b5e20, #2e7d32)", border: "none", borderRadius: 12, color: "#fff", fontSize: 15, fontWeight: 700, cursor: syncing ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
             >
               {syncing
-                ? (fotoUploading ? "⏳ Upload foto..." : `⏳ ${syncProgress.done}/${syncProgress.total}...`)
+                ? (fotoUploading ? "⏳ Upload foto..." : "⏳ Mengirim...")
                 : isDemoMode
                   ? "Submit Demo 🧪"
                   : !isOnline
