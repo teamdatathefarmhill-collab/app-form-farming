@@ -960,8 +960,8 @@ export default function Sanitasi() {
             <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: 12, overflow: "hidden", marginBottom: 16 }}>
               {[
                 { label: "Greenhouse",     value: selectedGH },
-                { label: "Periode",        value: ghInfo?.periode },
-                { label: "HST",            value: hst !== null ? `${hst} hari` : "-" },
+                { label: "Periode",        value: isSemai ? semaiInfo?.periode : ghInfo?.periode },
+                { label: isSemai ? "HSS" : "HST", value: hst !== null ? `${hst} hari` : "-" },
                 { label: "Tanggal",        value: todayISO },
                 { label: "Operator",       value: operator },
                 { label: "Total Sanitasi", value: `${totalSemuaVarian} tanaman (${varianList.length} varian)` },
@@ -1081,7 +1081,7 @@ export default function Sanitasi() {
 
             <div style={{ background: isDemoMode ? "#fff8e1" : savedOffline ? "#e3f2fd" : "#e8f5e9", border: `1px solid ${isDemoMode ? "#ffe082" : savedOffline ? "#90CAF9" : "#a5d6a7"}`, borderRadius: 12, padding: "14px 16px", margin: "20px 0", textAlign: "left" }}>
               <div style={{ fontSize: 12, color: isDemoMode ? "#f57f17" : savedOffline ? "#1565C0" : "#2e7d32", marginBottom: 10, fontWeight: 600 }}>Ringkasan</div>
-              <div style={{ fontSize: 13, color: "#333", fontWeight: 600 }}>{selectedGH} · Periode {ghInfo?.periode} · {hst} HST</div>
+              <div style={{ fontSize: 13, color: "#333", fontWeight: 600 }}>{selectedGH} · Periode {isSemai ? semaiInfo?.periode : ghInfo?.periode} · {hst} {isSemai ? "HSS" : "HST"}</div>
               <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>Operator: {operator}</div>
               <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 4 }}>
                 {varianList.map((v) => (
