@@ -89,7 +89,7 @@ const KATEGORI = [
   { key: "dm",       label: "DM",       icon: "💧", color: "#1E88E5", subkategori: [] },
   { key: "gsb",      label: "GSB",      icon: "⚠️", color: "#E53935", subkategori: [] },
   { key: "patogen",  label: "Patogen",  icon: "🦠", color: "#546E7A", subkategori: [] },
-  { key: "semai",    label: "Semai",    icon: "🌱", color: "#00897B", subkategori: ["Layu", "Stunting"] },
+  { key: "semai",    label: "Semai",    icon: "🌱", color: "#00897B", subkategori: ["Layu", "Stunting","Abnormal"] },
   { key: "buah",     label: "Buah",     icon: "🍅", color: "#F4511E", subkategori: ["Buah Tidak Produktif", "Crack", "Buah Cacar/Peyang", "Busuk Buah","Pecah"] },
 ];
 
