@@ -256,12 +256,27 @@ export default function PemetaanGH() {
     ? `Sulaman ${sulamanRow.entries.filter((e) => e.varian && e.jumlah !== "").map((e) => `${e.varian} ${e.jumlah}`).join(", ")}`
     : null;
 
+  // ── Breakdown total per varian = jumlah semua entries di semua baris (termasuk Sulaman),
+  // dikelompokkan per nama dasar varian (tanpa suffix batch semai). ──
+  const breakdownVarianMap = {};
+  barisRows.forEach((row) => {
+    row.entries.forEach((e) => {
+      if (!e.varian || e.jumlah === "") return;
+      const nama = varianDisplayName(e.varian);
+      breakdownVarianMap[nama] = (breakdownVarianMap[nama] || 0) + (parseInt(e.jumlah) || 0);
+    });
+  });
+  const breakdownVarianLines = Object.entries(breakdownVarianMap).map(([nama, jumlah]) => `${nama} ${fmtNum(jumlah)}`);
+
   const clipboardText = [
     `PEMETAAN GH ${selectedGH.toUpperCase()}`,
     todayLabel,
     ...barisLines,
     ...(sulamanLine ? [sulamanLine] : []),
     `Total tanaman ${fmtNum(totalUtama)}`,
+    "",
+    "Breakdown per Varian:",
+    ...breakdownVarianLines,
   ].join("\n");
 
   const buildPayload = () => ({
