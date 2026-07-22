@@ -578,12 +578,12 @@ export default function PemetaanGH() {
               <div style={{ background: "#fff3e0", border: "1px solid #e65100", borderRadius: 13, padding: "13px 14px", marginBottom: 14 }}>
                 <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase", color: "#e65100", marginBottom: 9 }}>⚠️ Keterangan Selisih ({mismatches.length} varian)</div>
                 {mismatches.map((v) => (
-                  <div key={v} style={{ marginBottom: 8 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 800, color: "#333" }}>
+                  <div key={v} style={{ marginBottom: 6 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 11.5, fontWeight: 800, color: "#333" }}>
                       <span>{v}</span>
-                      <span style={{ color: "#e65100" }}>Realisasi {fmtNum(realisasiMap[v] || 0)} vs Referensi {fmtNum(referensiMap[v])} ({(realisasiMap[v] || 0) - referensiMap[v] > 0 ? "+" : ""}{(realisasiMap[v] || 0) - referensiMap[v]})</span>
+                      <span style={{ color: "#e65100", textAlign: "right" }}>{fmtNum(realisasiMap[v] || 0)} vs {fmtNum(referensiMap[v])} ({(realisasiMap[v] || 0) - referensiMap[v] > 0 ? "+" : ""}{(realisasiMap[v] || 0) - referensiMap[v]})</span>
                     </div>
-                    <div style={{ background: "#fff", borderRadius: 8, padding: "8px 10px", border: "1px solid #eee", fontSize: 12, color: "#333", marginTop: 4 }}>
+                    <div style={{ background: "#fff", borderRadius: 8, padding: "6px 10px", border: "1px solid #eee", fontSize: 12, color: "#333", marginTop: 3 }}>
                       "{keteranganSelisih[v]}"
                     </div>
                   </div>
@@ -597,15 +597,17 @@ export default function PemetaanGH() {
 
             <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: 13, padding: "13px 14px", marginBottom: 16 }}>
               <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase", color: "#1b5e20", marginBottom: 8 }}>🔍 Total per Varian</div>
-              {varianList.map((v) => {
-                const ref = referensiMap[v] || 0, real = realisasiMap[v] || 0;
-                return (
-                  <div key={v} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "3px 0" }}>
-                    <span style={{ color: "#666" }}>{v}</span>
-                    <span style={{ fontWeight: 700, color: real === ref ? "#2e7d32" : "#e65100" }}>{fmtNum(real)} / {fmtNum(ref)}</span>
-                  </div>
-                );
-              })}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 14 }}>
+                {varianList.map((v) => {
+                  const ref = referensiMap[v] || 0, real = realisasiMap[v] || 0;
+                  return (
+                    <div key={v} style={{ display: "flex", justifyContent: "space-between", gap: 6, fontSize: 11.5, padding: "3px 0" }}>
+                      <span style={{ color: "#666", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v}</span>
+                      <span style={{ fontWeight: 700, whiteSpace: "nowrap", color: real === ref ? "#2e7d32" : "#e65100" }}>{fmtNum(real)}/{fmtNum(ref)}</span>
+                    </div>
+                  );
+                })}
+              </div>
               <div style={{ borderTop: "1px dashed #eee", marginTop: 8, paddingTop: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "2px 0" }}><span style={{ color: "#666" }}>Total baris (tanpa sulaman)</span><span style={{ fontWeight: 700 }}>{fmtNum(totalUtama)}</span></div>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "2px 0" }}><span style={{ color: "#666" }}>Sulaman</span><span style={{ fontWeight: 700 }}>{fmtNum(totalSulaman)}</span></div>
