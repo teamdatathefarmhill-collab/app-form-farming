@@ -433,46 +433,14 @@ export default function PemetaanGH() {
               <div style={{ background: "#f5f5f5", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#666" }}>{regulerRows.length} baris + Sulaman</div>
             </div>
 
-            {/* ── Ref panel ── */}
-            {varianList.length > 0 && (
-              <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: 13, padding: "12px 13px 6px", marginBottom: 14 }}>
-                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase", color: "#1b5e20", marginBottom: 8 }}>🌱 Referensi Populasi Akhir (Semai) vs Realisasi</div>
-                <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 54px 64px", gap: 6, fontSize: 9, textTransform: "uppercase", color: "#aaa", paddingBottom: 4 }}>
-                  <span>Varian</span><span style={{ textAlign: "right" }}>Referensi</span><span style={{ textAlign: "right" }}>Realisasi</span>
-                </div>
-                {varianList.map((v) => {
-                  const ref = referensiMap[v] || 0;
-                  const real = realisasiMap[v] || 0;
-                  const diff = real - ref;
-                  const isMismatch = diff !== 0;
-                  return (
-                    <div key={v} style={{ padding: "6px 0", borderTop: "1px dashed #eee" }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 54px 64px", gap: 6, alignItems: "baseline", fontSize: 11.5 }}>
-                        <span style={{ color: "#333", fontWeight: 600 }}>{v}</span>
-                        <span style={{ textAlign: "right", color: "#888" }}>{fmtNum(ref)}</span>
-                        <span style={{ textAlign: "right" }}>
-                          <span style={{ display: "block", fontWeight: 700, color: isMismatch ? "#e65100" : "#333" }}>{fmtNum(real)}</span>
-                          <span style={{ display: "block", fontSize: 9.5, fontWeight: 700, color: isMismatch ? "#e65100" : "#2e7d32" }}>{isMismatch ? `⚠ ${diff > 0 ? "+" : ""}${diff}` : "✓ sesuai"}</span>
-                        </span>
-                      </div>
-                      {isMismatch && (
-                        <div style={{ marginTop: 7, padding: "9px 10px", background: "#fff3e0", borderLeft: "3px solid #e65100", borderRadius: "0 8px 8px 0" }}>
-                          <div style={{ fontSize: 11, color: "#e65100", fontWeight: 700, marginBottom: 6 }}>⚠️ {v} selisih {diff > 0 ? "+" : ""}{diff} dari referensi semai — wajib jelaskan kenapa</div>
-                          <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: 0.6, textTransform: "uppercase", color: "#e65100", marginBottom: 4 }}>✎ Alasan selisih (wajib diisi)</div>
-                          <textarea
-                            rows={2}
-                            value={keteranganSelisih[v] || ""}
-                            onChange={(e) => setKeteranganSelisih((prev) => ({ ...prev, [v]: e.target.value }))}
-                            placeholder={`Contoh: ${Math.abs(diff)} bibit ${v} layu saat pindah tanam...`}
-                            style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: "1.5px solid #e65100", background: "#fff", color: "#333", fontFamily: "inherit", fontSize: 12.5, resize: "none", boxSizing: "border-box" }}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 11, color: "#2e7d32", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
+                👤 Nama Operator <span style={{ color: "#e53935" }}>*</span>
+              </label>
+              <input type="text" value={operator} onChange={(e) => setOperator(e.target.value)}
+                placeholder="Tulis nama lengkap..."
+                style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: "#fff", border: `1.5px solid ${operator.trim() ? "#81c784" : "#e0e0e0"}`, borderRadius: 10, color: "#333", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
+            </div>
 
             <div style={{ fontWeight: 700, fontSize: 15, color: "#1b5e20", margin: "0 0 2px" }}>Realisasi per Baris</div>
             <div style={{ fontSize: 12, color: "#888", marginBottom: 10 }}>Tiap baris = 1 kartu. Satu baris boleh diisi lebih dari satu varian.</div>
@@ -530,21 +498,54 @@ export default function PemetaanGH() {
               + Tambah baris tidak terdaftar
             </button>
 
-            <div style={{ marginBottom: 8 }}>
-              <label style={{ fontSize: 11, color: "#2e7d32", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
-                👤 Nama Operator <span style={{ color: "#e53935" }}>*</span>
-              </label>
-              <input type="text" value={operator} onChange={(e) => setOperator(e.target.value)}
-                placeholder="Tulis nama lengkap..."
-                style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: "#fff", border: `1.5px solid ${operator.trim() ? "#81c784" : "#e0e0e0"}`, borderRadius: 10, color: "#333", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
-            </div>
-
             {!allBarisNamed && (
               <div style={{ fontSize: 12, color: "#e65100", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>⚠️ Ada baris tambahan yang belum diberi nama</div>
             )}
             {!allRegulerFilled && allBarisNamed && (
               <div style={{ fontSize: 12, color: "#e65100", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>⚠️ Masih ada baris yang varian/jumlahnya belum lengkap</div>
             )}
+
+            {/* ── Ref panel — ditaruh paling bawah supaya operator bisa isi baris dulu tanpa scroll panjang ── */}
+            {varianList.length > 0 && (
+              <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: 13, padding: "12px 13px 6px", marginBottom: 14 }}>
+                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase", color: "#1b5e20", marginBottom: 8 }}>🌱 Referensi Populasi Akhir (Semai) vs Realisasi</div>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 54px 64px", gap: 6, fontSize: 9, textTransform: "uppercase", color: "#aaa", paddingBottom: 4 }}>
+                  <span>Varian</span><span style={{ textAlign: "right" }}>Referensi</span><span style={{ textAlign: "right" }}>Realisasi</span>
+                </div>
+                {varianList.map((v) => {
+                  const ref = referensiMap[v] || 0;
+                  const real = realisasiMap[v] || 0;
+                  const diff = real - ref;
+                  const isMismatch = diff !== 0;
+                  return (
+                    <div key={v} style={{ padding: "6px 0", borderTop: "1px dashed #eee" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 54px 64px", gap: 6, alignItems: "baseline", fontSize: 11.5 }}>
+                        <span style={{ color: "#333", fontWeight: 600 }}>{v}</span>
+                        <span style={{ textAlign: "right", color: "#888" }}>{fmtNum(ref)}</span>
+                        <span style={{ textAlign: "right" }}>
+                          <span style={{ display: "block", fontWeight: 700, color: isMismatch ? "#e65100" : "#333" }}>{fmtNum(real)}</span>
+                          <span style={{ display: "block", fontSize: 9.5, fontWeight: 700, color: isMismatch ? "#e65100" : "#2e7d32" }}>{isMismatch ? `⚠ ${diff > 0 ? "+" : ""}${diff}` : "✓ sesuai"}</span>
+                        </span>
+                      </div>
+                      {isMismatch && (
+                        <div style={{ marginTop: 7, padding: "9px 10px", background: "#fff3e0", borderLeft: "3px solid #e65100", borderRadius: "0 8px 8px 0" }}>
+                          <div style={{ fontSize: 11, color: "#e65100", fontWeight: 700, marginBottom: 6 }}>⚠️ {v} selisih {diff > 0 ? "+" : ""}{diff} dari referensi semai — wajib jelaskan kenapa</div>
+                          <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: 0.6, textTransform: "uppercase", color: "#e65100", marginBottom: 4 }}>✎ Alasan selisih (wajib diisi)</div>
+                          <textarea
+                            rows={2}
+                            value={keteranganSelisih[v] || ""}
+                            onChange={(e) => setKeteranganSelisih((prev) => ({ ...prev, [v]: e.target.value }))}
+                            placeholder={`Contoh: ${Math.abs(diff)} bibit ${v} layu saat pindah tanam...`}
+                            style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: "1.5px solid #e65100", background: "#fff", color: "#333", fontFamily: "inherit", fontSize: 12.5, resize: "none", boxSizing: "border-box" }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             {!keteranganOK && (
               <div style={{ fontSize: 12, color: "#e65100", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>⚠️ Ada selisih vs referensi semai yang belum dijelaskan</div>
             )}
