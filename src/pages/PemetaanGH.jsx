@@ -3,7 +3,6 @@ import { useDraft } from "../hooks/useDraft";
 import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
-import HelpModal from "../components/HelpModal";
 
 const DB_NAME    = "PemetaanOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_PEMETAAN_URL;
@@ -114,7 +113,6 @@ export default function PemetaanGH() {
   const [savedOffline, setSavedOffline] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [copyDone, setCopyDone]       = useState(false);
-  const [helpOpen, setHelpOpen]       = useState(false);
 
   const [pendingCount, setPendingCount] = useState(0);
   const [isSyncingPending, setIsSyncingPending] = useState(false);
@@ -364,16 +362,9 @@ export default function PemetaanGH() {
       {/* ── Header ── */}
       <div style={{ background: "#1b5e20", color: "#fff", padding: "14px 16px 10px", position: "sticky", top: 0, zIndex: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div>
-              <div style={{ fontSize: 10, opacity: 0.75, letterSpacing: 1.5, textTransform: "uppercase" }}>Pemetaan GH Produksi</div>
-              <div style={{ fontSize: 13, opacity: 0.65, marginTop: 1 }}>{todayLabel}</div>
-            </div>
-            <button onClick={() => setHelpOpen(true)}
-              style={{ width: 22, height: 22, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.5)", background: "rgba(255,255,255,0.12)", color: "#fff", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
-              aria-label="Bantuan / cara pakai">
-              i
-            </button>
+          <div>
+            <div style={{ fontSize: 10, opacity: 0.75, letterSpacing: 1.5, textTransform: "uppercase" }}>Pemetaan GH Produksi</div>
+            <div style={{ fontSize: 13, opacity: 0.65, marginTop: 1 }}>{todayLabel}</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {pendingCount > 0 && (
@@ -696,51 +687,6 @@ export default function PemetaanGH() {
           { label: "Total tanaman", value: `${fmtNum(totalUtama)} (+${fmtNum(totalSulaman)} sulaman)` },
           { label: "Operator", value: operator },
           ...(mismatches.length > 0 ? [{ label: "Selisih", value: `${mismatches.length} varian perlu keterangan` }] : []),
-        ]}
-      />
-
-      <HelpModal
-        open={helpOpen}
-        onClose={() => setHelpOpen(false)}
-        title="Cara Pakai Pemetaan GH"
-        sections={[
-          {
-            heading: "1. Pilih GH",
-            items: [
-              "Daftar GH yang muncul sama dengan referensi Sanitasi/HPT Semai — GH yang kolom Tanam-nya di Data sprout (New) masih kosong.",
-              "GH otomatis hilang dari daftar begitu kolom Tanam sudah diisi tanggal.",
-            ],
-          },
-          {
-            heading: "2. Isi Nama Operator",
-            items: [
-              "Wajib diisi nama lengkap operator yang input, taruh di paling atas biar nggak kelewat.",
-            ],
-          },
-          {
-            heading: "3. Isi Realisasi per Baris",
-            items: [
-              "Tiap baris = 1 kartu. Satu baris bisa diisi lebih dari satu varian (tekan \"+ Tambah varian\").",
-              "Dropdown varian sekarang menampilkan semua varian yang kita punya (Greenigal, Elysia, Midori, Aruni, Greenie sweet, Daegoji, S7, Sagami, Emeralda, Sunray) — nggak cuma yang ada di referensi semai GH tsb.",
-              "Baris \"Sulaman\" bersifat opsional dan tidak dihitung ke total tanaman utama.",
-              "Kalau ada baris tambahan di luar data sumber, pakai tombol \"+ Tambah baris tidak terdaftar\".",
-            ],
-          },
-          {
-            heading: "4. Referensi Populasi (Semai) vs Realisasi",
-            items: [
-              "Panel ini ada di bagian paling bawah step 2 — membandingkan jumlah realisasi tanam dengan referensi populasi akhir semai per varian.",
-              "Kalau angkanya beda (selisih), wajib isi alasan selisih sebelum bisa lanjut ke Review.",
-            ],
-          },
-          {
-            heading: "5. Review & Submit",
-            items: [
-              "Cek teks ringkasan untuk grup — bisa langsung di-copy.",
-              "Di \"Total per Varian\", format angkanya Realisasi / Referensi.",
-              "Kalau online data langsung terkirim; kalau offline data tersimpan di HP dan otomatis sync saat online lagi.",
-            ],
-          },
         ]}
       />
 

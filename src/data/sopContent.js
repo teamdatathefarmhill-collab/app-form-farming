@@ -313,6 +313,45 @@ const SOP = {
       "Temuan kerusakan harus dilaporkan ke mandor/supervisor segera.",
     ],
   },
+
+  pemetaan: {
+    title: "Pemetaan GH Produksi",
+    icon: "🗺️",
+    color: "#1b5e20",
+    description: "Form pencatatan realisasi tanam per baris saat bibit dari semai dipindah ke GH produksi.",
+    steps: [
+      {
+        step: 1,
+        title: "Pilih Greenhouse",
+        detail: "Daftar GH yang muncul sama dengan referensi Sanitasi/HPT Semai — GH yang kolom Tanam-nya di Data sprout (New) masih kosong. GH otomatis hilang dari daftar begitu kolom Tanam sudah diisi tanggal.",
+      },
+      {
+        step: 2,
+        title: "Isi Nama Operator",
+        detail: "Wajib diisi nama lengkap operator yang input.",
+      },
+      {
+        step: 3,
+        title: "Isi Realisasi per Baris",
+        detail: "Tiap baris = 1 kartu. Satu baris bisa diisi lebih dari satu varian (tekan \"+ Tambah varian\"). Dropdown varian menampilkan semua varian yang kita punya (Greenigal, Elysia, Midori, Aruni, Greenie sweet, Daegoji, S7, Sagami, Emeralda, Sunray), tidak cuma yang ada di referensi semai GH tsb. Baris \"Sulaman\" opsional dan tidak dihitung ke total tanaman utama. Kalau ada baris di luar data sumber, pakai tombol \"+ Tambah baris tidak terdaftar\".",
+      },
+      {
+        step: 4,
+        title: "Cek Referensi Populasi (Semai) vs Realisasi",
+        detail: "Panel ini ada di bagian paling bawah — membandingkan jumlah realisasi tanam dengan referensi populasi akhir semai per varian. Kalau ada selisih, wajib isi alasan selisih sebelum bisa lanjut ke Review.",
+      },
+      {
+        step: 5,
+        title: "Review & Submit",
+        detail: "Cek teks ringkasan untuk grup (bisa langsung di-copy, sudah termasuk breakdown total per varian) dan tabel Total per Varian (format Realisasi/Referensi), lalu Submit.",
+      },
+    ],
+    notes: [
+      "Kalau offline, data tersimpan di HP dan otomatis terkirim saat online kembali.",
+      "Selisih realisasi vs referensi semai wajib dijelaskan sebelum submit.",
+      "Teks untuk grup di halaman Review bisa langsung di-copy, termasuk breakdown per varian.",
+    ],
+  },
 };
 
 export default SOP;
