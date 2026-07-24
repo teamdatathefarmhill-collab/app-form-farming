@@ -11,11 +11,20 @@
 //   4. Tambahkan ke Vercel Env: VITE_GAS_GHREF_URL=<url>
 //
 // ENDPOINT:
-//   GET ?action=getGH  → { success, data, produksi, semai }
+//   GET  ?action=getGH            → { success, data, produksi, semai }
+//   GET  ?action=getGHRestartLog  → { success, data: [{timestamp,gh,periode,aksi,alasan}, ...] }
+//   POST { action:"submitGHRestart", gh, periode, aksi, alasan, client_timestamp }
+//        → tulis ke sheet "GH Restart" (dipakai tombol emergency shutdown/restart
+//          di app operator, juga jadi sumber data dashboard monitoring terpisah)
 // ============================================================
 
 const SS_ID   = "1tIJzuTBXcM7Wks03pgsyVicJUCtDs9Ak0N89K9GlKe4";
 const REF_GID = 1769062373;
+
+// Sheet "GH Restart" — log all-time shutdown/restart GH, dibuat otomatis di
+// spreadsheet SS_ID yang sama kalau belum ada. Dipakai juga sebagai sumber
+// data untuk dashboard monitoring project lain.
+const RESTART_SHEET = "GH Restart";
 
 // Spreadsheet "REF OPERATOR" — beda file dari SS_ID di atas. Dibaca langsung
 // pakai openById (tidak perlu di-bind / publish-to-web), khusus untuk jadwal
@@ -28,9 +37,104 @@ const DAILY_TASK_SHEET    = "DAILY TASK";
 // ============================================================
 function doGet(e) {
   const action = (e.parameter || {}).action;
-  if (action === "getGH")        return jsonResponse(getGHData());
-  if (action === "getDailyTask") return jsonResponse(getDailyTaskData(e));
+  if (action === "getGH")            return jsonResponse(getGHData());
+  if (action === "getDailyTask")     return jsonResponse(getDailyTaskData(e));
+  if (action === "getGHRestartLog")  return jsonResponse(getGHRestartLog());
   return jsonResponse({ success: true, app: "GHRef GAS", status: "active" });
+}
+
+// ============================================================
+// doPost
+// ============================================================
+function doPost(e) {
+  try {
+    const data = JSON.parse(e.postData.contents);
+    if (data.action === "submitGHRestart") return jsonResponse(handleSubmitGHRestart(data));
+    return jsonResponse({ success: false, error: "Action tidak dikenal: " + data.action });
+  } catch (err) {
+    return jsonResponse({ success: false, error: err.toString() });
+  }
+}
+
+// ============================================================
+// handleSubmitGHRestart — tulis baris ke sheet "GH Restart"
+// ============================================================
+function handleSubmitGHRestart(d) {
+  if (!d.gh)     return { success: false, error: "GH wajib diisi" };
+  if (!d.aksi)   return { success: false, error: "Aksi wajib diisi" };
+  if (!d.alasan) return { success: false, error: "Alasan wajib diisi" };
+
+  const ss    = SpreadsheetApp.openById(SS_ID);
+  let sheet   = ss.getSheetByName(RESTART_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(RESTART_SHEET);
+    setupHeaderGHRestart(sheet);
+  }
+  if (sheet.getLastRow() === 0) setupHeaderGHRestart(sheet);
+
+  const tsDate = d.client_timestamp ? new Date(d.client_timestamp) : new Date();
+  const tz     = "Asia/Jakarta";
+  const row = [
+    Utilities.formatDate(tsDate, tz, "yyyy-MM-dd HH:mm:ss"),
+    d.gh || "",
+    d.periode || "",
+    d.aksi || "",
+    d.alasan || "",
+  ];
+
+  const lastRow = sheet.getLastRow();
+  sheet.getRange(lastRow + 1, 1, 1, row.length).setValues([row]);
+
+  const aksiCell = sheet.getRange(lastRow + 1, 4);
+  if (String(d.aksi).toUpperCase() === "SHUTDOWN") {
+    aksiCell.setBackground("#ffcdd2").setFontColor("#b71c1c").setFontWeight("bold");
+  } else {
+    aksiCell.setBackground("#c8e6c9").setFontColor("#1b5e20").setFontWeight("bold");
+  }
+
+  return { success: true };
+}
+
+// ============================================================
+// getGHRestartLog — baca sheet "GH Restart", kembalikan semua baris (terbaru duluan)
+// ============================================================
+function getGHRestartLog() {
+  try {
+    const ss    = SpreadsheetApp.openById(SS_ID);
+    const sheet = ss.getSheetByName(RESTART_SHEET);
+    if (!sheet || sheet.getLastRow() < 2) return { success: true, data: [] };
+
+    const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues();
+    const data = rows.map(function (r) {
+      return {
+        timestamp: String(r[0] || ""),
+        gh:        String(r[1] || ""),
+        periode:   String(r[2] || ""),
+        aksi:      String(r[3] || ""),
+        alasan:    String(r[4] || ""),
+      };
+    }).reverse();
+
+    return { success: true, data: data };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+// ── Setup header sheet "GH Restart" ───────────────────────────
+function setupHeaderGHRestart(sheet) {
+  const headers = ["Timestamp", "Nama GH", "Periode", "Aksi", "Alasan"];
+  sheet.appendRow(headers);
+  sheet.setFrozenRows(1);
+
+  const hRange = sheet.getRange(1, 1, 1, headers.length);
+  hRange.setBackground("#c62828").setFontColor("#ffffff").setFontWeight("bold").setFontSize(10);
+
+  sheet.setColumnWidth(1, 155);
+  sheet.setColumnWidth(2, 130);
+  sheet.setColumnWidth(3, 90);
+  sheet.setColumnWidth(4, 100);
+  sheet.setColumnWidth(5, 300);
 }
 
 // ============================================================
