@@ -102,13 +102,37 @@ export default function EmergencyGHButton() {
             {/* ── Form aksi ── */}
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
               <div>
-                <label style={labelStyle}>Pilih GH</label>
-                <select value={gh} onChange={(e) => setGh(e.target.value)} style={inputStyle}>
-                  <option value="">-- pilih GH --</option>
-                  {ghNames.map((name) => (
-                    <option key={name} value={name}>{name}</option>
-                  ))}
-                </select>
+                <label style={labelStyle}>Pilih GH {ghNames.length > 0 && `(${ghNames.length})`}</label>
+                {ghNames.length === 0 ? (
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", padding: "8px 0" }}>
+                    Memuat data GH...
+                  </div>
+                ) : (
+                  <div style={{
+                    display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6,
+                    maxHeight: 180, overflowY: "auto", padding: "2px",
+                  }}>
+                    {ghNames.map((name) => {
+                      const dipilih = gh === name;
+                      return (
+                        <button
+                          key={name}
+                          onClick={() => setGh(name)}
+                          style={{
+                            padding: "8px 6px", borderRadius: 8,
+                            border: dipilih ? "1.5px solid #4aaa6e" : "1px solid rgba(255,255,255,0.12)",
+                            background: dipilih ? "rgba(74,170,110,0.18)" : "rgba(255,255,255,0.04)",
+                            color: dipilih ? "#4aaa6e" : "rgba(255,255,255,0.8)",
+                            fontSize: 11.5, fontWeight: 600, cursor: "pointer",
+                            textAlign: "center", lineHeight: 1.3,
+                          }}
+                        >
+                          {name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div>
