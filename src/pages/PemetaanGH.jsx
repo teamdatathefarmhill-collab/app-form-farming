@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useDraft } from "../hooks/useDraft";
 import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
+import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 
 const DB_NAME    = "PemetaanOfflineDB";
@@ -83,6 +84,7 @@ export default function PemetaanGH() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const { produksiData, loading: loadingGH, isDemoMode } = useGHData();
+  const { blockedMap } = useGHBlockedList();
 
   const [semaiData, setSemaiData] = useState({});
   const [loadingSemai, setLoadingSemai] = useState(false);
@@ -160,6 +162,7 @@ export default function PemetaanGH() {
   const semaiAktif = Object.entries(semaiData).map(([gh, info]) => ({ gh, ...info }));
 
   const handleSelectGH = (gh) => {
+    if (warnIfGHBlocked(gh, blockedMap)) return;
     setSelectedGH(gh);
     const produksiInfo = findProduksiInfo(produksiData, gh);
     setBarisRows(buildBarisRows(produksiInfo));
@@ -304,6 +307,7 @@ export default function PemetaanGH() {
   });
 
   const handleSubmit = async () => {
+    if (warnIfGHBlocked(selectedGH, blockedMap)) return;
     setSyncing(true);
     setSubmitError(null);
     const payload = buildPayload();

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useDraft } from "../hooks/useDraft";
 import { useAuth } from "../hooks/useAuth";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
+import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 
 const SCRIPT_URL = import.meta.env.VITE_GAS_PENYIRAMAN_URL;
 
@@ -118,6 +119,7 @@ function RekapRow({ label, value, satuan }) {
 export default function Penyiraman({ initialGH, onDone } = {}) {
   const { user } = useAuth();
 
+  const { blockedMap } = useGHBlockedList();
   const { getDraft, saveDraft, clearDraft } = useDraft("penyiraman");
   const _draft = getDraft();
 
@@ -165,6 +167,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
     : Object.values(allVarianErrors).some(e => Object.keys(e).length > 0);
 
   const handleSelectGH = (g) => {
+    if (warnIfGHBlocked(g, blockedMap)) return;
     setGh(g);
     const vList = refSource[g]?.varian?.length > 0 ? refSource[g].varian : ["Elysia", "Greeniegal"];
     const init = {};
@@ -320,6 +323,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
   };
 
   const handleSubmit = async () => {
+    if (warnIfGHBlocked(gh, blockedMap)) return;
     setSubmitting(true);
     setSubmitError(null);
     const payloads = buildPayloads();

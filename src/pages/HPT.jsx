@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useDraft } from "../hooks/useDraft";
 import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
+import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 
 const DB_NAME = "HPTOfflineDB";
@@ -154,6 +155,7 @@ export default function HPT() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const { produksiData, loading: loadingGH, isDemoMode, refetch: fetchGHData } = useGHData();
+  const { blockedMap } = useGHBlockedList();
 
   // ── Draft persistence ──
   const { getDraft, saveDraft, clearDraft } = useDraft("hpt");
@@ -254,6 +256,7 @@ export default function HPT() {
   const semaiAktif = Object.entries(semaiData).filter(([, info]) => info.status === "SEDANG_SEMAI");
 
   const handleSelectGH = (gh) => {
+    if (warnIfGHBlocked(gh, blockedMap)) return;
     if (submittedToday.includes(gh)) {
       setPendingGH(gh);
       setShowWarning(true);
@@ -336,6 +339,7 @@ export default function HPT() {
   });
 
   const handleSubmit = async () => {
+    if (warnIfGHBlocked(selectedGH, blockedMap)) return;
     if (isDemoMode) {
       markSubmitted(selectedGH);
       setSubmittedToday(getSubmittedToday());

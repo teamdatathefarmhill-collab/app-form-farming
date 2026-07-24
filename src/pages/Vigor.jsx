@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useDraft } from "../hooks/useDraft";
 import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
+import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 import FotoSelfie from "../components/FotoSelfie";
 
@@ -258,6 +259,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
   const [todayLabel] = useState(() => new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" }));
 
   const { ghData, loading: loadingGH, isDemoMode } = useGHData();
+  const { blockedMap } = useGHBlockedList();
 
   const { getDraft, saveDraft, clearDraft } = useDraft("vigor");
   const _draft = getDraft();
@@ -340,6 +342,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
   });
 
   const handleSelectGH = (gh) => {
+    if (warnIfGHBlocked(gh, blockedMap)) return;
     if (submittedToday.includes(gh)) { setPendingGH(gh); setShowWarning(true); }
     else doSelectGH(gh);
   };
@@ -441,6 +444,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
   };
 
   const handleSubmit = async () => {
+    if (warnIfGHBlocked(selectedGH, blockedMap)) return;
     setSubmitting(true);
     setSubmitError(null);
     const payloads = buildPayloads();

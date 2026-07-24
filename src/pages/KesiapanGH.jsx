@@ -4,6 +4,7 @@ import { useAuth } from "../hooks/useAuth";
 import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 import html2canvas from "html2canvas";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
+import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 
 const DB_NAME    = "KesiapanOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_KESIAPAN_URL;
@@ -328,6 +329,7 @@ export default function KesiapanGH() {
   const { getDraft, saveDraft, clearDraft } = useDraft("kesiapan");
   const _draft = getDraft();
 
+  const { blockedMap } = useGHBlockedList();
   const [step, setStep]           = useState(_draft?.step   || 1);
   const [tipe, setTipe]           = useState(_draft?.tipe   || "");
   const [gh, setGh]               = useState(_draft?.gh     || "");
@@ -428,6 +430,7 @@ export default function KesiapanGH() {
   };
 
   const handleSelectGH = (g) => {
+    if (warnIfGHBlocked(g, blockedMap)) return;
     if (submittedToday.includes(`${tipe}__${g}`)) { setPendingGH(g); setShowWarning(true); }
     else doSelectGH(g);
   };
@@ -482,6 +485,7 @@ export default function KesiapanGH() {
   };
 
   const handleSubmit = async () => {
+    if (warnIfGHBlocked(gh, blockedMap)) return;
     setSubmitting(true);
     setSubmitError(null);
     const payload = buildPayload();

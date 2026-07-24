@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useDraft } from "../hooks/useDraft";
 import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
+import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 
 const DB_NAME    = "PenyemprotanOfflineDB";
@@ -208,6 +209,7 @@ export default function Penyemprotan() {
   const isDemoMode = !SCRIPT_URL;
 
   const { ghData, loading: loadingGH } = useGHData();
+  const { blockedMap } = useGHBlockedList();
   const ghGroups = buildGHGroups(ghData);
 
   const refreshPendingCount = useCallback(async () => {
@@ -282,6 +284,7 @@ export default function Penyemprotan() {
   };
 
   const handleSubmit = async () => {
+    if (warnIfGHBlocked(selectedGH, blockedMap)) return;
     setSyncing(true); setSubmitError(null);
     if (isDemoMode) {
       await new Promise(r => setTimeout(r, 800));
@@ -436,7 +439,7 @@ export default function Penyemprotan() {
                 <h3 style={{ fontSize:15, fontWeight:700, margin:"0 0 14px", color:"#fff" }}>Pilih Greenhouse</h3>
                 {loadingGH
                   ? <div style={{ color:"rgba(255,255,255,0.4)", fontSize:13, padding:"12px 0" }}>Memuat data GH...</div>
-                  : <GHPicker value={selectedGH} onChange={setSelectedGH} groups={ghGroups} />
+                  : <GHPicker value={selectedGH} onChange={(g) => { if (!warnIfGHBlocked(g, blockedMap)) setSelectedGH(g); }} groups={ghGroups} />
                 }
                 {selectedGH && (
                   <div style={{ marginTop:14, padding:"9px 14px", background:`${ghColor}18`, border:`1px solid ${ghColor}44`, borderRadius:10, fontSize:13, color:ghColor, fontWeight:600 }}>

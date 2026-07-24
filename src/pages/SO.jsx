@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useDraft } from "../hooks/useDraft";
 import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
+import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 import { useSOHistory, hasCompletedCheckpoint } from "../hooks/useSOHistory";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 
@@ -152,6 +153,7 @@ export default function SO() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const { ghData, loading: loadingRef, isDemoMode, refetch: fetchRefData } = useGHData();
+  const { blockedMap } = useGHBlockedList();
   const { soHistory, loading: loadingHistory, refetch: fetchSOHistory }    = useSOHistory();
 
   const [openTipe, setOpenTipe]         = useState(null);
@@ -270,6 +272,7 @@ export default function SO() {
 
   // ── Pilih GH ──
   const handleSelectGH = (gh) => {
+    if (warnIfGHBlocked(gh, blockedMap)) return;
     if (submittedToday.includes(gh)) {
       setPendingGH(gh); setShowDoubleWarn(true);
     } else {
@@ -351,6 +354,7 @@ export default function SO() {
 
   // ── Submit ──
   const handleSubmit = async () => {
+    if (warnIfGHBlocked(selectedGH, blockedMap)) return;
     setSyncing(true);
     setSubmitError(null);
     const payloads = buildPayloads();

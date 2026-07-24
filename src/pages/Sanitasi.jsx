@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useDraft } from "../hooks/useDraft";
 import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
+import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 import FotoSelfie from "../components/FotoSelfie";
 
@@ -241,6 +242,7 @@ export default function Sanitasi() {
   const [step, setStep] = useState(_draft?.step || 1);
 
   const { ghData, loading: loadingGH, isDemoMode } = useGHData();
+  const { blockedMap } = useGHBlockedList();
 
   const [selectedGH, setSelectedGH]     = useState(_draft?.selectedGH   || "");
   const [selectedTipe, setSelectedTipe] = useState(_draft?.selectedTipe || "");
@@ -397,6 +399,7 @@ export default function Sanitasi() {
   const ghDisembunyikan = Object.keys(ghData).length - ghAktif.length;
 
   const handleSelectGH = (gh) => {
+    if (warnIfGHBlocked(gh, blockedMap)) return;
     setIsSemai(false);
     setSelectedRuangSemai("");
     setSelectedGH(gh);
@@ -404,6 +407,7 @@ export default function Sanitasi() {
   };
 
   const handleSelectSemai = (item) => {
+    if (warnIfGHBlocked(item.gh, blockedMap)) return;
     setIsSemai(true);
     setSelectedGH(item.gh);
     setSelectedRuangSemai(item.key);
@@ -511,6 +515,7 @@ export default function Sanitasi() {
   };
 
   const handleSubmit = async () => {
+    if (warnIfGHBlocked(selectedGH, blockedMap)) return;
     setSyncing(true);
     setSubmitError(null);
     setSyncProgress({ done: 0, total: 1 });

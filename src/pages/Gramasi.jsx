@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useDraft } from "../hooks/useDraft";
 import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
+import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 
 const DB_NAME = "GramasiOfflineDB";
@@ -116,6 +117,7 @@ export default function Gramasi() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const { ghData, loading: loadingGH, isDemoMode } = useGHData();
+  const { blockedMap } = useGHBlockedList();
 
   const [selectedGH, setSelectedGH]     = useState(_draft?.selectedGH || "");
   const [tableData, setTableData]       = useState(_draft?.tableData  || []);
@@ -248,6 +250,7 @@ export default function Gramasi() {
   });
 
   const handleSelectGH = (gh) => {
+    if (warnIfGHBlocked(gh, blockedMap)) return;
     if (submittedToday.includes(gh)) {
       setPendingGH(gh);
       setShowWarning(true);
@@ -307,6 +310,7 @@ export default function Gramasi() {
   };
 
   const handleSubmit = async () => {
+    if (warnIfGHBlocked(selectedGH, blockedMap)) return;
     setSyncing(true);
     setSubmitError(null);
     const payloads = buildPayloads();
