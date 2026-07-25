@@ -5,6 +5,7 @@
 // Taruh di: src/components/EmergencyGHButton.jsx
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useGHData } from "../hooks/useGHData";
 import { useGHEmergency } from "../hooks/useGHEmergency";
 
@@ -73,7 +74,7 @@ export default function EmergencyGHButton() {
         🚨
       </button>
 
-      {open && (
+      {open && createPortal(
         <div
           onClick={closeModal}
           style={{
@@ -233,7 +234,8 @@ export default function EmergencyGHButton() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
