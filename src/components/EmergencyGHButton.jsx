@@ -14,6 +14,19 @@ const AKSI_OPTIONS = [
   { value: "Restart",  label: "Restart",  icon: "🔄", color: "#43a047" },
 ];
 
+// GH dianggap masih aktif produksi kalau HST <= HST_MAKS — konvensi yang sama
+// dipakai di Sanitasi/HPT/SO agar GH yang sudah tidak bermitra (data lama,
+// tidak ada tanam baru) tidak ikut muncul di daftar.
+const HST_MAKS = 65;
+
+function hitungHST(tgl) {
+  const [y, m, d] = tgl.split("-").map(Number);
+  const tanam = new Date(y, m - 1, d);
+  const now = new Date();
+  const nowLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.floor((nowLocal - tanam) / 86400000);
+}
+
 export default function EmergencyGHButton() {
   const [open, setOpen]     = useState(false);
   const [gh, setGh]         = useState("");
@@ -25,7 +38,13 @@ export default function EmergencyGHButton() {
   const { log, loadingLog, submitting, fetchLog, submit } = useGHEmergency();
   const periode = ghData[gh]?.periode || "";
 
-  const ghNames = Object.keys(ghData).sort();
+  const ghNames = Object.keys(ghData)
+    .filter((name) => {
+      const tanam = ghData[name]?.tanam;
+      if (!tanam) return false;
+      return hitungHST(tanam) <= HST_MAKS;
+    })
+    .sort();
 
   function openModal() {
     setOpen(true);
