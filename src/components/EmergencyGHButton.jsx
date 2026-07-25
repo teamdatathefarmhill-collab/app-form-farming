@@ -79,15 +79,16 @@ export default function EmergencyGHButton() {
           style={{
             position: "fixed", inset: 0, zIndex: 300,
             background: "rgba(0,0,0,0.55)",
-            display: "flex", alignItems: "flex-end", justifyContent: "center",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 16, boxSizing: "border-box",
           }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
               background: "#12201a", width: "100%", maxWidth: 480,
-              maxHeight: "88vh", overflowY: "auto",
-              borderRadius: "16px 16px 0 0",
+              maxHeight: "85vh", overflowY: "auto",
+              borderRadius: 16,
               padding: "18px 18px 24px",
               fontFamily: "'Segoe UI', system-ui, sans-serif",
             }}
