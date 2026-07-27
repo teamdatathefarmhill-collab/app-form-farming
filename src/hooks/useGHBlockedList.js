@@ -61,6 +61,17 @@ export function useGHBlockedList() {
   return { blockedMap, refetchBlocked: fetchBlocked };
 }
 
+// ── Popup GH diblokir — pub/sub sederhana ────────────────────────────────────
+// warnIfGHBlocked() dipanggil dari banyak halaman form (bukan komponen React),
+// jadi popupnya di-broadcast lewat listener ke <GHBlockedModal /> yang di-mount
+// sekali di App.jsx, bukan window.alert() bawaan browser.
+let listeners = [];
+
+export function subscribeGHBlocked(cb) {
+  listeners.push(cb);
+  return () => { listeners = listeners.filter((l) => l !== cb); };
+}
+
 // ── Helper: cek + tampilkan popup kalau GH sedang diblokir ──────────────────
 // Pakai di handleSelectGH / handleSubmit tiap form. Return true = diblokir,
 // caller harus batalkan pemilihan/submit.
@@ -68,8 +79,6 @@ export function warnIfGHBlocked(gh, blockedMap) {
   if (!gh) return false;
   const info = blockedMap[String(gh).trim().toUpperCase()];
   if (!info) return false;
-  window.alert(
-    `GH "${gh}" sedang ${info.aksi} dan tidak bisa diisi.\n\nAlasan: ${info.alasan}`
-  );
+  listeners.forEach((l) => l({ gh, aksi: info.aksi, alasan: info.alasan }));
   return true;
 }

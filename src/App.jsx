@@ -15,6 +15,7 @@ import SOPModal, { isMenuSeen } from "./components/SOPModal";
 import InfoButton from "./components/InfoButton";
 import WAButton from "./components/WAButton";
 import EmergencyGHButton from "./components/EmergencyGHButton";
+import GHBlockedModal from "./components/GHBlockedModal";
 import InstallPWA from "./components/InstallPWA";
 import PWAUpdatePrompt from "./components/PWAUpdatePrompt";
 import { useAuth } from "./hooks/useAuth";
@@ -363,6 +364,9 @@ export default function App() {
 
       {/* PWA Update Prompt — muncul otomatis saat ada versi baru */}
       <PWAUpdatePrompt />
+
+      {/* Popup GH diblokir — muncul otomatis saat operator pilih GH yang lagi Shutdown/Restart */}
+      <GHBlockedModal />
 
       <style>{`
         * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
