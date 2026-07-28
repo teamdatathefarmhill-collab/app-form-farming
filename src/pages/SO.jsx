@@ -90,14 +90,16 @@ function getSOStatus(hst, soHistory, gh, periode) {
   if (hst === null) return { late: false, checkpoint: null, daysLate: 0 };
 
   if (hst > SO_CHECKPOINT_1 && hst < SO_CHECKPOINT_2) {
-    // Lewat checkpoint 1 — cek apakah sudah pernah submit di HST <= 35 periode ini
-    const alreadyDone = hasCompletedCheckpoint(soHistory, gh, periode, SO_CHECKPOINT_1);
+    // Lewat checkpoint 1 — cek apakah sudah pernah submit di window checkpoint 1
+    // (HST berapa pun sebelum checkpoint 2 dimulai, termasuk yang telat)
+    const alreadyDone = hasCompletedCheckpoint(soHistory, gh, periode, 0, SO_CHECKPOINT_2);
     if (alreadyDone) return { late: false, checkpoint: SO_CHECKPOINT_1, daysLate: 0 };
     return { late: true, checkpoint: SO_CHECKPOINT_1, daysLate: hst - SO_CHECKPOINT_1 };
   }
 
   if (hst > SO_CHECKPOINT_2) {
-    // Lewat checkpoint 2 — cek apakah sudah pernah submit di HST <= 50 periode ini
+    // Lewat checkpoint 2 — cek apakah sudah pernah submit di window checkpoint 2
+    // (HST >= 50, termasuk yang telat)
     const alreadyDone = hasCompletedCheckpoint(soHistory, gh, periode, SO_CHECKPOINT_2);
     if (alreadyDone) return { late: false, checkpoint: SO_CHECKPOINT_2, daysLate: 0 };
     return { late: true, checkpoint: SO_CHECKPOINT_2, daysLate: hst - SO_CHECKPOINT_2 };

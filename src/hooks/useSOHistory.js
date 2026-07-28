@@ -82,11 +82,15 @@ function buildSummary(rows) {
 }
 
 // ─── Exported helper ─────────────────────────────────────────────────────────
-export function hasCompletedCheckpoint(soHistory, gh, periode, checkpoint) {
+// Sebuah submission dianggap "menyelesaikan" sebuah checkpoint kalau HST-nya
+// jatuh di window checkpoint tsb (>= lowerBound, < upperBound) — termasuk
+// submission yang telat (mis. checkpoint 35 tapi baru submit di HST 36),
+// bukan cuma yang tepat waktu (hst <= checkpoint).
+export function hasCompletedCheckpoint(soHistory, gh, periode, lowerBound, upperBound = Infinity) {
   const key = `${gh}::${periode}`;
   const entry = soHistory[key];
   if (!entry) return false;
-  return entry.checkpoints.some(hst => hst <= checkpoint);
+  return entry.checkpoints.some(hst => hst >= lowerBound && hst < upperBound);
 }
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
