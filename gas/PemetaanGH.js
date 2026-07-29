@@ -103,7 +103,9 @@ function getSemaiRef() {
 
   for (let r = headerRowIdx + 1; r < rows.length; r++) {
     const row      = rows[r];
-    const ghTujuan = String(row[colGhTujuan] || '').trim();
+    // GH Tujuan yang sama tapi ada suffix "(susulan)" (semai tambahan utk GH yg sama)
+    // digabung jadi satu kartu GH, bukan dipisah — susulan hanya menambah populasi/varian.
+    const ghTujuan = String(row[colGhTujuan] || '').trim().replace(/\s*\(\s*susulan\s*\)\s*$/i, '').trim();
     const periode  = row[colPeriode];
     const ghSemai  = String(row[colGhSemai]  || '').trim();
     const tglSemai = row[colSemai];
