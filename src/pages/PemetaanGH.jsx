@@ -692,7 +692,7 @@ export default function PemetaanGH() {
         open={confirmOpen}
         onCancel={() => setConfirmOpen(false)}
         onConfirm={() => { setConfirmOpen(false); handleSubmit(); }}
-        color=color.brand700
+        color={color.brand700}
         isOffline={!isOnline}
         isDemoMode={isDemoMode}
         summary={[

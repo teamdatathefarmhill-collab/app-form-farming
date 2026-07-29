@@ -748,7 +748,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
                             <div style={{ fontSize: 11, color: color.textGhost, marginBottom: 8 }}>
                               {selectedHST === 7 ? "Dilakukan pada daun ke-4" : selectedHST === 14 ? "Dilakukan pada daun ke-7" : selectedHST === 18 ? "Dilakukan pada daun ke-11" : "Dilakukan pada daun ke-4"}
                             </div>
-                            <PilihOpsi options={lebarDaunOptions} value={d.lebarDaun} onChange={val => updateVarian(varian, "lebarDaun", val)} color=color.brand700 cols={3} />
+                            <PilihOpsi options={lebarDaunOptions} value={d.lebarDaun} onChange={val => updateVarian(varian, "lebarDaun", val)} color={color.brand700} cols={3} />
                           </div>
                         )}
 
@@ -756,7 +756,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
                           <div style={{ marginBottom: 14 }}>
                             <div style={{ fontSize: 12, color: "#555", marginBottom: 4, fontWeight: 600 }}>2. Diameter Batang</div>
                             <div style={{ fontSize: 11, color: color.textGhost, marginBottom: 8 }}>Penilaian DB pada ruas ke-3 hingga ke-5</div>
-                            <PilihOpsi options={diameterOptions} value={d.diameterBatang} onChange={val => updateVarian(varian, "diameterBatang", val)} color=color.info cols={2} />
+                            <PilihOpsi options={diameterOptions} value={d.diameterBatang} onChange={val => updateVarian(varian, "diameterBatang", val)} color={color.info} cols={2} />
                           </div>
                         )}
 
@@ -769,7 +769,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
                         {showKesegaranVigor && (
                           <div style={{ marginBottom: 18 }}>
                             <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>{showLebarDiameter ? "4." : "2."} Kesegaran Tanaman (Kelayuan)</div>
-                            <PilihOpsi options={KESEGARAN_OPTIONS} value={d.kesegaran} onChange={val => updateVarian(varian, "kesegaran", val)} color=color.brand700 cols={3} />
+                            <PilihOpsi options={KESEGARAN_OPTIONS} value={d.kesegaran} onChange={val => updateVarian(varian, "kesegaran", val)} color={color.brand700} cols={3} />
                           </div>
                         )}
 
