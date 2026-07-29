@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { color, radius } from "../styles/tokens";
 
 const WEBHOOK = "https://script.google.com/macros/s/AKfycbzBndG0bEIxKN2RJ7zvI571vRk9EOq5iuN-OzObBU6LHZDvG2GKb6ptXRqHdMj1Z7K2Dw/exec";
 
@@ -234,16 +235,16 @@ export default function Cuaca() {
   }
 
   const skorColor = selectedCuaca
-    ? selectedCuaca.skor >= 80 ? "#1b5e20"
-    : selectedCuaca.skor >= 50 ? "#e65100"
+    ? selectedCuaca.skor >= 80 ? color.brand900
+    : selectedCuaca.skor >= 50 ? color.warning
     : "#b71c1c"
-    : "#888";
+    : color.textSoft;
 
   const skorBg = selectedCuaca
-    ? selectedCuaca.skor >= 80 ? "#e8f5e9"
-    : selectedCuaca.skor >= 50 ? "#fff3e0"
-    : "#ffebee"
-    : "#f5f5f5";
+    ? selectedCuaca.skor >= 80 ? color.brandBg
+    : selectedCuaca.skor >= 50 ? color.warningBg
+    : color.dangerBg
+    : color.bg;
 
   const totalFilled = filledJams.size;
 
@@ -251,7 +252,7 @@ export default function Cuaca() {
     <div style={{ minHeight: "100vh", background: "#f7f9f7", fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
 
       {/* Header */}
-      <div style={{ background: "linear-gradient(135deg, #0d47a1, #1565C0)", padding: "20px 16px 16px", color: "#fff" }}>
+      <div style={{ background: `linear-gradient(135deg, ${color.infoDark}, ${color.info})`, padding: "20px 16px 16px", color: color.card }}>
         <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 4 }}>
           Pengukuran
         </div>
@@ -263,12 +264,12 @@ export default function Cuaca() {
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>
               {totalFilled} dari {JAM_OPTIONS.length} jam sudah diisi hari ini
             </div>
-            <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: 99, height: 5, overflow: "hidden" }}>
+            <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: radius.full, height: 5, overflow: "hidden" }}>
               <div style={{
                 height: "100%",
                 width: `${(totalFilled / JAM_OPTIONS.length) * 100}%`,
-                background: totalFilled === JAM_OPTIONS.length ? "#69f0ae" : "#fff",
-                borderRadius: 99,
+                background: totalFilled === JAM_OPTIONS.length ? "#69f0ae" : color.card,
+                borderRadius: radius.full,
                 transition: "width 0.4s ease",
               }} />
             </div>
@@ -281,26 +282,26 @@ export default function Cuaca() {
         {step === 1 && (
           <>
             {/* Tanggal info */}
-            <div style={{ background: "#e3f2fd", border: "1px solid #90caf9", borderRadius: 12, padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ background: color.infoBg, border: `1px solid ${color.infoBorder}`, borderRadius: radius.lg, padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 16 }}>📅</span>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 11, color: "#1565C0", fontWeight: 700, letterSpacing: 0.5 }}>TANGGAL HARI INI</div>
-                <div style={{ fontSize: 13, color: "#0d47a1", fontWeight: 600 }}>{todayISO}</div>
+                <div style={{ fontSize: 11, color: color.info, fontWeight: 700, letterSpacing: 0.5 }}>TANGGAL HARI INI</div>
+                <div style={{ fontSize: 13, color: color.infoDark, fontWeight: 600 }}>{todayISO}</div>
               </div>
-              <div style={{ fontSize: 11, color: loadingFilled ? "#999" : fetchStatus === "ok" ? "#2e7d32" : "#e53935" }}>
+              <div style={{ fontSize: 11, color: loadingFilled ? color.textFaint : fetchStatus === "ok" ? color.brand700 : color.danger }}>
                 {loadingFilled ? "⏳ memuat..." : fetchStatus === "ok" ? "✓ tersinkron" : "⚠ offline"}
               </div>
             </div>
 
             {/* Legend */}
             {!loadingFilled && totalFilled > 0 && (
-              <div style={{ display: "flex", gap: 12, marginBottom: 12, fontSize: 11, color: "#666", alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 12, marginBottom: 12, fontSize: 11, color: color.textMuted, alignItems: "center" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: 3, background: "#ffcdd2", border: "1.5px solid #e53935" }} />
+                  <div style={{ width: 10, height: 10, borderRadius: 3, background: "#ffcdd2", border: `1.5px solid ${color.danger}` }} />
                   Sudah diisi
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: 3, background: "#fff", border: "1.5px solid #e0e0e0" }} />
+                  <div style={{ width: 10, height: 10, borderRadius: 3, background: color.card, border: `1.5px solid ${color.border}` }} />
                   Belum diisi
                 </div>
               </div>
@@ -308,8 +309,8 @@ export default function Cuaca() {
 
             {/* Pilih Jam */}
             <div style={{ marginBottom: 20 }}>
-              <label style={{ fontSize: 11, color: "#1565C0", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700, display: "block", marginBottom: 8 }}>
-                🕐 Jam Pengukuran <span style={{ color: "#e53935" }}>*</span>
+              <label style={{ fontSize: 11, color: color.info, letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700, display: "block", marginBottom: 8 }}>
+                🕐 Jam Pengukuran <span style={{ color: color.danger }}>*</span>
               </label>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
                 {JAM_OPTIONS.map(j => {
@@ -322,10 +323,10 @@ export default function Cuaca() {
                       title={isFilled ? `Jam ${j} sudah diisi` : `Pilih jam ${j}`}
                       style={{
                         padding: "10px 4px 8px",
-                        borderRadius: 10,
-                        border: `1.5px solid ${active ? "#1565C0" : isFilled ? "#e53935" : "#e0e0e0"}`,
-                        background: active ? "#e3f2fd" : isFilled ? "#ffebee" : "#fff",
-                        color: active ? "#0d47a1" : isFilled ? "#c62828" : "#555",
+                        borderRadius: radius.md,
+                        border: `1.5px solid ${active ? color.info : isFilled ? color.danger : color.border}`,
+                        background: active ? color.infoBg : isFilled ? color.dangerBg : color.card,
+                        color: active ? color.infoDark : isFilled ? color.dangerDeep : "#555",
                         fontSize: 12,
                         fontWeight: active ? 700 : isFilled ? 600 : 400,
                         cursor: "pointer",
@@ -338,7 +339,7 @@ export default function Cuaca() {
                     >
                       {j}
                       {isFilled && (
-                        <span style={{ fontSize: 9, color: "#e53935", fontWeight: 700, lineHeight: 1 }}>✓ terisi</span>
+                        <span style={{ fontSize: 9, color: color.danger, fontWeight: 700, lineHeight: 1 }}>✓ terisi</span>
                       )}
                     </button>
                   );
@@ -348,8 +349,8 @@ export default function Cuaca() {
 
             {/* Pilih Cuaca — pakai animated icon */}
             <div style={{ marginBottom: 20 }}>
-              <label style={{ fontSize: 11, color: "#1565C0", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700, display: "block", marginBottom: 8 }}>
-                🌡️ Kondisi Cuaca <span style={{ color: "#e53935" }}>*</span>
+              <label style={{ fontSize: 11, color: color.info, letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700, display: "block", marginBottom: 8 }}>
+                🌡️ Kondisi Cuaca <span style={{ color: color.danger }}>*</span>
               </label>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
                 {CUACA_OPTIONS.map(c => {
@@ -358,16 +359,16 @@ export default function Cuaca() {
                     <button key={c.label} onClick={() => setSelectedCuaca(c)}
                       style={{
                         padding: "12px 4px 10px",
-                        borderRadius: 12,
-                        border: `1.5px solid ${active ? "#1565C0" : "#e0e0e0"}`,
-                        background: active ? "#e3f2fd" : "#fff",
+                        borderRadius: radius.lg,
+                        border: `1.5px solid ${active ? color.info : color.border}`,
+                        background: active ? color.infoBg : color.card,
                         cursor: "pointer",
                         display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
                         transition: "all 0.15s",
                       }}>
                       {/* ← Animated SVG icon, bukan emoji */}
                       <c.Icon size={36} />
-                      <span style={{ fontSize: 10, fontWeight: active ? 700 : 400, color: active ? "#0d47a1" : "#666", textAlign: "center", lineHeight: 1.3 }}>{c.label}</span>
+                      <span style={{ fontSize: 10, fontWeight: active ? 700 : 400, color: active ? color.infoDark : color.textMuted, textAlign: "center", lineHeight: 1.3 }}>{c.label}</span>
                     </button>
                   );
                 })}
@@ -376,7 +377,7 @@ export default function Cuaca() {
 
             {/* Skor preview */}
             {selectedCuaca && (
-              <div style={{ background: skorBg, border: `1px solid ${skorColor}33`, borderRadius: 12, padding: "10px 14px", marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ background: skorBg, border: `1px solid ${skorColor}33`, borderRadius: radius.lg, padding: "10px 14px", marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <selectedCuaca.Icon size={28} />
                   <span style={{ fontSize: 13, color: skorColor, fontWeight: 600 }}>{selectedCuaca.label}</span>
@@ -389,14 +390,14 @@ export default function Cuaca() {
 
             {/* Warning jam sudah terisi */}
             {jam && filledJams.has(jam) && (
-              <div style={{ fontSize: 12, color: "#c62828", background: "#ffebee", border: "1px solid #ef9a9a", borderRadius: 8, padding: "8px 12px", marginBottom: 12, display: "flex", gap: 6, alignItems: "flex-start" }}>
+              <div style={{ fontSize: 12, color: color.dangerDeep, background: color.dangerBg, border: `1px solid ${color.dangerBorder}`, borderRadius: radius.sm, padding: "8px 12px", marginBottom: 12, display: "flex", gap: 6, alignItems: "flex-start" }}>
                 <span>⚠️</span>
                 <span>Jam <strong>{jam}</strong> sudah pernah diisi hari ini. Data baru akan tetap terkirim sebagai entri tambahan.</span>
               </div>
             )}
 
             {submitError && (
-              <div style={{ fontSize: 12, color: "#c62828", background: "#ffebee", border: "1px solid #ef9a9a", borderRadius: 8, padding: "8px 12px", marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: color.dangerDeep, background: color.dangerBg, border: `1px solid ${color.dangerBorder}`, borderRadius: radius.sm, padding: "8px 12px", marginBottom: 12 }}>
                 ⚠️ {submitError}
               </div>
             )}
@@ -404,9 +405,9 @@ export default function Cuaca() {
             {/* Submit */}
             <button onClick={handleSubmit} disabled={!canSubmit || submitting}
               style={{
-                width: "100%", padding: 15, border: "none", borderRadius: 12,
-                background: canSubmit && !submitting ? "linear-gradient(135deg,#0d47a1,#1565C0)" : "#e0e0e0",
-                color: canSubmit && !submitting ? "#fff" : "#aaa",
+                width: "100%", padding: 15, border: "none", borderRadius: radius.lg,
+                background: canSubmit && !submitting ? `linear-gradient(135deg,${color.infoDark},${color.info})` : color.border,
+                color: canSubmit && !submitting ? color.card : color.textGhost,
                 fontSize: 15, fontWeight: 700, cursor: canSubmit && !submitting ? "pointer" : "not-allowed",
               }}>
               {submitting ? "⏳ Mengirim..." : "Kirim ke Google Sheets ✓"}
@@ -418,10 +419,10 @@ export default function Cuaca() {
         {step === 2 && (
           <div style={{ textAlign: "center", paddingTop: 32 }}>
             <div style={{ fontSize: 60, marginBottom: 12 }}>✅</div>
-            <div style={{ fontSize: 21, fontWeight: 800, color: "#1b5e20", marginBottom: 6 }}>Data Tersimpan!</div>
-            <div style={{ fontSize: 13, color: "#888", marginBottom: 20 }}>Data cuaca berhasil dikirim ke Google Sheets</div>
-            <div style={{ background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 14, padding: 16, textAlign: "left", marginBottom: 24 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#333", marginBottom: 10 }}>Ringkasan</div>
+            <div style={{ fontSize: 21, fontWeight: 800, color: color.brand900, marginBottom: 6 }}>Data Tersimpan!</div>
+            <div style={{ fontSize: 13, color: color.textSoft, marginBottom: 20 }}>Data cuaca berhasil dikirim ke Google Sheets</div>
+            <div style={{ background: color.brandBg, border: `1px solid ${color.brand300}`, borderRadius: 14, padding: 16, textAlign: "left", marginBottom: 24 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: color.text, marginBottom: 10 }}>Ringkasan</div>
               <div style={{ fontSize: 13, color: "#555", lineHeight: 2.2 }}>
                 <div>📅 {todayISO}</div>
                 <div>🕐 Jam {jam}</div>
@@ -436,7 +437,7 @@ export default function Cuaca() {
               </div>
             </div>
             <button onClick={resetForm}
-              style={{ width: "100%", padding: 15, background: "#e8f5e9", border: "2px solid #81c784", borderRadius: 12, color: "#1b5e20", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+              style={{ width: "100%", padding: 15, background: color.brandBg, border: `2px solid ${color.brand400}`, borderRadius: radius.lg, color: color.brand900, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
               + Input Jam Berikutnya
             </button>
           </div>
