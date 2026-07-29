@@ -174,18 +174,27 @@ export default function PemetaanGH() {
   // ditambah sisa varian yang kita punya tapi belum ada di referensi semai GH ini,
   // supaya user tetap bisa pilih varian lain yang benar-benar ditanam. ──
   const semaiVarianRaw = (semaiData[selectedGH]?.varian || []).map((v) => v.nama);
-  const semaiVarianBase = new Set(semaiVarianRaw.map(varianDisplayName));
-  const dropdownVarianOptions = [...semaiVarianRaw, ...ALL_VARIAN.filter((v) => !semaiVarianBase.has(v))];
+  // ── Case-insensitive supaya "Greenie sweet" (daftar tetap) tidak dianggap varian
+  // beda dari "Greenie Sweet" (nama asli di sheet semai) — dulu keduanya nongol
+  // sebagai 2 opsi dropdown yang keliatan sama tapi value-nya beda. ──
+  const semaiVarianBase = new Set(semaiVarianRaw.map((v) => varianDisplayName(v).toLowerCase()));
+  const dropdownVarianOptions = [...semaiVarianRaw, ...ALL_VARIAN.filter((v) => !semaiVarianBase.has(v.toLowerCase()))];
 
   const referensiMap = {};
   (semaiData[selectedGH]?.varian || []).forEach((v) => { referensiMap[v.nama] = (referensiMap[v.nama] || 0) + v.populasi; });
+
+  // ── Lookup nama varian referensi berdasarkan bentuk case-insensitive, supaya entri
+  // realisasi yang kebetulan beda kapitalisasi (mis. draft lama) tetap match ke referensi. ──
+  const referensiKeyByLower = {};
+  Object.keys(referensiMap).forEach((k) => { referensiKeyByLower[k.toLowerCase()] = k; });
 
   // ── Realisasi per varian = jumlah semua entries di semua baris (termasuk Sulaman) ──
   const realisasiMap = {};
   barisRows.forEach((row) => {
     row.entries.forEach((e) => {
       if (!e.varian || e.jumlah === "") return;
-      realisasiMap[e.varian] = (realisasiMap[e.varian] || 0) + (parseInt(e.jumlah) || 0);
+      const key = referensiKeyByLower[e.varian.toLowerCase()] || e.varian;
+      realisasiMap[key] = (realisasiMap[key] || 0) + (parseInt(e.jumlah) || 0);
     });
   });
 
