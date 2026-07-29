@@ -5,6 +5,7 @@ import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 import html2canvas from "html2canvas";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
+import { color } from "../styles/tokens";
 
 const DB_NAME    = "KesiapanOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_KESIAPAN_URL;
@@ -303,9 +304,9 @@ function hitungMaxTotal(tipe) {
 // Status berdasarkan persentase bobot terpenuhi
 // ≥ 70% = Siap Tanam, 50-69% = Perlu Perbaikan, < 50% = Tidak Layak
 function statusDariPersen(persen) {
-  if (persen >= 70) return { label: "Siap Tanam",      warna: "#2e7d32", bg: "#e8f5e9", border: "#a5d6a7" };
-  if (persen >= 50) return { label: "Perlu Perbaikan", warna: "#e65100", bg: "#fff3e0", border: "#ffb74d" };
-  return               { label: "Tidak Layak",    warna: "#c62828", bg: "#ffebee", border: "#ef9a9a" };
+  if (persen >= 70) return { label: "Siap Tanam",      warna: color.brand700, bg: color.brandBg, border: color.brand300 };
+  if (persen >= 50) return { label: "Perlu Perbaikan", warna: color.warning, bg: color.warningBg, border: color.warningBorder };
+  return               { label: "Tidak Layak",    warna: color.dangerDeep, bg: color.dangerBg, border: color.dangerBorder };
 }
 
 function statusAspek(aspek, scores) {
@@ -468,7 +469,7 @@ export default function KesiapanGH() {
     setDownloading(true);
     try {
       const canvas = await html2canvas(rekapRef.current, {
-        backgroundColor: "#f5f5f5",
+        backgroundColor: color.bg,
         scale: 2,
         useCORS: true,
         logging: false,
@@ -526,10 +527,10 @@ export default function KesiapanGH() {
 
   // ─── RENDER ────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: "100vh", background: "#f5f5f5", fontFamily: "'DM Sans','Segoe UI',sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: color.bg, fontFamily: "'DM Sans','Segoe UI',sans-serif" }}>
 
       {/* Header */}
-      <div style={{ background: "#004D40", color: "#fff", padding: "14px 16px 10px", position: "sticky", top: 0, zIndex: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
+      <div style={{ background: "#004D40", color: color.card, padding: "14px 16px 10px", position: "sticky", top: 0, zIndex: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <div style={{ fontSize: 10, opacity: 0.75, letterSpacing: 1.5, textTransform: "uppercase" }}>Form Kesiapan GH</div>
@@ -538,11 +539,11 @@ export default function KesiapanGH() {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {pendingCount > 0 && (
               <button onClick={isOnline ? syncPending : undefined}
-                style={{ fontSize: 10, fontWeight: 700, background: isOnline ? "rgba(33,150,243,0.3)" : "rgba(255,179,0,0.3)", border: `1px solid ${isOnline ? "rgba(33,150,243,0.6)" : "rgba(255,179,0,0.6)"}`, color: "#fff", padding: "2px 8px", borderRadius: 20, cursor: isOnline ? "pointer" : "default" }}>
+                style={{ fontSize: 10, fontWeight: 700, background: isOnline ? "rgba(33,150,243,0.3)" : "rgba(255,179,0,0.3)", border: `1px solid ${isOnline ? "rgba(33,150,243,0.6)" : "rgba(255,179,0,0.6)"}`, color: color.card, padding: "2px 8px", borderRadius: 20, cursor: isOnline ? "pointer" : "default" }}>
                 {isSyncingPending ? "⏳" : "📤"} {pendingCount} pending
               </button>
             )}
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: isOnline ? "#a5d6a7" : "#ef9a9a" }} />
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: isOnline ? color.brand300 : color.dangerBorder }} />
             <span style={{ fontSize: 10, opacity: 0.6 }}>{user?.nama}</span>
           </div>
         </div>
@@ -558,23 +559,23 @@ export default function KesiapanGH() {
       {/* Modal double submit */}
       {showWarning && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 360 }}>
+          <div style={{ background: color.card, borderRadius: 16, padding: 24, width: "100%", maxWidth: 360 }}>
             <div style={{ fontSize: 36, textAlign: "center", marginBottom: 12 }}>⚠️</div>
-            <div style={{ fontWeight: 700, fontSize: 16, color: "#333", textAlign: "center", marginBottom: 8 }}>GH Sudah Dicek Hari Ini</div>
-            <div style={{ fontSize: 13, color: "#666", textAlign: "center", marginBottom: 8, lineHeight: 1.5 }}>
+            <div style={{ fontWeight: 700, fontSize: 16, color: color.text, textAlign: "center", marginBottom: 8 }}>GH Sudah Dicek Hari Ini</div>
+            <div style={{ fontSize: 13, color: color.textMuted, textAlign: "center", marginBottom: 8, lineHeight: 1.5 }}>
               <strong>{tipe} · {pendingGH}</strong> sudah disubmit hari ini.
             </div>
 
             {!showKodeInput ? (
               <>
-                <div style={{ fontSize: 12, color: "#888", textAlign: "center", marginBottom: 20, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 12, color: color.textSoft, textAlign: "center", marginBottom: 20, lineHeight: 1.5 }}>
                   Jika ada kesalahan input, hubungi Team Data untuk konfirmasi dan dapatkan kode akses.
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <a href={`https://wa.me/08559932224?text=${encodeURIComponent(`Halo Team Data, saya ${user?.nama} ingin melaporkan kesalahan input pada Kesiapan GH.\nTipe: ${tipe}\nGreenhouse: ${pendingGH}\nTanggal: ${todayISO}\n\nMohon kode akses untuk pengisian ulang. Terima kasih.`)}`}
                     target="_blank" rel="noreferrer"
-                    style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: 12, background: "#25D366", border: "none", borderRadius: 10, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", textDecoration: "none", boxSizing: "border-box" }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/></svg>
+                    style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: 12, background: "#25D366", border: "none", borderRadius: 10, color: color.card, fontSize: 14, fontWeight: 700, cursor: "pointer", textDecoration: "none", boxSizing: "border-box" }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill=color.card><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/></svg>
                     Hubungi Team Data via WhatsApp
                   </a>
                   <button onClick={() => setShowKodeInput(true)}
@@ -582,28 +583,28 @@ export default function KesiapanGH() {
                     Sudah punya kode akses
                   </button>
                   <button onClick={() => { setShowWarning(false); setPendingGH(""); setKodeInput(""); setKodeError(""); }}
-                    style={{ padding: 11, background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 10, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                    style={{ padding: 11, background: color.bg, border: `1px solid ${color.border}`, borderRadius: 10, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
                     Kembali
                   </button>
                 </div>
               </>
             ) : (
               <>
-                <div style={{ fontSize: 12, color: "#888", textAlign: "center", marginBottom: 16, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 12, color: color.textSoft, textAlign: "center", marginBottom: 16, lineHeight: 1.5 }}>
                   Masukkan kode akses dari Team Data untuk melanjutkan.
                 </div>
                 <input
                   type="number" inputMode="numeric" maxLength={4}
                   value={kodeInput} onChange={e => { setKodeInput(e.target.value); setKodeError(""); }}
                   placeholder="Kode 4 digit"
-                  style={{ width: "100%", padding: "12px", textAlign: "center", fontSize: 24, fontWeight: 700, letterSpacing: 8, border: `2px solid ${kodeError ? "#ef9a9a" : "#e0e0e0"}`, borderRadius: 10, outline: "none", boxSizing: "border-box", marginBottom: 8, color: "#333" }}
+                  style={{ width: "100%", padding: "12px", textAlign: "center", fontSize: 24, fontWeight: 700, letterSpacing: 8, border: `2px solid ${kodeError ? color.dangerBorder : color.border}`, borderRadius: 10, outline: "none", boxSizing: "border-box", marginBottom: 8, color: color.text }}
                 />
                 {kodeError && (
-                  <div style={{ fontSize: 12, color: "#c62828", textAlign: "center", marginBottom: 8 }}>⚠️ {kodeError}</div>
+                  <div style={{ fontSize: 12, color: color.dangerDeep, textAlign: "center", marginBottom: 8 }}>⚠️ {kodeError}</div>
                 )}
                 <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
                   <button onClick={() => { setShowKodeInput(false); setKodeInput(""); setKodeError(""); }}
-                    style={{ flex: 1, padding: 11, background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 10, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                    style={{ flex: 1, padding: 11, background: color.bg, border: `1px solid ${color.border}`, borderRadius: 10, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
                     ← Kembali
                   </button>
                   <button onClick={() => {
@@ -620,7 +621,7 @@ export default function KesiapanGH() {
                       setKodeError("Kode salah. Hubungi Team Data.");
                     }
                   }}
-                    style={{ flex: 1, padding: 11, background: "#004D40", border: "none", borderRadius: 10, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+                    style={{ flex: 1, padding: 11, background: "#004D40", border: "none", borderRadius: 10, color: color.card, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
                     Verifikasi
                   </button>
                 </div>
@@ -636,14 +637,14 @@ export default function KesiapanGH() {
         {step === 1 && (
           <div>
             <div style={{ fontWeight: 700, fontSize: 18, color: "#004D40", marginBottom: 4 }}>Pilih Tipe & Greenhouse</div>
-            <div style={{ fontSize: 12, color: "#888", marginBottom: 16 }}>Pilih tipe GH terlebih dahulu</div>
+            <div style={{ fontSize: 12, color: color.textSoft, marginBottom: 16 }}>Pilih tipe GH terlebih dahulu</div>
 
             <div style={{ marginBottom: 20 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Tipe GH</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {TIPE_LIST.map(t => (
                   <button key={t} onClick={() => handleSelectTipe(t)}
-                    style={{ padding: "12px 16px", borderRadius: 12, cursor: "pointer", textAlign: "left", border: tipe === t ? "2px solid #004D40" : "1.5px solid #e0e0e0", background: tipe === t ? "#e0f2f1" : "#fff", color: tipe === t ? "#004D40" : "#333", fontSize: 14, fontWeight: tipe === t ? 700 : 500, display: "flex", alignItems: "center", justifyContent: "space-between", transition: "all 0.2s" }}>
+                    style={{ padding: "12px 16px", borderRadius: 12, cursor: "pointer", textAlign: "left", border: tipe === t ? "2px solid #004D40" : `1.5px solid ${color.border}`, background: tipe === t ? "#e0f2f1" : color.card, color: tipe === t ? "#004D40" : color.text, fontSize: 14, fontWeight: tipe === t ? 700 : 500, display: "flex", alignItems: "center", justifyContent: "space-between", transition: "all 0.2s" }}>
                     <span>{t}</span>
                     {tipe === t && <span>✓</span>}
                   </button>
@@ -655,7 +656,7 @@ export default function KesiapanGH() {
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
                   Nama Greenhouse
-                  {loadingSubmitted && <span style={{ fontSize: 10, fontWeight: 400, color: "#aaa", marginLeft: 8 }}>memeriksa data...</span>}
+                  {loadingSubmitted && <span style={{ fontSize: 10, fontWeight: 400, color: color.textGhost, marginLeft: 8 }}>memeriksa data...</span>}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   {GH_PER_TIPE[tipe].map(g => {
@@ -663,9 +664,9 @@ export default function KesiapanGH() {
                     const sel = gh === g;
                     return (
                       <button key={g} onClick={() => handleSelectGH(g)}
-                        style={{ padding: "10px 8px", borderRadius: 10, cursor: "pointer", textAlign: "center", border: sel ? "2px solid #004D40" : sudahIsi ? "1px solid #ffb74d" : "1px solid #e0e0e0", background: sel ? "#e0f2f1" : sudahIsi ? "#fff8e1" : "#fff", color: sel ? "#004D40" : "#333", fontSize: 13, fontWeight: sel ? 700 : 500, transition: "all 0.2s" }}>
+                        style={{ padding: "10px 8px", borderRadius: 10, cursor: "pointer", textAlign: "center", border: sel ? "2px solid #004D40" : sudahIsi ? `1px solid ${color.warningBorder}` : `1px solid ${color.border}`, background: sel ? "#e0f2f1" : sudahIsi ? "#fff8e1" : color.card, color: sel ? "#004D40" : color.text, fontSize: 13, fontWeight: sel ? 700 : 500, transition: "all 0.2s" }}>
                         <div>{g}</div>
-                        {sudahIsi && <div style={{ fontSize: 10, color: "#e65100", marginTop: 2 }}>✓ Sudah dicek</div>}
+                        {sudahIsi && <div style={{ fontSize: 10, color: color.warning, marginTop: 2 }}>✓ Sudah dicek</div>}
                         {sel && !sudahIsi && <div style={{ fontSize: 11, marginTop: 2 }}>✓</div>}
                       </button>
                     );
@@ -682,12 +683,12 @@ export default function KesiapanGH() {
             {/* Badge info */}
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
               <div style={{ background: "#e0f2f1", border: "1px solid #80CBC4", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#004D40", fontWeight: 700 }}>{tipe}</div>
-              <div style={{ background: "#f5f5f5", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#666" }}>{gh}</div>
+              <div style={{ background: color.bg, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: color.textMuted }}>{gh}</div>
             </div>
 
             {/* Progress */}
-            <div style={{ fontSize: 12, color: "#888", marginBottom: 4 }}>{filledCount}/{allItems.length} variabel terisi</div>
-            <div style={{ background: "#e0e0e0", borderRadius: 4, height: 5, marginBottom: 14, overflow: "hidden" }}>
+            <div style={{ fontSize: 12, color: color.textSoft, marginBottom: 4 }}>{filledCount}/{allItems.length} variabel terisi</div>
+            <div style={{ background: color.border, borderRadius: 4, height: 5, marginBottom: 14, overflow: "hidden" }}>
               <div style={{ height: "100%", borderRadius: 4, background: "#00897B", width: `${allItems.length > 0 ? (filledCount / allItems.length) * 100 : 0}%`, transition: "width 0.3s" }} />
             </div>
 
@@ -698,7 +699,7 @@ export default function KesiapanGH() {
                 const isActive  = activeAspek === a.key;
                 return (
                   <button key={a.key} onClick={() => setActiveAspek(a.key)}
-                    style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 20, border: `1.5px solid ${isActive ? "#004D40" : "#e0e0e0"}`, background: isActive ? "#e0f2f1" : "#fff", color: isActive ? "#004D40" : "#888", fontSize: 11, fontWeight: isActive ? 700 : 400, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}>
+                    style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 20, border: `1.5px solid ${isActive ? "#004D40" : color.border}`, background: isActive ? "#e0f2f1" : color.card, color: isActive ? "#004D40" : color.textSoft, fontSize: 11, fontWeight: isActive ? 700 : 400, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}>
                     {a.label}
                     {katFilled && <span style={{ fontSize: 10 }}>✅</span>}
                   </button>
@@ -716,15 +717,15 @@ export default function KesiapanGH() {
                   {activeAspekData.items.map(item => {
                     const val = scores[item.code];
                     return (
-                      <div key={item.code} style={{ background: "#fff", border: `1.5px solid ${val === "notgood" ? "#ef9a9a" : val === "good" ? "#a5d6a7" : "#e0e0e0"}`, borderRadius: 12, padding: "10px 12px" }}>
-                        <div style={{ fontSize: 12, color: "#333", fontWeight: 500, marginBottom: 8, minHeight: 32, display: "flex", alignItems: "center" }}>{item.label}</div>
+                      <div key={item.code} style={{ background: color.card, border: `1.5px solid ${val === "notgood" ? color.dangerBorder : val === "good" ? color.brand300 : color.border}`, borderRadius: 12, padding: "10px 12px" }}>
+                        <div style={{ fontSize: 12, color: color.text, fontWeight: 500, marginBottom: 8, minHeight: 32, display: "flex", alignItems: "center" }}>{item.label}</div>
                         <div style={{ display: "flex", gap: 6 }}>
                           <button onClick={() => setScore(item.code, "good")}
-                            style={{ flex: 1, padding: "8px 4px", borderRadius: 8, border: `1.5px solid ${val === "good" ? "#a5d6a7" : "#e0e0e0"}`, background: val === "good" ? "#e8f5e9" : "#fafafa", color: val === "good" ? "#2e7d32" : "#aaa", fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all .15s" }}>
+                            style={{ flex: 1, padding: "8px 4px", borderRadius: 8, border: `1.5px solid ${val === "good" ? color.brand300 : color.border}`, background: val === "good" ? color.brandBg : "#fafafa", color: val === "good" ? color.brand700 : color.textGhost, fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all .15s" }}>
                             Good
                           </button>
                           <button onClick={() => setScore(item.code, "notgood")}
-                            style={{ flex: 1, padding: "8px 4px", borderRadius: 8, border: `1.5px solid ${val === "notgood" ? "#ef9a9a" : "#e0e0e0"}`, background: val === "notgood" ? "#ffebee" : "#fafafa", color: val === "notgood" ? "#c62828" : "#aaa", fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all .15s" }}>
+                            style={{ flex: 1, padding: "8px 4px", borderRadius: 8, border: `1.5px solid ${val === "notgood" ? color.dangerBorder : color.border}`, background: val === "notgood" ? color.dangerBg : "#fafafa", color: val === "notgood" ? color.dangerDeep : color.textGhost, fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all .15s" }}>
                             Not Good
                           </button>
                         </div>
@@ -741,33 +742,33 @@ export default function KesiapanGH() {
         {step === 3 && (
           <div>
             <div style={{ fontWeight: 700, fontSize: 18, color: "#004D40", marginBottom: 4 }}>Rekap Sebelum Submit</div>
-            <div style={{ fontSize: 12, color: "#888", marginBottom: 16 }}>Pastikan semua data sudah benar</div>
+            <div style={{ fontSize: 12, color: color.textSoft, marginBottom: 16 }}>Pastikan semua data sudah benar</div>
 
             {/* Konten yang akan di-screenshot */}
-            <div ref={rekapRef} style={{ background: "#f5f5f5", padding: 8, borderRadius: 14 }}>
+            <div ref={rekapRef} style={{ background: color.bg, padding: 8, borderRadius: 14 }}>
 
               {/* Header laporan */}
               <div style={{ background: "#004D40", borderRadius: 10, padding: "12px 16px", marginBottom: 10, display: "flex", alignItems: "center", gap: 12 }}>
-                <img src="/logo-farmhill.png" alt="Farmhill" style={{ height: 36, borderRadius: 6, background: "#fff", padding: "2px 6px" }} />
+                <img src="/logo-farmhill.png" alt="Farmhill" style={{ height: 36, borderRadius: 6, background: color.card, padding: "2px 6px" }} />
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>Laporan Kesiapan Greenhouse</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: color.card }}>Laporan Kesiapan Greenhouse</div>
                   <div style={{ fontSize: 11, color: "rgba(255,255,255,0.65)" }}>PT. Kebun Bumi Lestari · {todayLabel}</div>
                 </div>
               </div>
 
               {/* Info umum */}
-              <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 10 }}>
+              <div style={{ background: color.card, borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 10 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>📋 Informasi Umum</div>
                 {[["Tanggal", todayISO], ["Operator", user?.nama], ["Tipe GH", tipe], ["Greenhouse", gh]].map(([l, v]) => (
                   <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #f0f0f0" }}>
-                    <span style={{ fontSize: 12, color: "#666" }}>{l}</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#333" }}>{v}</span>
+                    <span style={{ fontSize: 12, color: color.textMuted }}>{l}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: color.text }}>{v}</span>
                   </div>
                 ))}
               </div>
 
               {/* Rekap per aspek — hanya Good/Not Good count, tanpa bobot */}
-              <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 10 }}>
+              <div style={{ background: color.card, borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 10 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>📋 Rekap Per Aspek</div>
                 {aspekList.map(a => {
                   const goodCount    = a.items.filter(i => scores[i.code] === "good").length;
@@ -775,11 +776,11 @@ export default function KesiapanGH() {
                   return (
                     <div key={a.key} style={{ padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontSize: 12, color: "#333", fontWeight: 500 }}>{a.label}</span>
+                        <span style={{ fontSize: 12, color: color.text, fontWeight: 500 }}>{a.label}</span>
                         <div style={{ display: "flex", gap: 6 }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, background: "#e8f5e9", color: "#2e7d32", border: "1px solid #a5d6a7", borderRadius: 20, padding: "2px 10px" }}>✓ {goodCount} Good</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, background: color.brandBg, color: color.brand700, border: `1px solid ${color.brand300}`, borderRadius: 20, padding: "2px 10px" }}>✓ {goodCount} Good</span>
                           {notGoodCount > 0 && (
-                            <span style={{ fontSize: 11, fontWeight: 700, background: "#ffebee", color: "#c62828", border: "1px solid #ef9a9a", borderRadius: 20, padding: "2px 10px" }}>✗ {notGoodCount} Not Good</span>
+                            <span style={{ fontSize: 11, fontWeight: 700, background: color.dangerBg, color: color.dangerDeep, border: `1px solid ${color.dangerBorder}`, borderRadius: 20, padding: "2px 10px" }}>✗ {notGoodCount} Not Good</span>
                           )}
                         </div>
                       </div>
@@ -788,12 +789,12 @@ export default function KesiapanGH() {
                 })}
                 {/* Total simpel */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 10, marginTop: 4 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#333" }}>Total</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: color.text }}>Total</span>
                   <div style={{ display: "flex", gap: 6 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, background: "#e8f5e9", color: "#2e7d32", border: "1px solid #a5d6a7", borderRadius: 20, padding: "3px 12px" }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, background: color.brandBg, color: color.brand700, border: `1px solid ${color.brand300}`, borderRadius: 20, padding: "3px 12px" }}>
                       ✓ {allItems.filter(i => scores[i.code] === "good").length} Good
                     </span>
-                    <span style={{ fontSize: 12, fontWeight: 700, background: "#ffebee", color: "#c62828", border: "1px solid #ef9a9a", borderRadius: 20, padding: "3px 12px" }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, background: color.dangerBg, color: color.dangerDeep, border: `1px solid ${color.dangerBorder}`, borderRadius: 20, padding: "3px 12px" }}>
                       ✗ {allItems.filter(i => scores[i.code] === "notgood").length} Not Good
                     </span>
                   </div>
@@ -804,12 +805,12 @@ export default function KesiapanGH() {
 
             {/* Tombol download PNG */}
             <button onClick={handleDownloadPNG} disabled={downloading}
-              style={{ width: "100%", padding: 12, marginBottom: 10, border: "1.5px solid #00897B", borderRadius: 12, background: downloading ? "#e0e0e0" : "#e0f2f1", color: downloading ? "#aaa" : "#004D40", fontSize: 14, fontWeight: 700, cursor: downloading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              style={{ width: "100%", padding: 12, marginBottom: 10, border: "1.5px solid #00897B", borderRadius: 12, background: downloading ? color.border : "#e0f2f1", color: downloading ? color.textGhost : "#004D40", fontSize: 14, fontWeight: 700, cursor: downloading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
               {downloading ? "⏳ Menyimpan..." : "📥 Download Laporan PNG"}
             </button>
 
             {submitError && (
-              <div style={{ fontSize: 12, color: "#c62828", background: "#ffebee", border: "1px solid #ef9a9a", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>⚠️ {submitError}</div>
+              <div style={{ fontSize: 12, color: color.dangerDeep, background: color.dangerBg, border: `1px solid ${color.dangerBorder}`, borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>⚠️ {submitError}</div>
             )}
           </div>
         )}
@@ -818,20 +819,20 @@ export default function KesiapanGH() {
         {step === 4 && (
           <div style={{ textAlign: "center", paddingTop: 32 }}>
             <div style={{ fontSize: 60, marginBottom: 12 }}>{savedOffline ? "💾" : "✅"}</div>
-            <div style={{ fontSize: 21, fontWeight: 800, color: savedOffline ? "#1565C0" : "#004D40", marginBottom: 6 }}>
+            <div style={{ fontSize: 21, fontWeight: 800, color: savedOffline ? color.info : "#004D40", marginBottom: 6 }}>
               {savedOffline ? "Tersimpan Lokal!" : "Penilaian Tersimpan!"}
             </div>
-            <div style={{ fontSize: 13, color: "#888", marginBottom: 20 }}>
+            <div style={{ fontSize: 13, color: color.textSoft, marginBottom: 20 }}>
               {savedOffline ? "Otomatis terkirim saat online." : "Data berhasil dikirim ke Google Sheets"}
             </div>
-            <div style={{ background: savedOffline ? "#e3f2fd" : "#e0f2f1", border: `1px solid ${savedOffline ? "#90CAF9" : "#80CBC4"}`, borderRadius: 14, padding: 16, textAlign: "left", marginBottom: 20 }}>
+            <div style={{ background: savedOffline ? color.infoBg : "#e0f2f1", border: `1px solid ${savedOffline ? color.infoBorder : "#80CBC4"}`, borderRadius: 14, padding: 16, textAlign: "left", marginBottom: 20 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "#004D40" }}>{tipe} · {gh}</div>
-              <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>Operator: {user?.nama} · {todayISO}</div>
+              <div style={{ fontSize: 13, color: color.textMuted, marginTop: 2 }}>Operator: {user?.nama} · {todayISO}</div>
               <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(0,0,0,0.06)", display: "flex", gap: 10, justifyContent: "center" }}>
-                <span style={{ fontSize: 13, fontWeight: 700, background: "#e8f5e9", color: "#2e7d32", border: "1px solid #a5d6a7", borderRadius: 20, padding: "4px 14px" }}>
+                <span style={{ fontSize: 13, fontWeight: 700, background: color.brandBg, color: color.brand700, border: `1px solid ${color.brand300}`, borderRadius: 20, padding: "4px 14px" }}>
                   ✓ {allItems.filter(i => scores[i.code] === "good").length} Good
                 </span>
-                <span style={{ fontSize: 13, fontWeight: 700, background: "#ffebee", color: "#c62828", border: "1px solid #ef9a9a", borderRadius: 20, padding: "4px 14px" }}>
+                <span style={{ fontSize: 13, fontWeight: 700, background: color.dangerBg, color: color.dangerDeep, border: `1px solid ${color.dangerBorder}`, borderRadius: 20, padding: "4px 14px" }}>
                   ✗ {allItems.filter(i => scores[i.code] === "notgood").length} Not Good
                 </span>
               </div>
@@ -846,28 +847,28 @@ export default function KesiapanGH() {
 
       {/* Bottom Nav */}
       {step < 4 && (
-        <div style={{ padding: "12px 16px 24px", borderTop: "1px solid #e0e0e0", background: "#fff", position: "sticky", bottom: 0, display: "flex", gap: 10 }}>
+        <div style={{ padding: "12px 16px 24px", borderTop: `1px solid ${color.border}`, background: color.card, position: "sticky", bottom: 0, display: "flex", gap: 10 }}>
           {step > 1 && (
             <button onClick={() => { setStep(s => s - 1); setSubmitError(null); }}
-              style={{ flex: 1, padding: 13, background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 12, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+              style={{ flex: 1, padding: 13, background: color.bg, border: `1px solid ${color.border}`, borderRadius: 12, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
               ← Kembali
             </button>
           )}
           {step === 1 && (
             <button onClick={() => setStep(2)} disabled={!tipe || !gh}
-              style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: tipe && gh ? "linear-gradient(135deg,#004D40,#00695C)" : "#e0e0e0", color: tipe && gh ? "#fff" : "#aaa", fontSize: 15, fontWeight: 700, cursor: tipe && gh ? "pointer" : "not-allowed" }}>
+              style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: tipe && gh ? "linear-gradient(135deg,#004D40,#00695C)" : color.border, color: tipe && gh ? color.card : color.textGhost, fontSize: 15, fontWeight: 700, cursor: tipe && gh ? "pointer" : "not-allowed" }}>
               Lanjut Penilaian →
             </button>
           )}
           {step === 2 && (
             <button onClick={() => setStep(3)} disabled={!allFilled}
-              style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: allFilled ? "linear-gradient(135deg,#004D40,#00695C)" : "#e0e0e0", color: allFilled ? "#fff" : "#aaa", fontSize: 15, fontWeight: 700, cursor: allFilled ? "pointer" : "not-allowed" }}>
+              style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: allFilled ? "linear-gradient(135deg,#004D40,#00695C)" : color.border, color: allFilled ? color.card : color.textGhost, fontSize: 15, fontWeight: 700, cursor: allFilled ? "pointer" : "not-allowed" }}>
               {allFilled ? "Lihat Rekap →" : `⚠️ ${allItems.length - filledCount} belum terisi`}
             </button>
           )}
           {step === 3 && (
             <button onClick={() => setConfirmOpen(true)} disabled={submitting}
-              style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: submitting ? "#e0e0e0" : !isOnline ? "linear-gradient(135deg,#1565C0,#1976D2)" : "linear-gradient(135deg,#004D40,#00695C)", color: submitting ? "#aaa" : "#fff", fontSize: 15, fontWeight: 700, cursor: submitting ? "not-allowed" : "pointer" }}>
+              style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: submitting ? color.border : !isOnline ? `linear-gradient(135deg,${color.info},#1976D2)` : "linear-gradient(135deg,#004D40,#00695C)", color: submitting ? color.textGhost : color.card, fontSize: 15, fontWeight: 700, cursor: submitting ? "not-allowed" : "pointer" }}>
               {submitting ? "⏳ Menyimpan..." : !isOnline ? "💾 Simpan Offline" : "Submit Penilaian ✓"}
             </button>
           )}

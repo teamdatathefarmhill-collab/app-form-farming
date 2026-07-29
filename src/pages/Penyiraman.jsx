@@ -3,6 +3,7 @@ import { useDraft } from "../hooks/useDraft";
 import { useAuth } from "../hooks/useAuth";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
+import { color } from "../styles/tokens";
 
 const SCRIPT_URL = import.meta.env.VITE_GAS_PENYIRAMAN_URL;
 
@@ -70,8 +71,8 @@ const todayISO   = new Date().toLocaleDateString("id-ID", { day: "2-digit", mont
 const todayLabel = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
 function hstColor(hst) {
-  if (hst === null || hst === undefined) return { bg: "#f5f5f5", text: "#aaa", border: "#e0e0e0" };
-  if (hst <= 21) return { bg: "#e8f5e9", text: "#2e7d32", border: "#a5d6a7" };
+  if (hst === null || hst === undefined) return { bg: color.bg, text: color.textGhost, border: color.border };
+  if (hst <= 21) return { bg: color.brandBg, text: color.brand700, border: color.brand300 };
   if (hst <= 40) return { bg: "#fff8e1", text: "#f57f17", border: "#ffe082" };
   return             { bg: "#fbe9e7", text: "#bf360c", border: "#ffab91" };
 }
@@ -85,21 +86,21 @@ function Field({ label, value, onChange, placeholder, satuan, type = "number", e
   const hasError = !!error;
   return (
     <div style={{ marginBottom: 6 }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: hasError ? "#c62828" : "#0277bd", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 3 }}>
-        {label} {satuan && <span style={{ fontWeight: 400, color: "#aaa", textTransform: "none" }}>({satuan})</span>}
+      <div style={{ fontSize: 10, fontWeight: 700, color: hasError ? color.dangerDeep : "#0277bd", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 3 }}>
+        {label} {satuan && <span style={{ fontWeight: 400, color: color.textGhost, textTransform: "none" }}>({satuan})</span>}
       </div>
       <input
         type={type} inputMode={type === "number" ? "decimal" : "text"} value={value}
         onChange={e => onChange(e.target.value)} placeholder={placeholder || "0"}
         style={{
           width: "100%", height: 38, padding: "0 10px",
-          border: `1.5px solid ${hasError ? "#e53935" : filled ? "#81c784" : "#e0e0e0"}`,
+          border: `1.5px solid ${hasError ? color.danger : filled ? color.brand400 : color.border}`,
           borderRadius: 8, fontSize: 13, fontWeight: 600,
-          color: hasError ? "#c62828" : filled ? "#2e7d32" : "#bbb", outline: "none",
-          background: hasError ? "#ffebee" : "#fff", boxSizing: "border-box", fontFamily: "inherit",
+          color: hasError ? color.dangerDeep : filled ? color.brand700 : "#bbb", outline: "none",
+          background: hasError ? color.dangerBg : color.card, boxSizing: "border-box", fontFamily: "inherit",
         }}
       />
-      {hasError && <div style={{ fontSize: 10, color: "#c62828", marginTop: 2 }}>⚠ {error}</div>}
+      {hasError && <div style={{ fontSize: 10, color: color.dangerDeep, marginTop: 2 }}>⚠ {error}</div>}
     </div>
   );
 }
@@ -108,8 +109,8 @@ function RekapRow({ label, value, satuan }) {
   if (value === "" || value === undefined || value === null) return null;
   return (
     <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #f0f0f0" }}>
-      <span style={{ fontSize: 12, color: "#666" }}>{label}</span>
-      <span style={{ fontSize: 12, fontWeight: 700, color: "#2e7d32" }}>{value}{satuan ? ` ${satuan}` : ""}</span>
+      <span style={{ fontSize: 12, color: color.textMuted }}>{label}</span>
+      <span style={{ fontSize: 12, fontWeight: 700, color: color.brand700 }}>{value}{satuan ? ` ${satuan}` : ""}</span>
     </div>
   );
 }
@@ -346,10 +347,10 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f5f5f5", fontFamily: "'DM Sans','Segoe UI',sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: color.bg, fontFamily: "'DM Sans','Segoe UI',sans-serif" }}>
 
       {/* Header */}
-      <div style={{ background: "#0277bd", color: "#fff", padding: "14px 16px 10px", position: "sticky", top: 0, zIndex: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
+      <div style={{ background: "#0277bd", color: color.card, padding: "14px 16px 10px", position: "sticky", top: 0, zIndex: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             {onDone && (
@@ -361,7 +362,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
             <div style={{ fontSize: 13, opacity: 0.65, marginTop: 1 }}>{todayLabel}</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: isOnline ? "#a5d6a7" : "#ef9a9a" }} />
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: isOnline ? color.brand300 : color.dangerBorder }} />
             <span style={{ fontSize: 10, opacity: 0.6 }}>{user?.nama}</span>
           </div>
         </div>
@@ -380,14 +381,14 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
         {step === 1 && (
           <div>
             <div style={{ fontWeight: 700, fontSize: 18, color: "#0277bd", marginBottom: 4 }}>Pilih Tipe & Greenhouse</div>
-            <div style={{ fontSize: 12, color: "#888", marginBottom: 16 }}>Pilih tipe sistem irigasi terlebih dahulu</div>
+            <div style={{ fontSize: 12, color: color.textSoft, marginBottom: 16 }}>Pilih tipe sistem irigasi terlebih dahulu</div>
 
             <div style={{ marginBottom: 20 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#0277bd", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Tipe GH</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {TIPE_LIST.map(t => (
                   <button key={t} onClick={() => { setTipe(t); setGh(""); setVarianData({}); }}
-                    style={{ padding: "12px 16px", borderRadius: 12, cursor: "pointer", textAlign: "left", border: tipe === t ? "2px solid #0277bd" : "1.5px solid #e0e0e0", background: tipe === t ? "#e1f5fe" : "#fff", color: tipe === t ? "#0277bd" : "#333", fontSize: 14, fontWeight: tipe === t ? 700 : 500, display: "flex", alignItems: "center", justifyContent: "space-between", transition: "all 0.2s" }}>
+                    style={{ padding: "12px 16px", borderRadius: 12, cursor: "pointer", textAlign: "left", border: tipe === t ? "2px solid #0277bd" : `1.5px solid ${color.border}`, background: tipe === t ? "#e1f5fe" : color.card, color: tipe === t ? "#0277bd" : color.text, fontSize: 14, fontWeight: tipe === t ? 700 : 500, display: "flex", alignItems: "center", justifyContent: "space-between", transition: "all 0.2s" }}>
                     <span>{t}</span>
                     {tipe === t && <span>✓</span>}
                   </button>
@@ -399,7 +400,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#0277bd", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
                   Nama Greenhouse
-                  {loadingRef && <span style={{ fontSize: 10, fontWeight: 400, color: "#aaa", marginLeft: 8 }}>memuat...</span>}
+                  {loadingRef && <span style={{ fontSize: 10, fontWeight: 400, color: color.textGhost, marginLeft: 8 }}>memuat...</span>}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   {GH_PER_TIPE[tipe].filter(g => refSource[g]).map(g => {
@@ -409,9 +410,9 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
                     const sel  = gh === g;
                     return (
                       <button key={g} onClick={() => handleSelectGH(g)}
-                        style={{ padding: "10px 8px", borderRadius: 10, cursor: "pointer", textAlign: "center", border: sel ? "2px solid #0277bd" : "1px solid #e0e0e0", background: sel ? "#e1f5fe" : "#fff", color: sel ? "#0277bd" : "#333", fontSize: 13, fontWeight: sel ? 700 : 500, transition: "all 0.2s" }}>
+                        style={{ padding: "10px 8px", borderRadius: 10, cursor: "pointer", textAlign: "center", border: sel ? "2px solid #0277bd" : `1px solid ${color.border}`, background: sel ? "#e1f5fe" : color.card, color: sel ? "#0277bd" : color.text, fontSize: 13, fontWeight: sel ? 700 : 500, transition: "all 0.2s" }}>
                         <div>{g}</div>
-                        {info?.periode && <div style={{ fontSize: 10, color: "#aaa", marginTop: 2 }}>P{info.periode}</div>}
+                        {info?.periode && <div style={{ fontSize: 10, color: color.textGhost, marginTop: 2 }}>P{info.periode}</div>}
                         {hst !== null && (
                           <div style={{ marginTop: 4, background: c.bg, border: `1px solid ${c.border}`, borderRadius: 6, padding: "2px 6px", display: "inline-block" }}>
                             <span style={{ fontSize: 12, fontWeight: 800, color: c.text }}>{hst}</span>
@@ -425,11 +426,11 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
                 </div>
 
                 {gh && !isDB && varianList.length > 0 && (
-                  <div style={{ marginTop: 14, background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 10, padding: "10px 14px" }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#2e7d32", marginBottom: 6 }}>🌱 Varian yang akan diisi ({varianList.length})</div>
+                  <div style={{ marginTop: 14, background: color.brandBg, border: `1px solid ${color.brand300}`, borderRadius: 10, padding: "10px 14px" }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: color.brand700, marginBottom: 6 }}>🌱 Varian yang akan diisi ({varianList.length})</div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       {varianList.map(v => (
-                        <span key={v} style={{ fontSize: 12, background: "#fff", border: "1px solid #a5d6a7", borderRadius: 20, padding: "3px 10px", color: "#2e7d32", fontWeight: 600 }}>{v}</span>
+                        <span key={v} style={{ fontSize: 12, background: color.card, border: `1px solid ${color.brand300}`, borderRadius: 20, padding: "3px 10px", color: color.brand700, fontWeight: 600 }}>{v}</span>
                       ))}
                     </div>
                   </div>
@@ -443,7 +444,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
         {step === 2 && (
           <div>
             {/* Nama Operator — di paling atas step 2 */}
-            <div style={{ background: "#fff", borderRadius: 12, border: `1.5px solid ${operator.trim().length >= 2 ? "#a5d6a7" : "#e0e0e0"}`, padding: 14, marginBottom: 14 }}>
+            <div style={{ background: color.card, borderRadius: 12, border: `1.5px solid ${operator.trim().length >= 2 ? color.brand300 : color.border}`, padding: 14, marginBottom: 14 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#0277bd", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>👤 Nama Operator</div>
               <input
                 type="text"
@@ -452,30 +453,30 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
                 placeholder="Tulis nama lengkap operator..."
                 style={{
                   width: "100%", padding: "11px 14px",
-                  border: `1.5px solid ${operator.trim().length >= 2 ? "#81c784" : "#e0e0e0"}`,
+                  border: `1.5px solid ${operator.trim().length >= 2 ? color.brand400 : color.border}`,
                   borderRadius: 10, fontSize: 14, fontWeight: 600,
-                  color: operator.trim().length >= 2 ? "#2e7d32" : "#bbb",
-                  outline: "none", background: "#fff",
+                  color: operator.trim().length >= 2 ? color.brand700 : "#bbb",
+                  outline: "none", background: color.card,
                   boxSizing: "border-box", fontFamily: "inherit",
                 }}
               />
               {operator.trim().length > 0 && operator.trim().length < 2 && (
-                <div style={{ fontSize: 11, color: "#e65100", marginTop: 4 }}>Nama minimal 2 karakter</div>
+                <div style={{ fontSize: 11, color: color.warning, marginTop: 4 }}>Nama minimal 2 karakter</div>
               )}
             </div>
 
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
               <div style={{ background: "#e1f5fe", border: "1px solid #81d4fa", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#0277bd", fontWeight: 700 }}>{gh}</div>
-              <div style={{ background: "#f5f5f5", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#666" }}>{tipe}</div>
+              <div style={{ background: color.bg, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: color.textMuted }}>{tipe}</div>
               {refSource[gh]?.hst != null && (() => { const c = hstColor(refSource[gh].hst); return (
                 <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: c.text, fontWeight: 700 }}>{refSource[gh].hst} HST</div>
               ); })()}
             </div>
 
             {/* Nutrisi — isian bebas (opsional), auto-fill dari isian sebelumnya untuk GH ini */}
-            <div style={{ background: "#fff", borderRadius: 12, border: `1.5px solid ${nutrisi ? "#a5d6a7" : "#e0e0e0"}`, padding: 14, marginBottom: 14 }}>
+            <div style={{ background: color.card, borderRadius: 12, border: `1.5px solid ${nutrisi ? color.brand300 : color.border}`, padding: 14, marginBottom: 14 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#0277bd", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
-                🧪 Nutrisi <span style={{ fontWeight: 400, color: "#aaa", textTransform: "none" }}>(opsional)</span>
+                🧪 Nutrisi <span style={{ fontWeight: 400, color: color.textGhost, textTransform: "none" }}>(opsional)</span>
               </div>
               <input
                 type="text"
@@ -484,17 +485,17 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
                 placeholder="Tulis nutrisi yang digunakan..."
                 style={{
                   width: "100%", height: 42, padding: "0 12px",
-                  border: `1.5px solid ${nutrisi ? "#81c784" : "#e0e0e0"}`,
+                  border: `1.5px solid ${nutrisi ? color.brand400 : color.border}`,
                   borderRadius: 10, fontSize: 14, fontWeight: 600,
-                  color: nutrisi ? "#2e7d32" : "#bbb", outline: "none",
-                  background: "#fff", boxSizing: "border-box", fontFamily: "inherit",
+                  color: nutrisi ? color.brand700 : "#bbb", outline: "none",
+                  background: color.card, boxSizing: "border-box", fontFamily: "inherit",
                 }}
               />
             </div>
 
             {/* Dutch Bucket */}
             {isDB && (
-              <div style={{ background: "#fff", borderRadius: 12, border: "1.5px solid #e0e0e0", padding: 14 }}>
+              <div style={{ background: color.card, borderRadius: 12, border: `1.5px solid ${color.border}`, padding: 14 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#0277bd", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>💧 Data Tandon & Bucket</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   <Field label="EC Tandon"  value={dbData.ecTandon}  onChange={v => updateDb("ecTandon",  v)} satuan="mS/cm" error={dbErrors.ecTandon} />
@@ -521,18 +522,18 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
                          (multiSuhuRH ? (d.suhuArr.every(x=>x!=="") && d.rhArr.every(x=>x!=="")) : (d.suhu && d.rh));
               const ok = filled && !hasErr;
               return (
-                <div key={v} style={{ background: "#fff", borderRadius: 12, border: `1.5px solid ${hasErr ? "#ef9a9a" : ok ? "#a5d6a7" : "#e0e0e0"}`, overflow: "hidden" }}>
-                  <div style={{ background: hasErr ? "#ffebee" : ok ? "#f1f8e9" : "#fafafa", padding: "8px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div key={v} style={{ background: color.card, borderRadius: 12, border: `1.5px solid ${hasErr ? color.dangerBorder : ok ? color.brand300 : color.border}`, overflow: "hidden" }}>
+                  <div style={{ background: hasErr ? color.dangerBg : ok ? "#f1f8e9" : "#fafafa", padding: "8px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <div>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: hasErr ? "#c62828" : ok ? "#2e7d32" : "#0277bd" }}>🌱 {v}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: hasErr ? color.dangerDeep : ok ? color.brand700 : "#0277bd" }}>🌱 {v}</span>
                       {v === varianList[0] && varianList.length > 1 && (
                         <span style={{ fontSize: 9, color: "#0277bd", background: "#e1f5fe", border: "1px solid #81d4fa", borderRadius: 20, padding: "1px 6px", marginLeft: 6 }}>auto-fill</span>
                       )}
                     </div>
                     {hasErr
-                      ? <span style={{ fontSize: 9, color: "#c62828", background: "#ffebee", border: "1px solid #ef9a9a", borderRadius: 20, padding: "2px 6px" }}>⚠ Di luar standar</span>
+                      ? <span style={{ fontSize: 9, color: color.dangerDeep, background: color.dangerBg, border: `1px solid ${color.dangerBorder}`, borderRadius: 20, padding: "2px 6px" }}>⚠ Di luar standar</span>
                       : ok ? <span style={{ fontSize: 11 }}>✅</span>
-                      : <span style={{ fontSize: 9, color: "#e65100", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 6px" }}>Belum</span>}
+                      : <span style={{ fontSize: 9, color: color.warning, background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 20, padding: "2px 6px" }}>Belum</span>}
                   </div>
                   <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
                     <Field label="EC In"        value={d.ecIn}       onChange={val => handleVarianChange(v,"ecIn",val)}       satuan="mS/cm" error={errs.ecIn} />
@@ -572,9 +573,9 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
         {step === 3 && (
           <div>
             <div style={{ fontWeight: 700, fontSize: 18, color: "#0277bd", marginBottom: 4 }}>Cek Data Sebelum Submit</div>
-            <div style={{ fontSize: 12, color: "#888", marginBottom: 16 }}>Pastikan semua data sudah benar</div>
+            <div style={{ fontSize: 12, color: color.textSoft, marginBottom: 16 }}>Pastikan semua data sudah benar</div>
 
-            <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 12 }}>
+            <div style={{ background: color.card, borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 12 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: "#0277bd", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>📋 Informasi Umum</div>
               <RekapRow label="Tanggal"  value={todayISO} />
               <RekapRow label="Operator" value={operator || user?.nama} />
@@ -587,8 +588,8 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
             {!isDB && varianList.map(v => {
               const d = varianData[v] || initVarianData();
               return (
-                <div key={v} style={{ background: "#fff", borderRadius: 14, padding: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 10 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#2e7d32", marginBottom: 8 }}>🌱 {v}</div>
+                <div key={v} style={{ background: color.card, borderRadius: 14, padding: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 10 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: color.brand700, marginBottom: 8 }}>🌱 {v}</div>
                   <RekapRow label="EC In"          value={d.ecIn||"0"}        satuan="mS/cm" />
                   <RekapRow label="EC Out"         value={d.ecOut||"0"}       satuan="mS/cm" />
                   <RekapRow label="pH In"          value={d.phIn||"0"} />
@@ -611,7 +612,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
             })}
 
             {isDB && (
-              <div style={{ background: "#fff", borderRadius: 14, padding: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 12 }}>
+              <div style={{ background: color.card, borderRadius: 14, padding: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 12 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#0277bd", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>💧 Data Tandon & Bucket</div>
                 <RekapRow label="EC Tandon"      value={dbData.ecTandon}   satuan="mS/cm" />
                 <RekapRow label="EC Bucket"      value={dbData.ecBucket}   satuan="mS/cm" />
@@ -629,14 +630,14 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
 
             {submitting && (
               <div style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 12, color: "#666", marginBottom: 6 }}>Mengirim {submitProgress.total} varian sekaligus...</div>
-                <div style={{ background: "#e0e0e0", borderRadius: 4, height: 6, overflow: "hidden" }}>
+                <div style={{ fontSize: 12, color: color.textMuted, marginBottom: 6 }}>Mengirim {submitProgress.total} varian sekaligus...</div>
+                <div style={{ background: color.border, borderRadius: 4, height: 6, overflow: "hidden" }}>
                   <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#0277bd,#0288d1)", width: "100%", animation: "pulse-bar 1.2s ease-in-out infinite" }} />
                 </div>
               </div>
             )}
             {submitError && (
-              <div style={{ fontSize: 12, color: "#c62828", background: "#ffebee", border: "1px solid #ef9a9a", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>⚠️ {submitError}</div>
+              <div style={{ fontSize: 12, color: color.dangerDeep, background: color.dangerBg, border: `1px solid ${color.dangerBorder}`, borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>⚠️ {submitError}</div>
             )}
           </div>
         )}
@@ -646,7 +647,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
           <div style={{ textAlign: "center", paddingTop: 32 }}>
             <div style={{ fontSize: 60, marginBottom: 12 }}>✅</div>
             <div style={{ fontSize: 21, fontWeight: 800, color: "#0277bd", marginBottom: 6 }}>Data Tersimpan!</div>
-            <div style={{ fontSize: 13, color: "#888", marginBottom: 20 }}>
+            <div style={{ fontSize: 13, color: color.textSoft, marginBottom: 20 }}>
               {isDB ? "Data Dutch Bucket" : `${varianList.length} varian`} berhasil dikirim ke Google Sheets
             </div>
             <div style={{ background: "#e1f5fe", border: "1px solid #81d4fa", borderRadius: 14, padding: 16, textAlign: "left", marginBottom: 20 }}>
@@ -654,11 +655,11 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
               {!isDB && (
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
                   {varianList.map(v => (
-                    <span key={v} style={{ fontSize: 11, background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 20, padding: "2px 10px", color: "#2e7d32", fontWeight: 600 }}>🌱 {v}</span>
+                    <span key={v} style={{ fontSize: 11, background: color.brandBg, border: `1px solid ${color.brand300}`, borderRadius: 20, padding: "2px 10px", color: color.brand700, fontWeight: 600 }}>🌱 {v}</span>
                   ))}
                 </div>
               )}
-              <div style={{ fontSize: 13, color: "#666", marginTop: 8 }}>Operator: {operator || user?.nama} · {todayISO}</div>
+              <div style={{ fontSize: 13, color: color.textMuted, marginTop: 8 }}>Operator: {operator || user?.nama} · {todayISO}</div>
             </div>
             {onDone ? (
               <button onClick={onDone} style={{ width: "100%", padding: 15, background: "#e1f5fe", border: "2px solid #81d4fa", borderRadius: 12, color: "#0277bd", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
@@ -676,29 +677,29 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
 
       {/* Bottom Nav */}
       {step < 4 && (
-        <div style={{ padding: "12px 16px 24px", borderTop: "1px solid #e0e0e0", background: "#fff", position: "sticky", bottom: 0, display: "flex", gap: 10 }}>
+        <div style={{ padding: "12px 16px 24px", borderTop: `1px solid ${color.border}`, background: color.card, position: "sticky", bottom: 0, display: "flex", gap: 10 }}>
           {step > 1 && !onDone && (
             <button onClick={() => { setStep(s => s - 1); setSubmitError(null); }}
-              style={{ flex: 1, padding: 13, background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 12, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+              style={{ flex: 1, padding: 13, background: color.bg, border: `1px solid ${color.border}`, borderRadius: 12, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
               ← Kembali
             </button>
           )}
           {step < 3 && (
             <div style={{ flex: 2, display: "flex", flexDirection: "column", gap: 6 }}>
               {step === 2 && hasValidationError && (
-                <div style={{ fontSize: 11, color: "#c62828", background: "#ffebee", border: "1px solid #ef9a9a", borderRadius: 8, padding: "6px 10px", textAlign: "center" }}>
+                <div style={{ fontSize: 11, color: color.dangerDeep, background: color.dangerBg, border: `1px solid ${color.dangerBorder}`, borderRadius: 8, padding: "6px 10px", textAlign: "center" }}>
                   ⚠ Terdeteksi nilai tidak wajar (kemungkinan typo) — periksa field merah
                 </div>
               )}
               <button onClick={() => setStep(s => s + 1)} disabled={!canNext()}
-                style={{ width: "100%", padding: 13, border: "none", borderRadius: 12, background: canNext() ? "linear-gradient(135deg,#0277bd,#0288d1)" : "#e0e0e0", color: canNext() ? "#fff" : "#aaa", fontSize: 15, fontWeight: 700, cursor: canNext() ? "pointer" : "not-allowed" }}>
+                style={{ width: "100%", padding: 13, border: "none", borderRadius: 12, background: canNext() ? "linear-gradient(135deg,#0277bd,#0288d1)" : color.border, color: canNext() ? color.card : color.textGhost, fontSize: 15, fontWeight: 700, cursor: canNext() ? "pointer" : "not-allowed" }}>
                 {step === 1 ? "Lanjut Input →" : "Lihat Rekap →"}
               </button>
             </div>
           )}
           {step === 3 && (
             <button onClick={() => setConfirmOpen(true)} disabled={submitting}
-              style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: submitting ? "#e0e0e0" : "linear-gradient(135deg,#0277bd,#0288d1)", color: submitting ? "#aaa" : "#fff", fontSize: 15, fontWeight: 700, cursor: submitting ? "not-allowed" : "pointer" }}>
+              style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: submitting ? color.border : "linear-gradient(135deg,#0277bd,#0288d1)", color: submitting ? color.textGhost : color.card, fontSize: 15, fontWeight: 700, cursor: submitting ? "not-allowed" : "pointer" }}>
               {submitting ? `⏳ Mengirim...` : `Submit ${isDB ? "" : varianList.length + " Varian"} ✓`}
             </button>
           )}

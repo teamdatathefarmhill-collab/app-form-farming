@@ -5,6 +5,7 @@ import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 import FotoSelfie from "../components/FotoSelfie";
+import { color } from "../styles/tokens";
 
 const DB_NAME    = "VigorOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_VIGOR_URL;
@@ -165,7 +166,7 @@ function hitungHST(tgl) {
 }
 
 function hstColor(hst) {
-  if (hst <= 21) return { bg: "#e8f5e9", border: "#a5d6a7", text: "#2e7d32", badge: "#c8e6c9" };
+  if (hst <= 21) return { bg: color.brandBg, border: color.brand300, text: color.brand700, badge: "#c8e6c9" };
   if (hst <= 40) return { bg: "#fff8e1", border: "#ffe082", text: "#f57f17", badge: "#fff9c4" };
   return              { bg: "#fbe9e7", border: "#ffab91", text: "#bf360c", badge: "#fce4ec" };
 }
@@ -222,7 +223,7 @@ function markSubmitted(gh) {
 }
 
 // ─── Komponen: Pilih Opsi (Radio style) ──────────────────────────────────────
-function PilihOpsi({ options, value, onChange, color = "#2e7d32", cols = 1 }) {
+function PilihOpsi({ options, value, onChange, color = color.brand700, cols = 1 }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 6 }}>
       {options.map((opt, i) => {
@@ -231,8 +232,8 @@ function PilihOpsi({ options, value, onChange, color = "#2e7d32", cols = 1 }) {
           <button key={i} onClick={() => onChange(opt)}
             style={{
               padding: "9px 10px", textAlign: "left", borderRadius: 10, cursor: "pointer",
-              border: `1.5px solid ${active ? color : "#e0e0e0"}`,
-              background: active ? `${color}12` : "#fff",
+              border: `1.5px solid ${active ? color : color.border}`,
+              background: active ? `${color}12` : color.card,
               color: active ? color : "#555",
               fontSize: 12, fontWeight: active ? 700 : 400,
               transition: "all 0.15s", lineHeight: 1.4,
@@ -527,7 +528,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
     <div style={{ minHeight: "100vh", background: "#f4f7f4", fontFamily: "'Segoe UI', system-ui, sans-serif", display: "flex", flexDirection: "column" }}>
 
       {/* Header */}
-      <div style={{ background: "linear-gradient(135deg, #1b5e20, #2e7d32)", padding: "14px 16px 12px", position: "sticky", top: 0, zIndex: 10 }}>
+      <div style={{ background: `linear-gradient(135deg, ${color.brand900}, ${color.brand700})`, padding: "14px 16px 12px", position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
             {onDone && (
@@ -541,7 +542,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
           <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
             {pendingCount > 0 && (
               <button onClick={isOnline ? syncPending : undefined}
-                style={{ fontSize: 10, fontWeight: 700, background: isOnline ? "rgba(33,150,243,0.25)" : "rgba(255,179,0,0.2)", border: `1px solid ${isOnline ? "rgba(33,150,243,0.5)" : "rgba(255,179,0,0.4)"}`, borderRadius: 20, padding: "3px 9px", color: isOnline ? "#90CAF9" : "#FFB300", cursor: isOnline ? "pointer" : "default" }}>
+                style={{ fontSize: 10, fontWeight: 700, background: isOnline ? "rgba(33,150,243,0.25)" : "rgba(255,179,0,0.2)", border: `1px solid ${isOnline ? "rgba(33,150,243,0.5)" : "rgba(255,179,0,0.4)"}`, borderRadius: 20, padding: "3px 9px", color: isOnline ? color.infoBorder : "#FFB300", cursor: isOnline ? "pointer" : "default" }}>
                 {isSyncingPending ? "⏳" : "📤"} {pendingCount} pending
               </button>
             )}
@@ -556,7 +557,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
             return (
               <div key={s} style={{ flex: 1, textAlign: "center" }}>
                 <div style={{ height: 3, borderRadius: 2, marginBottom: 4, background: done ? "#69f0ae" : active ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.15)", transition: "background 0.3s" }} />
-                <div style={{ fontSize: 9, color: active ? "#fff" : done ? "#69f0ae" : "rgba(255,255,255,0.3)", fontWeight: active ? 700 : 400 }}>{label}</div>
+                <div style={{ fontSize: 9, color: active ? color.card : done ? "#69f0ae" : "rgba(255,255,255,0.3)", fontWeight: active ? 700 : 400 }}>{label}</div>
               </div>
             );
           })}
@@ -566,15 +567,15 @@ export default function Vigor({ initialGH, onDone } = {}) {
       {/* Warning modal */}
       {showWarning && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <div style={{ background: "#fff", borderRadius: 16, padding: 24, maxWidth: 340, width: "100%" }}>
+          <div style={{ background: color.card, borderRadius: 16, padding: 24, maxWidth: 340, width: "100%" }}>
             <div style={{ fontSize: 32, textAlign: "center", marginBottom: 12 }}>⚠️</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#333", textAlign: "center", marginBottom: 8 }}>Sudah disubmit hari ini</div>
-            <div style={{ fontSize: 13, color: "#666", textAlign: "center", marginBottom: 20, lineHeight: 1.5 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: color.text, textAlign: "center", marginBottom: 8 }}>Sudah disubmit hari ini</div>
+            <div style={{ fontSize: 13, color: color.textMuted, textAlign: "center", marginBottom: 20, lineHeight: 1.5 }}>
               <strong>{pendingGH}</strong> sudah disubmit hari ini. Data baru akan ditambahkan.
             </div>
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => { setShowWarning(false); setPendingGH(""); }} style={{ flex: 1, padding: 11, background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 10, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Batal</button>
-              <button onClick={() => doSelectGH(pendingGH)} style={{ flex: 1, padding: 11, background: "#e53935", border: "none", borderRadius: 10, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Isi Ulang</button>
+              <button onClick={() => { setShowWarning(false); setPendingGH(""); }} style={{ flex: 1, padding: 11, background: color.bg, border: `1px solid ${color.border}`, borderRadius: 10, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Batal</button>
+              <button onClick={() => doSelectGH(pendingGH)} style={{ flex: 1, padding: 11, background: color.danger, border: "none", borderRadius: 10, color: color.card, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Isi Ulang</button>
             </div>
           </div>
         </div>
@@ -585,15 +586,15 @@ export default function Vigor({ initialGH, onDone } = {}) {
         {/* ══ STEP 1 — Pilih GH ══ */}
         {step === 1 && (
           <div>
-            <div style={{ fontWeight: 700, fontSize: 18, color: "#1b5e20", marginBottom: 4 }}>Pilih Greenhouse</div>
-            <div style={{ fontSize: 12, color: "#888", marginBottom: 14 }}>GH aktif HST {HST_MIN}–{HST_MAX}</div>
+            <div style={{ fontWeight: 700, fontSize: 18, color: color.brand900, marginBottom: 4 }}>Pilih Greenhouse</div>
+            <div style={{ fontSize: 12, color: color.textSoft, marginBottom: 14 }}>GH aktif HST {HST_MIN}–{HST_MAX}</div>
             {loadingGH ? (
-              <div style={{ textAlign: "center", padding: "40px 0", color: "#aaa" }}>
+              <div style={{ textAlign: "center", padding: "40px 0", color: color.textGhost }}>
                 <div style={{ fontSize: 28 }}>🔄</div>
                 <div style={{ fontSize: 13, marginTop: 8 }}>Memuat data GH...</div>
               </div>
             ) : ghAktif.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "32px 0", color: "#aaa", fontSize: 13 }}>Tidak ada GH aktif</div>
+              <div style={{ textAlign: "center", padding: "32px 0", color: color.textGhost, fontSize: 13 }}>Tidak ada GH aktif</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {TIPE_GH.map(tipe => {
@@ -602,26 +603,26 @@ export default function Vigor({ initialGH, onDone } = {}) {
                   const hasDue   = ghDiTipe.some(([, info]) => getCheckpointStatus(info.tanam ? hitungHST(info.tanam) : null)?.type === "due");
                   const hasSoon  = !hasDue && ghDiTipe.some(([, info]) => getCheckpointStatus(info.tanam ? hitungHST(info.tanam) : null)?.type === "soon");
                   return (
-                    <div key={tipe.key} style={{ border: `1.5px solid ${isOpen ? tipe.color + "55" : "#e0e0e0"}`, borderRadius: 14, overflow: "hidden", background: "#fff" }}>
+                    <div key={tipe.key} style={{ border: `1.5px solid ${isOpen ? tipe.color + "55" : color.border}`, borderRadius: 14, overflow: "hidden", background: color.card }}>
                       <button onClick={() => setSelectedTipe(isOpen ? "" : tipe.key)}
-                        style={{ width: "100%", padding: "13px 16px", background: isOpen ? `${tipe.color}10` : "#fff", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        style={{ width: "100%", padding: "13px 16px", background: isOpen ? `${tipe.color}10` : color.card, border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <span style={{ fontSize: 20 }}>{tipe.icon}</span>
                           <div style={{ textAlign: "left" }}>
-                            <div style={{ fontSize: 14, fontWeight: 800, color: isOpen ? tipe.color : "#333" }}>{tipe.label}</div>
-                            <div style={{ fontSize: 11, color: "#aaa", marginTop: 1 }}>{ghDiTipe.length} GH aktif saat ini</div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: isOpen ? tipe.color : color.text }}>{tipe.label}</div>
+                            <div style={{ fontSize: 11, color: color.textGhost, marginTop: 1 }}>{ghDiTipe.length} GH aktif saat ini</div>
                           </div>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          {hasDue  && <span style={{ fontSize: 10, background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 8px", color: "#e65100", fontWeight: 700 }}>⚠️ Due</span>}
-                          {hasSoon && <span style={{ fontSize: 10, background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 20, padding: "2px 8px", color: "#2e7d32", fontWeight: 700 }}>🔔 Soon</span>}
+                          {hasDue  && <span style={{ fontSize: 10, background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 20, padding: "2px 8px", color: color.warning, fontWeight: 700 }}>⚠️ Due</span>}
+                          {hasSoon && <span style={{ fontSize: 10, background: color.brandBg, border: `1px solid ${color.brand300}`, borderRadius: 20, padding: "2px 8px", color: color.brand700, fontWeight: 700 }}>🔔 Soon</span>}
                           <span style={{ fontSize: 14, color: "#bbb", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "inline-block" }}>▼</span>
                         </div>
                       </button>
                       {isOpen && (
                         <div style={{ padding: "10px 12px 14px", borderTop: `1px solid ${tipe.color}22` }}>
                           {ghDiTipe.length === 0 ? (
-                            <div style={{ textAlign: "center", padding: 20, color: "#aaa", fontSize: 13 }}>Tidak ada GH aktif di tipe ini.</div>
+                            <div style={{ textAlign: "center", padding: 20, color: color.textGhost, fontSize: 13 }}>Tidak ada GH aktif di tipe ini.</div>
                           ) : (
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                               {ghDiTipe.map(([gh, info]) => {
@@ -632,9 +633,9 @@ export default function Vigor({ initialGH, onDone } = {}) {
                                 const cs       = getCheckpointStatus(hstGH);
                                 return (
                                   <button key={gh} onClick={() => handleSelectGH(gh)}
-                                    style={{ padding: "12px 10px", borderRadius: 12, cursor: "pointer", textAlign: "center", border: dipilih ? `2px solid ${tipe.color}` : sudahIsi ? "1px solid #ffb74d" : "1px solid #e0e0e0", background: dipilih ? `${tipe.color}12` : sudahIsi ? "#fff8e1" : "#fafafa", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, transition: "all 0.2s" }}>
-                                    <div style={{ fontSize: 13, fontWeight: 700, color: dipilih ? tipe.color : "#333" }}>{gh}</div>
-                                    <div style={{ fontSize: 10, color: "#aaa" }}>P{info.periode} · {info.varian?.length || 0} varian</div>
+                                    style={{ padding: "12px 10px", borderRadius: 12, cursor: "pointer", textAlign: "center", border: dipilih ? `2px solid ${tipe.color}` : sudahIsi ? `1px solid ${color.warningBorder}` : `1px solid ${color.border}`, background: dipilih ? `${tipe.color}12` : sudahIsi ? "#fff8e1" : "#fafafa", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, transition: "all 0.2s" }}>
+                                    <div style={{ fontSize: 13, fontWeight: 700, color: dipilih ? tipe.color : color.text }}>{gh}</div>
+                                    <div style={{ fontSize: 10, color: color.textGhost }}>P{info.periode} · {info.varian?.length || 0} varian</div>
                                     {hstGH !== null && (
                                       <div style={{ background: c.badge, border: `1px solid ${c.border}`, borderRadius: 8, padding: "4px 10px", width: "100%" }}>
                                         <span style={{ fontSize: 16, fontWeight: 800, color: c.text }}>{hstGH}</span>
@@ -642,11 +643,11 @@ export default function Vigor({ initialGH, onDone } = {}) {
                                       </div>
                                     )}
                                     {cs && (
-                                      <div style={{ width: "100%", fontSize: 10, borderRadius: 7, padding: "3px 6px", fontWeight: 700, background: cs.type === "due" ? "#fff3e0" : "#e8f5e9", border: `1px solid ${cs.type === "due" ? "#ffb74d" : "#a5d6a7"}`, color: cs.type === "due" ? "#e65100" : "#2e7d32" }}>
+                                      <div style={{ width: "100%", fontSize: 10, borderRadius: 7, padding: "3px 6px", fontWeight: 700, background: cs.type === "due" ? color.warningBg : color.brandBg, border: `1px solid ${cs.type === "due" ? color.warningBorder : color.brand300}`, color: cs.type === "due" ? color.warning : color.brand700 }}>
                                         {cs.label}
                                       </div>
                                     )}
-                                    {sudahIsi && <div style={{ fontSize: 10, background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 8px", color: "#e65100", fontWeight: 600 }}>✓ Sudah diisi</div>}
+                                    {sudahIsi && <div style={{ fontSize: 10, background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 20, padding: "2px 8px", color: color.warning, fontWeight: 600 }}>✓ Sudah diisi</div>}
                                   </button>
                                 );
                               })}
@@ -666,8 +667,8 @@ export default function Vigor({ initialGH, onDone } = {}) {
         {step === 2 && (
           <div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
-              <div style={{ background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#2e7d32", fontWeight: 700 }}>{selectedGH}</div>
-              <div style={{ background: "#f5f5f5", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#666" }}>P{ghInfo?.periode}</div>
+              <div style={{ background: color.brandBg, border: `1px solid ${color.brand300}`, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: color.brand700, fontWeight: 700 }}>{selectedGH}</div>
+              <div style={{ background: color.bg, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: color.textMuted }}>P{ghInfo?.periode}</div>
               {hstAktual !== null && (
                 <div style={{ background: col.badge, border: `1px solid ${col.border}`, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: col.text, fontWeight: 700 }}>{hstAktual} HST aktual</div>
               )}
@@ -677,7 +678,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
               const cs = getCheckpointStatus(hstAktual);
               if (!cs) return null;
               return (
-                <div style={{ marginBottom: 12, padding: "9px 14px", background: cs.type === "due" ? "#fff3e0" : "#e8f5e9", border: `1px solid ${cs.type === "due" ? "#ffb74d" : "#a5d6a7"}`, borderRadius: 10, fontSize: 12, color: cs.type === "due" ? "#e65100" : "#2e7d32", fontWeight: 600 }}>
+                <div style={{ marginBottom: 12, padding: "9px 14px", background: cs.type === "due" ? color.warningBg : color.brandBg, border: `1px solid ${cs.type === "due" ? color.warningBorder : color.brand300}`, borderRadius: 10, fontSize: 12, color: cs.type === "due" ? color.warning : color.brand700, fontWeight: 600 }}>
                   {cs.label}
                 </div>
               );
@@ -688,22 +689,22 @@ export default function Vigor({ initialGH, onDone } = {}) {
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {HST_CHECKPOINTS.map(h => (
                   <button key={h} onClick={() => setSelectedHST(h)}
-                    style={{ padding: "6px 14px", borderRadius: 20, border: `1.5px solid ${selectedHST === h ? "#1b5e20" : "#e0e0e0"}`, background: selectedHST === h ? "#e8f5e9" : "#fff", color: selectedHST === h ? "#1b5e20" : "#888", fontSize: 13, fontWeight: selectedHST === h ? 700 : 400, cursor: "pointer" }}>
+                    style={{ padding: "6px 14px", borderRadius: 20, border: `1.5px solid ${selectedHST === h ? color.brand900 : color.border}`, background: selectedHST === h ? color.brandBg : color.card, color: selectedHST === h ? color.brand900 : color.textSoft, fontSize: 13, fontWeight: selectedHST === h ? 700 : 400, cursor: "pointer" }}>
                     HST {h}
                   </button>
                 ))}
               </div>
             </div>
 
-            <div style={{ fontSize: 12, color: "#888", marginBottom: 6 }}>{filledCount}/{varianList.length} varian terisi</div>
-            <div style={{ background: "#e0e0e0", borderRadius: 4, height: 5, marginBottom: 14, overflow: "hidden" }}>
+            <div style={{ fontSize: 12, color: color.textSoft, marginBottom: 6 }}>{filledCount}/{varianList.length} varian terisi</div>
+            <div style={{ background: color.border, borderRadius: 4, height: 5, marginBottom: 14, overflow: "hidden" }}>
               <div style={{ height: "100%", borderRadius: 4, background: "#4CAF50", width: `${varianList.length > 0 ? (filledCount / varianList.length) * 100 : 0}%`, transition: "width 0.3s" }} />
             </div>
 
             {!isOnline && (
-              <div style={{ marginBottom: 12, padding: "8px 12px", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 9, display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ marginBottom: 12, padding: "8px 12px", background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 9, display: "flex", alignItems: "center", gap: 8 }}>
                 <span>📵</span>
-                <span style={{ fontSize: 11, color: "#e65100" }}>Offline — data tersimpan lokal & dikirim otomatis saat online</span>
+                <span style={{ fontSize: 11, color: color.warning }}>Offline — data tersimpan lokal & dikirim otomatis saat online</span>
               </div>
             )}
 
@@ -713,13 +714,13 @@ export default function Vigor({ initialGH, onDone } = {}) {
                 const filled = isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNetting, showNetting50Field, showNetBercakHitam, showLebarDiameter, showSimetri);
                 const isOpen = activeVarian === varian;
                 return (
-                  <div key={varian} style={{ background: "#fff", borderRadius: 12, border: `1.5px solid ${filled ? "#a5d6a7" : "#e0e0e0"}`, overflow: "hidden" }}>
+                  <div key={varian} style={{ background: color.card, borderRadius: 12, border: `1.5px solid ${filled ? color.brand300 : color.border}`, overflow: "hidden" }}>
                     <button onClick={() => setActiveVarian(isOpen ? null : varian)}
-                      style={{ width: "100%", padding: "12px 14px", background: filled ? "#f1f8e9" : "#fff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <span style={{ fontWeight: 700, fontSize: 15, color: filled ? "#2e7d32" : "#333" }}>🌾 {varian}</span>
+                      style={{ width: "100%", padding: "12px 14px", background: filled ? "#f1f8e9" : color.card, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <span style={{ fontWeight: 700, fontSize: 15, color: filled ? color.brand700 : color.text }}>🌾 {varian}</span>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         {filled  && <span style={{ fontSize: 14 }}>✅</span>}
-                        {!filled && <span style={{ fontSize: 10, background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 8px", color: "#e65100" }}>Belum lengkap</span>}
+                        {!filled && <span style={{ fontSize: 10, background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 20, padding: "2px 8px", color: color.warning }}>Belum lengkap</span>}
                         <span style={{ fontSize: 12, color: "#bbb", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
                       </div>
                     </button>
@@ -738,24 +739,24 @@ export default function Vigor({ initialGH, onDone } = {}) {
                             : tipeGH?.key === "rnd"
                             ? "GH RnD: ambil sampel sesuai protokol riset yang berlaku — pastikan konsistensi titik sampling antar pengamatan"
                             : "Ambil sampel setelah 10 tanaman depan dan 10 tanaman belakang, hindari tanaman yang terpengaruh variabel luar";
-                          return <div style={{ fontSize: 10, color: "#888", marginBottom: 4 }}>{samplingText}</div>;
+                          return <div style={{ fontSize: 10, color: color.textSoft, marginBottom: 4 }}>{samplingText}</div>;
                         })()}
 
                         {showLebarDiameter && (
                           <div style={{ marginBottom: 14 }}>
                             <div style={{ fontSize: 12, color: "#555", marginBottom: 4, fontWeight: 600 }}>1. Lebar Daun (cm)</div>
-                            <div style={{ fontSize: 11, color: "#aaa", marginBottom: 8 }}>
+                            <div style={{ fontSize: 11, color: color.textGhost, marginBottom: 8 }}>
                               {selectedHST === 7 ? "Dilakukan pada daun ke-4" : selectedHST === 14 ? "Dilakukan pada daun ke-7" : selectedHST === 18 ? "Dilakukan pada daun ke-11" : "Dilakukan pada daun ke-4"}
                             </div>
-                            <PilihOpsi options={lebarDaunOptions} value={d.lebarDaun} onChange={val => updateVarian(varian, "lebarDaun", val)} color="#2e7d32" cols={3} />
+                            <PilihOpsi options={lebarDaunOptions} value={d.lebarDaun} onChange={val => updateVarian(varian, "lebarDaun", val)} color=color.brand700 cols={3} />
                           </div>
                         )}
 
                         {showLebarDiameter && (
                           <div style={{ marginBottom: 14 }}>
                             <div style={{ fontSize: 12, color: "#555", marginBottom: 4, fontWeight: 600 }}>2. Diameter Batang</div>
-                            <div style={{ fontSize: 11, color: "#aaa", marginBottom: 8 }}>Penilaian DB pada ruas ke-3 hingga ke-5</div>
-                            <PilihOpsi options={diameterOptions} value={d.diameterBatang} onChange={val => updateVarian(varian, "diameterBatang", val)} color="#1565C0" cols={2} />
+                            <div style={{ fontSize: 11, color: color.textGhost, marginBottom: 8 }}>Penilaian DB pada ruas ke-3 hingga ke-5</div>
+                            <PilihOpsi options={diameterOptions} value={d.diameterBatang} onChange={val => updateVarian(varian, "diameterBatang", val)} color=color.info cols={2} />
                           </div>
                         )}
 
@@ -768,14 +769,14 @@ export default function Vigor({ initialGH, onDone } = {}) {
                         {showKesegaranVigor && (
                           <div style={{ marginBottom: 18 }}>
                             <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>{showLebarDiameter ? "4." : "2."} Kesegaran Tanaman (Kelayuan)</div>
-                            <PilihOpsi options={KESEGARAN_OPTIONS} value={d.kesegaran} onChange={val => updateVarian(varian, "kesegaran", val)} color="#2E7D32" cols={3} />
+                            <PilihOpsi options={KESEGARAN_OPTIONS} value={d.kesegaran} onChange={val => updateVarian(varian, "kesegaran", val)} color=color.brand700 cols={3} />
                           </div>
                         )}
 
                         {/* ASPEK PERAKARAN */}
                         <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginBottom: 12 }}>
                           <div style={{ fontSize: 11, fontWeight: 700, color: "#795548", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🪱 Aspek Perakaran</div>
-                          <div style={{ fontSize: 10, color: "#888", marginBottom: 12 }}>Sampel 1 tanaman per varian, gali ±2 cm pada media tanam</div>
+                          <div style={{ fontSize: 10, color: color.textSoft, marginBottom: 12 }}>Sampel 1 tanaman per varian, gali ±2 cm pada media tanam</div>
                         </div>
 
                         <div style={{ marginBottom: 14 }}>
@@ -792,14 +793,14 @@ export default function Vigor({ initialGH, onDone } = {}) {
                         {showSimetri && (
                           <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14 }}>
                             <div style={{ fontSize: 11, fontWeight: 700, color: "#AD1457", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🍈 Aspek Kualitas Buah</div>
-                            <div style={{ fontSize: 10, color: "#888", marginBottom: 12 }}>Per baris (± 198 tanaman) per varian</div>
+                            <div style={{ fontSize: 10, color: color.textSoft, marginBottom: 12 }}>Per baris (± 198 tanaman) per varian</div>
                             <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>1. Simetri Buah</div>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                               {SIMETRI_BUAH_OPTIONS.map((opt, idx) => {
                                 const active = d.simetriBuah === opt;
                                 return (
                                   <button key={idx} onClick={() => updateVarian(varian, "simetriBuah", opt)}
-                                    style={{ padding: "10px", textAlign: "center", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#AD1457" : "#e0e0e0"}`, background: active ? "#FCE4EC" : "#fff", color: active ? "#AD1457" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4 }}>
+                                    style={{ padding: "10px", textAlign: "center", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#AD1457" : color.border}`, background: active ? "#FCE4EC" : color.card, color: active ? "#AD1457" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4 }}>
                                     <div style={{ fontSize: 16, marginBottom: 4 }}>{active ? "●" : "○"}</div>
                                     {opt}
                                   </button>
@@ -812,7 +813,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
                                 const active = d.cabangBuah === opt;
                                 return (
                                   <button key={idx} onClick={() => updateVarian(varian, "cabangBuah", opt)}
-                                    style={{ padding: "10px", textAlign: "center", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#AD1457" : "#e0e0e0"}`, background: active ? "#FCE4EC" : "#fff", color: active ? "#AD1457" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4 }}>
+                                    style={{ padding: "10px", textAlign: "center", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#AD1457" : color.border}`, background: active ? "#FCE4EC" : color.card, color: active ? "#AD1457" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4 }}>
                                     <div style={{ fontSize: 16, marginBottom: 4 }}>{active ? "●" : "○"}</div>
                                     {opt}
                                   </button>
@@ -825,8 +826,8 @@ export default function Vigor({ initialGH, onDone } = {}) {
                         {/* POLINASI (HST 18) */}
                         {showPolinasi && (
                           <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginTop: showKualitas ? 14 : 0 }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: "#1565C0", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🌸 Aspek Penilaian Keberhasilan Polinasi</div>
-                            <div style={{ fontSize: 10, color: "#888", marginBottom: 12 }}>Ambil sampel setelah 10 tanaman depan dan 10 tanaman belakang, hindari tanaman yang terpengaruh variabel luar</div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: color.info, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🌸 Aspek Penilaian Keberhasilan Polinasi</div>
+                            <div style={{ fontSize: 10, color: color.textSoft, marginBottom: 12 }}>Ambil sampel setelah 10 tanaman depan dan 10 tanaman belakang, hindari tanaman yang terpengaruh variabel luar</div>
                             <div style={{ marginBottom: 12, padding: "9px 12px", background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 8, fontSize: 11, color: "#7a6000", lineHeight: 1.5 }}>
                               ⚠️ Umur 18 HST belum selesai dilakukan polinasi, untuk itu penilaian keberhasilan cabang polinasi belum dapat dilakukan.
                             </div>
@@ -836,7 +837,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
                                 const active = d.buahBajang === opt;
                                 return (
                                   <button key={idx} onClick={() => updateVarian(varian, "buahBajang", opt)}
-                                    style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#1565C0" : "#e0e0e0"}`, background: active ? "#E3F2FD" : "#fff", color: active ? "#1565C0" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4, display: "flex", alignItems: "center", gap: 8 }}>
+                                    style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? color.info : color.border}`, background: active ? color.infoBg : color.card, color: active ? color.info : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4, display: "flex", alignItems: "center", gap: 8 }}>
                                     <span style={{ flexShrink: 0 }}>{active ? "●" : "○"}</span><span>{opt}</span>
                                   </button>
                                 );
@@ -848,7 +849,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
                                 const active = d.panjangTunasAir === opt;
                                 return (
                                   <button key={idx} onClick={() => updateVarian(varian, "panjangTunasAir", opt)}
-                                    style={{ padding: "10px 6px", textAlign: "center", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#1565C0" : "#e0e0e0"}`, background: active ? "#E3F2FD" : "#fff", color: active ? "#1565C0" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4 }}>
+                                    style={{ padding: "10px 6px", textAlign: "center", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? color.info : color.border}`, background: active ? color.infoBg : color.card, color: active ? color.info : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4 }}>
                                     <div style={{ fontSize: 16, marginBottom: 4 }}>{active ? "●" : "○"}</div>{opt}
                                   </button>
                                 );
@@ -867,7 +868,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
                                 const active = d.nettingBuah === opt;
                                 return (
                                   <button key={idx} onClick={() => updateVarian(varian, "nettingBuah", opt)}
-                                    style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#AD1457" : "#e0e0e0"}`, background: active ? "#FCE4EC" : "#fff", color: active ? "#AD1457" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 8 }}>
+                                    style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#AD1457" : color.border}`, background: active ? "#FCE4EC" : color.card, color: active ? "#AD1457" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 8 }}>
                                     <span style={{ flexShrink: 0, marginTop: 1 }}>{active ? "●" : "○"}</span><span>{opt}</span>
                                   </button>
                                 );
@@ -879,14 +880,14 @@ export default function Vigor({ initialGH, onDone } = {}) {
                         {/* NETTING 50% (HST 54) / NETTING BUAH CRACK (HST 45) — sama-sama pakai field netting50 */}
                         {showNetting50Field && (
                           <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginTop: 14 }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: "#6A1B9A", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🍈 {showNettingCrack45 ? "Kualitas Buah Tambahan" : "Netting 50%"}</div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: color.purple700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🍈 {showNettingCrack45 ? "Kualitas Buah Tambahan" : "Netting 50%"}</div>
                             <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>{showNettingCrack45 ? "Netting Buah (Crack Basah)" : "Pencapaian Netting 50%"}</div>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
                               {(showNettingCrack45 ? NETTING_BUAH_54_OPTIONS : NETTING_50_54_OPTIONS).map((opt, idx) => {
                                 const active = d.netting50 === opt;
                                 return (
                                   <button key={idx} onClick={() => updateVarian(varian, "netting50", opt)}
-                                    style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#6A1B9A" : "#e0e0e0"}`, background: active ? "#F3E5F5" : "#fff", color: active ? "#6A1B9A" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 8 }}>
+                                    style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? color.purple700 : color.border}`, background: active ? color.purpleBg : color.card, color: active ? color.purple700 : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 8 }}>
                                     <span style={{ flexShrink: 0, marginTop: 1 }}>{active ? "●" : "○"}</span><span>{opt}</span>
                                   </button>
                                 );
@@ -905,7 +906,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
                                 const active = d.netBercakHitam === opt;
                                 return (
                                   <button key={idx} onClick={() => updateVarian(varian, "netBercakHitam", opt)}
-                                    style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#BF360C" : "#e0e0e0"}`, background: active ? "#FBE9E7" : "#fff", color: active ? "#BF360C" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 8 }}>
+                                    style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#BF360C" : color.border}`, background: active ? "#FBE9E7" : color.card, color: active ? "#BF360C" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 8 }}>
                                     <span style={{ flexShrink: 0, marginTop: 1 }}>{active ? "●" : "○"}</span><span>{opt}</span>
                                   </button>
                                 );
@@ -923,10 +924,10 @@ export default function Vigor({ initialGH, onDone } = {}) {
 
             <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 11, color: "#388e3c", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
-                👤 Nama Operator <span style={{ color: "#e53935" }}>*</span>
+                👤 Nama Operator <span style={{ color: color.danger }}>*</span>
               </label>
               <input type="text" value={operator} onChange={e => setOperator(e.target.value)} placeholder="Tulis nama lengkap..."
-                style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: "#fff", border: `1.5px solid ${operator.trim() ? "#81c784" : "#e0e0e0"}`, borderRadius: 10, color: "#333", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
+                style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: color.card, border: `1.5px solid ${operator.trim() ? color.brand400 : color.border}`, borderRadius: 10, color: color.text, fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
             </div>
 
             <FotoSelfie
@@ -937,12 +938,12 @@ export default function Vigor({ initialGH, onDone } = {}) {
             />
 
             {!allFilled && varianList.length > 0 && (
-              <div style={{ fontSize: 12, color: "#e65100", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
+              <div style={{ fontSize: 12, color: color.warning, background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
                 ⚠️ {varianList.length - filledCount} varian belum lengkap — tap varian untuk mengisi
               </div>
             )}
             {submitError && (
-              <div style={{ fontSize: 12, color: "#c62828", background: "#ffebee", border: "1px solid #ef9a9a", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>⚠️ {submitError}</div>
+              <div style={{ fontSize: 12, color: color.dangerDeep, background: color.dangerBg, border: `1px solid ${color.dangerBorder}`, borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>⚠️ {submitError}</div>
             )}
           </div>
         )}
@@ -951,23 +952,23 @@ export default function Vigor({ initialGH, onDone } = {}) {
         {step === 3 && (
           <div style={{ textAlign: "center", paddingTop: 32 }}>
             <div style={{ fontSize: 60, marginBottom: 12 }}>{isDemoMode ? "🧪" : savedOffline ? "💾" : "✅"}</div>
-            <div style={{ fontSize: 21, fontWeight: 800, color: isDemoMode ? "#f57f17" : savedOffline ? "#1565C0" : "#2e7d32", marginBottom: 6 }}>
+            <div style={{ fontSize: 21, fontWeight: 800, color: isDemoMode ? "#f57f17" : savedOffline ? color.info : color.brand700, marginBottom: 6 }}>
               {isDemoMode ? "Demo Selesai!" : savedOffline ? "Tersimpan Lokal!" : "Data Tersimpan!"}
             </div>
-            <div style={{ fontSize: 13, color: "#888", marginBottom: 20 }}>
+            <div style={{ fontSize: 13, color: color.textSoft, marginBottom: 20 }}>
               {isDemoMode ? "Data tidak dikirim (mode demo)" : savedOffline ? "Otomatis terkirim ke Google Sheets saat online." : `${varianList.length} varian berhasil dikirim ke Google Sheets`}
             </div>
-            <div style={{ background: savedOffline ? "#e3f2fd" : "#e8f5e9", border: `1px solid ${savedOffline ? "#90CAF9" : "#a5d6a7"}`, borderRadius: 14, padding: 16, textAlign: "left", marginBottom: 20 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#333" }}>{selectedGH} · P{ghInfo?.periode} · {hstAktual} HST</div>
-              <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>Operator: {operator}</div>
-              <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>{varianList.length} varian · {todayISO}</div>
+            <div style={{ background: savedOffline ? color.infoBg : color.brandBg, border: `1px solid ${savedOffline ? color.infoBorder : color.brand300}`, borderRadius: 14, padding: 16, textAlign: "left", marginBottom: 20 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: color.text }}>{selectedGH} · P{ghInfo?.periode} · {hstAktual} HST</div>
+              <div style={{ fontSize: 13, color: color.textMuted, marginTop: 2 }}>Operator: {operator}</div>
+              <div style={{ fontSize: 13, color: color.textMuted, marginTop: 2 }}>{varianList.length} varian · {todayISO}</div>
             </div>
             {onDone ? (
-              <button onClick={onDone} style={{ width: "100%", padding: 15, background: "#e8f5e9", border: "2px solid #81c784", borderRadius: 12, color: "#2e7d32", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+              <button onClick={onDone} style={{ width: "100%", padding: 15, background: color.brandBg, border: `2px solid ${color.brand400}`, borderRadius: 12, color: color.brand700, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
                 ← Kembali ke Home
               </button>
             ) : (
-              <button onClick={resetForm} style={{ width: "100%", padding: 15, background: "#e8f5e9", border: "2px solid #81c784", borderRadius: 12, color: "#2e7d32", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+              <button onClick={resetForm} style={{ width: "100%", padding: 15, background: color.brandBg, border: `2px solid ${color.brand400}`, borderRadius: 12, color: color.brand700, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
                 + Input GH Berikutnya
               </button>
             )}
@@ -977,20 +978,20 @@ export default function Vigor({ initialGH, onDone } = {}) {
 
       {/* Bottom Nav */}
       {step < 3 && (
-        <div style={{ padding: "12px 16px 24px", borderTop: "1px solid #e0e0e0", background: "#fff", position: "sticky", bottom: 0, display: "flex", gap: 10 }}>
+        <div style={{ padding: "12px 16px 24px", borderTop: `1px solid ${color.border}`, background: color.card, position: "sticky", bottom: 0, display: "flex", gap: 10 }}>
           {step > 1 && !onDone && (
             <button onClick={() => { setStep(s => s - 1); setSubmitError(null); }}
-              style={{ flex: 1, padding: 13, background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 12, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>← Kembali</button>
+              style={{ flex: 1, padding: 13, background: color.bg, border: `1px solid ${color.border}`, borderRadius: 12, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>← Kembali</button>
           )}
           {step === 1 && (
             <button onClick={() => setStep(2)} disabled={!selectedGH}
-              style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: selectedGH ? "linear-gradient(135deg,#1b5e20,#2e7d32)" : "#e0e0e0", color: selectedGH ? "#fff" : "#aaa", fontSize: 15, fontWeight: 700, cursor: selectedGH ? "pointer" : "not-allowed" }}>
+              style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: selectedGH ? `linear-gradient(135deg,${color.brand900},${color.brand700})` : color.border, color: selectedGH ? color.card : color.textGhost, fontSize: 15, fontWeight: 700, cursor: selectedGH ? "pointer" : "not-allowed" }}>
               Lanjut Input →
             </button>
           )}
           {step === 2 && (
             <button onClick={() => setConfirmOpen(true)} disabled={!canSubmit || submitting}
-              style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: canSubmit && !submitting ? (!isOnline ? "linear-gradient(135deg,#1565C0,#1976D2)" : "linear-gradient(135deg,#1b5e20,#2e7d32)") : "#e0e0e0", color: canSubmit && !submitting ? "#fff" : "#aaa", fontSize: 15, fontWeight: 700, cursor: canSubmit && !submitting ? "pointer" : "not-allowed" }}>
+              style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: canSubmit && !submitting ? (!isOnline ? `linear-gradient(135deg,${color.info},#1976D2)` : `linear-gradient(135deg,${color.brand900},${color.brand700})`) : color.border, color: canSubmit && !submitting ? color.card : color.textGhost, fontSize: 15, fontWeight: 700, cursor: canSubmit && !submitting ? "pointer" : "not-allowed" }}>
               {submitting ? "⏳ Menyimpan..." : !isOnline && canSubmit ? "💾 Simpan Offline" : `Submit ${varianList.length} Varian ✓`}
             </button>
           )}

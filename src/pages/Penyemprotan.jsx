@@ -4,6 +4,7 @@ import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
+import { color } from "../styles/tokens";
 
 const DB_NAME    = "PenyemprotanOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_PENYEMPROTAN_URL;
@@ -96,7 +97,7 @@ function PestisidaPicker({ value, onChange, accentColor = "#64B5F6" }) {
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         placeholder="Ketik nama pestisida..."
-        style={{ width:"100%", padding:"11px 14px", background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.14)", borderRadius:10, color:"#fff", fontSize:14, outline:"none", boxSizing:"border-box", fontFamily:"inherit" }}
+        style={{ width:"100%", padding:"11px 14px", background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.14)", borderRadius:10, color:color.card, fontSize:14, outline:"none", boxSizing:"border-box", fontFamily:"inherit" }}
       />
       {open && filtered.length > 0 && (
         <div style={{ position:"absolute", top:"100%", left:0, right:0, zIndex:30, background:"#0d2d45", border:"1px solid rgba(255,255,255,0.15)", borderTop:"none", borderRadius:"0 0 12px 12px", maxHeight:220, overflowY:"auto" }}>
@@ -145,7 +146,7 @@ function GHPicker({ value, onChange, groups }) {
 function FieldLabel({ children, required, color = "#64B5F6" }) {
   return (
     <label style={{ fontSize:11, color, letterSpacing:1.5, textTransform:"uppercase", fontWeight:600 }}>
-      {children} {required && <span style={{ color:"#ef9a9a" }}>*</span>}
+      {children} {required && <span style={{ color:color.dangerBorder }}>*</span>}
     </label>
   );
 }
@@ -157,7 +158,7 @@ function Field({ type="text", value, onChange, placeholder, active, ...rest }) {
       type={type} inputMode={type==="number" ? "numeric" : undefined}
       value={value} onChange={e => onChange(e.target.value)}
       placeholder={placeholder}
-      style={{ width:"100%", marginTop:8, padding:"11px 14px", background:"rgba(255,255,255,0.06)", border:`1px solid ${active||value ? "rgba(100,181,246,0.4)" : "rgba(255,255,255,0.12)"}`, borderRadius:10, color:"#fff", fontSize:14, outline:"none", boxSizing:"border-box", fontFamily:"inherit", ...rest?.style }}
+      style={{ width:"100%", marginTop:8, padding:"11px 14px", background:"rgba(255,255,255,0.06)", border:`1px solid ${active||value ? "rgba(100,181,246,0.4)" : "rgba(255,255,255,0.12)"}`, borderRadius:10, color:color.card, fontSize:14, outline:"none", boxSizing:"border-box", fontFamily:"inherit", ...rest?.style }}
       {...rest}
     />
   );
@@ -332,7 +333,7 @@ export default function Penyemprotan() {
     width:"100%", marginTop:8, padding:"11px 14px",
     background:"rgba(255,255,255,0.06)",
     border:`1px solid ${filled ? "rgba(100,181,246,0.4)" : "rgba(255,255,255,0.12)"}`,
-    borderRadius:10, color:"#fff", fontSize:14, outline:"none",
+    borderRadius:10, color:color.card, fontSize:14, outline:"none",
     boxSizing:"border-box", fontFamily:"inherit",
   });
 
@@ -340,7 +341,7 @@ export default function Penyemprotan() {
 
   // ─────────────────────────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#0a1e2e 0%,#0d2d45 60%,#0a1a2e 100%)", fontFamily:"'DM Sans','Segoe UI',sans-serif", color:"#e3f2fd", display:"flex", flexDirection:"column" }}>
+    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#0a1e2e 0%,#0d2d45 60%,#0a1a2e 100%)", fontFamily:"'DM Sans','Segoe UI',sans-serif", color:color.infoBg, display:"flex", flexDirection:"column" }}>
 
       {/* ── Header ── */}
       <div style={{ padding:"14px 16px 10px", borderBottom:"1px solid rgba(255,255,255,0.08)", background:"rgba(0,0,0,0.25)", position:"sticky", top:0, zIndex:10 }}>
@@ -364,7 +365,7 @@ export default function Penyemprotan() {
         {!isOnline && (
           <div style={{ marginTop:8, padding:"6px 10px", background:"rgba(244,67,54,0.1)", border:"1px solid rgba(244,67,54,0.2)", borderRadius:7, display:"flex", alignItems:"center", gap:7 }}>
             <span style={{ fontSize:13 }}>📵</span>
-            <span style={{ fontSize:11, color:"#ef9a9a" }}>Offline — tersimpan lokal & sync otomatis saat online</span>
+            <span style={{ fontSize:11, color:color.dangerBorder }}>Offline — tersimpan lokal & sync otomatis saat online</span>
           </div>
         )}
 
@@ -393,13 +394,13 @@ export default function Penyemprotan() {
           <div style={{ position:"absolute", inset:0, background:"rgba(8,18,30,0.96)", zIndex:20, display:"flex", alignItems:"center", justifyContent:"center", padding:24, backdropFilter:"blur(4px)" }}>
             <div style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.14)", borderRadius:20, padding:"28px 24px", maxWidth:340, width:"100%", textAlign:"center" }}>
               <div style={{ fontSize:44, marginBottom:14 }}>💊</div>
-              <h3 style={{ fontSize:18, fontWeight:800, color:"#fff", margin:"0 0 8px" }}>Ada Pengambilan Obat?</h3>
+              <h3 style={{ fontSize:18, fontWeight:800, color:color.card, margin:"0 0 8px" }}>Ada Pengambilan Obat?</h3>
               <p style={{ fontSize:13, color:"rgba(255,255,255,0.45)", margin:"0 0 24px", lineHeight:1.5 }}>
                 Hari ini apakah ada pengambilan pestisida dari gudang / supplier?
               </p>
               <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                 <button onClick={() => handleAnswerAmbil(true)}
-                  style={{ padding:"14px", background:"linear-gradient(135deg,#1565C0,#1E88E5)", border:"none", borderRadius:12, color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer" }}>
+                  style={{ padding:"14px", background:`linear-gradient(135deg,${color.info},#1E88E5)`, border:"none", borderRadius:12, color:color.card, fontSize:15, fontWeight:700, cursor:"pointer" }}>
                   ✓ Ya, Ada Pengambilan
                 </button>
                 <button onClick={() => handleAnswerAmbil(false)}
@@ -414,7 +415,7 @@ export default function Penyemprotan() {
         {/* ══ START ══════════════════════════════════════════════════════════════ */}
         {step === "start" && (
           <div>
-            <h2 style={{ fontSize:20, fontWeight:700, margin:"0 0 4px", color:"#fff" }}>Pilih Kegiatan</h2>
+            <h2 style={{ fontSize:20, fontWeight:700, margin:"0 0 4px", color:color.card }}>Pilih Kegiatan</h2>
             <p style={{ fontSize:13, color:"rgba(255,255,255,0.4)", marginBottom:16 }}>Pilih jenis kegiatan penyemprotan hari ini</p>
 
             <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:28 }}>
@@ -426,7 +427,7 @@ export default function Penyemprotan() {
                   style={{ padding:"14px 16px", borderRadius:14, cursor:"pointer", textAlign:"left", border: activity === opt.key ? `2px solid ${opt.color}` : "1px solid rgba(255,255,255,0.09)", background: activity === opt.key ? `${opt.color}1a` : "rgba(255,255,255,0.03)", transition:"all 0.2s", display:"flex", alignItems:"center", gap:12 }}>
                   <span style={{ fontSize:26 }}>{opt.icon}</span>
                   <div style={{ flex:1 }}>
-                    <div style={{ fontSize:14, fontWeight:700, color: activity === opt.key ? opt.color : "#fff" }}>{opt.label}</div>
+                    <div style={{ fontSize:14, fontWeight:700, color: activity === opt.key ? opt.color : color.card }}>{opt.label}</div>
                     <div style={{ fontSize:12, color:"rgba(255,255,255,0.4)", marginTop:2 }}>{opt.desc}</div>
                   </div>
                   {activity === opt.key && <span style={{ color:opt.color, fontSize:18 }}>✓</span>}
@@ -436,7 +437,7 @@ export default function Penyemprotan() {
 
             {activity && (
               <>
-                <h3 style={{ fontSize:15, fontWeight:700, margin:"0 0 14px", color:"#fff" }}>Pilih Greenhouse</h3>
+                <h3 style={{ fontSize:15, fontWeight:700, margin:"0 0 14px", color:color.card }}>Pilih Greenhouse</h3>
                 {loadingGH
                   ? <div style={{ color:"rgba(255,255,255,0.4)", fontSize:13, padding:"12px 0" }}>Memuat data GH...</div>
                   : <GHPicker value={selectedGH} onChange={(g) => { if (!warnIfGHBlocked(g, blockedMap)) setSelectedGH(g); }} groups={ghGroups} />
@@ -454,7 +455,7 @@ export default function Penyemprotan() {
         {/* ══ FORM OLES GSB ══════════════════════════════════════════════════════ */}
         {step === "form_oles" && (
           <div>
-            <h2 style={{ fontSize:20, fontWeight:700, margin:"0 0 20px", color:"#fff" }}>Isian Oles GSB</h2>
+            <h2 style={{ fontSize:20, fontWeight:700, margin:"0 0 20px", color:color.card }}>Isian Oles GSB</h2>
 
             <div style={{ marginBottom:20 }}>
               <FieldLabel required color="#FF7043">Pestisida</FieldLabel>
@@ -484,7 +485,7 @@ export default function Penyemprotan() {
               <FieldLabel required color="#FF7043">Penggunaan</FieldLabel>
               <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:10 }}>
                 <input type="number" inputMode="numeric" value={penggunaanGram} onChange={e => setPenggunaanGram(e.target.value)} placeholder="0"
-                  style={{ flex:1, padding:"16px", background:"rgba(255,255,255,0.06)", border:`1px solid ${penggunaanGram ? "rgba(255,112,67,0.5)" : "rgba(255,255,255,0.12)"}`, borderRadius:12, color:"#fff", fontSize:24, fontWeight:700, outline:"none", textAlign:"center" }} />
+                  style={{ flex:1, padding:"16px", background:"rgba(255,255,255,0.06)", border:`1px solid ${penggunaanGram ? "rgba(255,112,67,0.5)" : "rgba(255,255,255,0.12)"}`, borderRadius:12, color:color.card, fontSize:24, fontWeight:700, outline:"none", textAlign:"center" }} />
                 <div style={{ padding:"16px 14px", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:12, color:"rgba(255,255,255,0.5)", fontSize:14, whiteSpace:"nowrap" }}>gram</div>
               </div>
             </div>
@@ -494,7 +495,7 @@ export default function Penyemprotan() {
         {/* ══ FORM PENGAMBILAN PESTISIDA ═════════════════════════════════════════ */}
         {step === "form_ambil" && adaPengambilan === true && (
           <div>
-            <h2 style={{ fontSize:20, fontWeight:700, margin:"0 0 20px", color:"#fff" }}>Pengambilan Pestisida</h2>
+            <h2 style={{ fontSize:20, fontWeight:700, margin:"0 0 20px", color:color.card }}>Pengambilan Pestisida</h2>
 
             {/* 1. Nama Pestisida */}
             <div style={{ marginBottom:14 }}>
@@ -566,7 +567,7 @@ export default function Penyemprotan() {
               <textarea value={ambil.keterangan} onChange={e => setAmbil(d => ({...d, keterangan:e.target.value}))}
                 placeholder="Catatan tambahan..."
                 rows={2}
-                style={{ width:"100%", marginTop:8, padding:"9px 12px", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.09)", borderRadius:8, color:"#fff", fontSize:13, outline:"none", resize:"none", boxSizing:"border-box", fontFamily:"inherit" }} />
+                style={{ width:"100%", marginTop:8, padding:"9px 12px", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.09)", borderRadius:8, color:color.card, fontSize:13, outline:"none", resize:"none", boxSizing:"border-box", fontFamily:"inherit" }} />
             </div>
           </div>
         )}
@@ -574,7 +575,7 @@ export default function Penyemprotan() {
         {/* ══ FORM PENGGUNAAN PESTISIDA ══════════════════════════════════════════ */}
         {step === "form_guna" && (
           <div>
-            <h2 style={{ fontSize:20, fontWeight:700, margin:"0 0 6px", color:"#fff" }}>Penggunaan Pestisida</h2>
+            <h2 style={{ fontSize:20, fontWeight:700, margin:"0 0 6px", color:color.card }}>Penggunaan Pestisida</h2>
             {adaPengambilan && (
               <div style={{ fontSize:12, color:"rgba(100,181,246,0.7)", marginBottom:16 }}>
                 💊 Pengambilan: {ambil.namaPestisida} — {ambil.jumlah}
@@ -614,7 +615,7 @@ export default function Penyemprotan() {
               <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginTop:10 }}>
                 {STERILISASI_LIST.map(s => (
                   <button key={s} onClick={() => setGuna(d => ({...d, sterilisasi: guna.sterilisasi===s ? "" : s}))}
-                    style={{ padding:"8px 14px", borderRadius:20, border: guna.sterilisasi===s ? "2px solid #43A047" : "1px solid rgba(255,255,255,0.14)", background: guna.sterilisasi===s ? "rgba(67,160,71,0.18)" : "rgba(255,255,255,0.04)", color: guna.sterilisasi===s ? "#81c784" : "rgba(255,255,255,0.65)", fontSize:12, fontWeight: guna.sterilisasi===s ? 700 : 500, cursor:"pointer", transition:"all 0.15s" }}>
+                    style={{ padding:"8px 14px", borderRadius:20, border: guna.sterilisasi===s ? "2px solid #43A047" : "1px solid rgba(255,255,255,0.14)", background: guna.sterilisasi===s ? "rgba(67,160,71,0.18)" : "rgba(255,255,255,0.04)", color: guna.sterilisasi===s ? color.brand400 : "rgba(255,255,255,0.65)", fontSize:12, fontWeight: guna.sterilisasi===s ? 700 : 500, cursor:"pointer", transition:"all 0.15s" }}>
                     {s}
                   </button>
                 ))}
@@ -626,7 +627,7 @@ export default function Penyemprotan() {
         {/* ══ REKAP ══════════════════════════════════════════════════════════════ */}
         {step === "rekap" && (
           <div>
-            <h2 style={{ fontSize:20, fontWeight:700, margin:"0 0 4px", color:"#fff" }}>Konfirmasi Data</h2>
+            <h2 style={{ fontSize:20, fontWeight:700, margin:"0 0 4px", color:color.card }}>Konfirmasi Data</h2>
             <p style={{ fontSize:13, color:"rgba(255,255,255,0.4)", marginBottom:18 }}>Periksa kembali sebelum submit</p>
 
             {isDemoMode && <div style={{ background:"rgba(255,179,0,0.08)", border:"1px solid rgba(255,179,0,0.25)", borderRadius:10, padding:"10px 14px", marginBottom:14, fontSize:12, color:"#FFB300" }}>⚠️ Mode Demo — data tidak dikirim ke Sheets</div>}
@@ -687,7 +688,7 @@ export default function Penyemprotan() {
             </div>
 
             {submitError && (
-              <div style={{ padding:"12px", background:"rgba(244,67,54,0.1)", border:"1px solid rgba(244,67,54,0.3)", borderRadius:10, fontSize:13, color:"#ef9a9a", marginBottom:12 }}>
+              <div style={{ padding:"12px", background:"rgba(244,67,54,0.1)", border:"1px solid rgba(244,67,54,0.3)", borderRadius:10, fontSize:13, color:color.dangerBorder, marginBottom:12 }}>
                 ⚠️ {submitError}
               </div>
             )}
@@ -739,14 +740,14 @@ export default function Penyemprotan() {
           {step === "start" && (
             <button onClick={() => navigateTo(activity === "oles_gsb" ? "form_oles" : "form_ambil")}
               disabled={!canStart}
-              style={{ flex:2, padding:"14px", border:"none", borderRadius:12, background: canStart ? `linear-gradient(135deg,${actColor}cc,${actColor})` : "rgba(255,255,255,0.06)", color: canStart ? "#fff" : "rgba(255,255,255,0.3)", fontSize:15, fontWeight:700, cursor: canStart ? "pointer" : "not-allowed" }}>
+              style={{ flex:2, padding:"14px", border:"none", borderRadius:12, background: canStart ? `linear-gradient(135deg,${actColor}cc,${actColor})` : "rgba(255,255,255,0.06)", color: canStart ? color.card : "rgba(255,255,255,0.3)", fontSize:15, fontWeight:700, cursor: canStart ? "pointer" : "not-allowed" }}>
               Lanjut →
             </button>
           )}
 
           {step === "form_oles" && (
             <button onClick={() => navigateTo("rekap")} disabled={!canOlesGSB}
-              style={{ flex:2, padding:"14px", border:"none", borderRadius:12, background: canOlesGSB ? "linear-gradient(135deg,#bf360c,#FF7043)" : "rgba(255,255,255,0.06)", color: canOlesGSB ? "#fff" : "rgba(255,255,255,0.3)", fontSize:15, fontWeight:700, cursor: canOlesGSB ? "pointer" : "not-allowed" }}>
+              style={{ flex:2, padding:"14px", border:"none", borderRadius:12, background: canOlesGSB ? "linear-gradient(135deg,#bf360c,#FF7043)" : "rgba(255,255,255,0.06)", color: canOlesGSB ? color.card : "rgba(255,255,255,0.3)", fontSize:15, fontWeight:700, cursor: canOlesGSB ? "pointer" : "not-allowed" }}>
               Review Data →
             </button>
           )}
@@ -754,7 +755,7 @@ export default function Penyemprotan() {
           {step === "form_ambil" && adaPengambilan === true && (
             <>
               <button onClick={() => navigateTo("form_guna")} disabled={!canAmbil}
-                style={{ flex:2, padding:"14px", border:"none", borderRadius:12, background: canAmbil ? "linear-gradient(135deg,#1565C0,#1E88E5)" : "rgba(255,255,255,0.06)", color: canAmbil ? "#fff" : "rgba(255,255,255,0.3)", fontSize:13, fontWeight:700, cursor: canAmbil ? "pointer" : "not-allowed" }}>
+                style={{ flex:2, padding:"14px", border:"none", borderRadius:12, background: canAmbil ? `linear-gradient(135deg,${color.info},#1E88E5)` : "rgba(255,255,255,0.06)", color: canAmbil ? color.card : "rgba(255,255,255,0.3)", fontSize:13, fontWeight:700, cursor: canAmbil ? "pointer" : "not-allowed" }}>
                 + ke Penggunaan →
               </button>
               <button onClick={() => navigateTo("rekap")} disabled={!canAmbil}
@@ -766,14 +767,14 @@ export default function Penyemprotan() {
 
           {step === "form_guna" && (
             <button onClick={() => navigateTo("rekap")} disabled={!canGuna}
-              style={{ flex:2, padding:"14px", border:"none", borderRadius:12, background: canGuna ? "linear-gradient(135deg,#1565C0,#1E88E5)" : "rgba(255,255,255,0.06)", color: canGuna ? "#fff" : "rgba(255,255,255,0.3)", fontSize:15, fontWeight:700, cursor: canGuna ? "pointer" : "not-allowed" }}>
+              style={{ flex:2, padding:"14px", border:"none", borderRadius:12, background: canGuna ? `linear-gradient(135deg,${color.info},#1E88E5)` : "rgba(255,255,255,0.06)", color: canGuna ? color.card : "rgba(255,255,255,0.3)", fontSize:15, fontWeight:700, cursor: canGuna ? "pointer" : "not-allowed" }}>
               Review Data →
             </button>
           )}
 
           {step === "rekap" && (
             <button onClick={() => setConfirmOpen(true)} disabled={syncing || !canSubmit}
-              style={{ flex:2, padding:"14px", border:"none", borderRadius:12, background: syncing ? "rgba(30,136,229,0.3)" : !canSubmit ? "rgba(255,255,255,0.06)" : isDemoMode ? "linear-gradient(135deg,#5d4037,#795548)" : !isOnline ? "linear-gradient(135deg,#1565C0,#1976D2)" : "linear-gradient(135deg,#0d47a1,#1565C0)", color: canSubmit ? "#fff" : "rgba(255,255,255,0.3)", fontSize:15, fontWeight:700, cursor: syncing || !canSubmit ? "not-allowed" : "pointer" }}>
+              style={{ flex:2, padding:"14px", border:"none", borderRadius:12, background: syncing ? "rgba(30,136,229,0.3)" : !canSubmit ? "rgba(255,255,255,0.06)" : isDemoMode ? "linear-gradient(135deg,#5d4037,#795548)" : !isOnline ? `linear-gradient(135deg,${color.info},#1976D2)` : `linear-gradient(135deg,${color.infoDark},${color.info})`, color: canSubmit ? color.card : "rgba(255,255,255,0.3)", fontSize:15, fontWeight:700, cursor: syncing || !canSubmit ? "not-allowed" : "pointer" }}>
               {syncing ? "⏳ Mengirim..." : isDemoMode ? "Submit Demo 🧪" : !isOnline ? "💾 Simpan Offline" : "Submit ✓"}
             </button>
           )}
@@ -816,7 +817,7 @@ function RekapSection({ title, color, rows }) {
         {rows.map((item, i) => (
           <div key={i} style={{ display:"flex", padding:"10px 14px", borderBottom: i < rows.length-1 ? "1px solid rgba(255,255,255,0.05)" : "none", gap:10 }}>
             <span style={{ fontSize:12, color:"rgba(255,255,255,0.38)", minWidth:110 }}>{item.label}</span>
-            <span style={{ fontSize:12, color:"#fff", fontWeight:600, flex:1 }}>{item.value}</span>
+            <span style={{ fontSize:12, color:color.card, fontWeight:600, flex:1 }}>{item.value}</span>
           </div>
         ))}
       </div>

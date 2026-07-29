@@ -5,15 +5,16 @@ import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 import { useSOHistory, hasCompletedCheckpoint } from "../hooks/useSOHistory";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
+import { color } from "../styles/tokens";
 
 const DB_NAME    = "SOOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_SO_URL;
 
 // ─── Tipe GH & mapping nama ───────────────────────────────────────────────────
 const TIPE_GH = [
-  { key: "drip",         label: "Drip",         color: "#1565C0" },
+  { key: "drip",         label: "Drip",         color: color.info },
   { key: "kolam",        label: "Kolam",        color: "#00838F" },
-  { key: "dutch_bucket", label: "Dutch Bucket", color: "#6A1B9A" },
+  { key: "dutch_bucket", label: "Dutch Bucket", color: color.purple700 },
 ];
 
 function buildGHNames() {
@@ -113,11 +114,11 @@ function getSOStatus(hst, soHistory, gh, periode) {
 }
 
 function hstChipStyle(hst, soStatus) {
-  if (hst === null) return { bg: "#f5f5f5", color: "#999", border: "#e0e0e0" };
-  if (hst === SO_CHECKPOINT_1 - 1 || hst === SO_CHECKPOINT_2 - 1) return { bg: "#fff3e0", color: "#e65100", border: "#ffb74d" };
+  if (hst === null) return { bg: color.bg, color: color.textFaint, border: color.border };
+  if (hst === SO_CHECKPOINT_1 - 1 || hst === SO_CHECKPOINT_2 - 1) return { bg: color.warningBg, color: color.warning, border: color.warningBorder };
   if (hst === SO_CHECKPOINT_1 || hst === SO_CHECKPOINT_2) return { bg: "#fbe9e7", color: "#bf360c", border: "#ffab91" };
   if (soStatus?.late) return { bg: "#fce4ec", color: "#880e4f", border: "#f48fb1" };
-  return { bg: "#e8f5e9", color: "#2e7d32", border: "#a5d6a7" };
+  return { bg: color.brandBg, color: color.brand700, border: color.brand300 };
 }
 
 function isSODeadlineAlert(hst) {
@@ -427,10 +428,10 @@ export default function SO() {
   const loadingAll = loadingRef || loadingHistory;
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f5f5f5", fontFamily: "'DM Sans','Segoe UI',sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: color.bg, fontFamily: "'DM Sans','Segoe UI',sans-serif" }}>
 
       {/* ── Header ── */}
-      <div style={{ background: "#1b5e20", color: "#fff", padding: "14px 16px 10px", position: "sticky", top: 0, zIndex: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
+      <div style={{ background: color.brand900, color: color.card, padding: "14px 16px 10px", position: "sticky", top: 0, zIndex: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <div style={{ fontSize: 10, opacity: 0.75, letterSpacing: 1.5, textTransform: "uppercase" }}>Stock Opname Populasi</div>
@@ -439,14 +440,14 @@ export default function SO() {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {pendingCount > 0 && (
               <button onClick={isOnline ? syncPendingData : undefined}
-                style={{ fontSize: 10, fontWeight: 700, background: isOnline ? "rgba(33,150,243,0.3)" : "rgba(255,179,0,0.3)", border: `1px solid ${isOnline ? "rgba(33,150,243,0.6)" : "rgba(255,179,0,0.6)"}`, color: "#fff", padding: "2px 8px", borderRadius: 20, cursor: isOnline ? "pointer" : "default", display: "flex", alignItems: "center", gap: 4 }}>
+                style={{ fontSize: 10, fontWeight: 700, background: isOnline ? "rgba(33,150,243,0.3)" : "rgba(255,179,0,0.3)", border: `1px solid ${isOnline ? "rgba(33,150,243,0.6)" : "rgba(255,179,0,0.6)"}`, color: color.card, padding: "2px 8px", borderRadius: 20, cursor: isOnline ? "pointer" : "default", display: "flex", alignItems: "center", gap: 4 }}>
                 {isSyncingPending ? "⏳" : "📤"} {pendingCount} pending
               </button>
             )}
             {isDemoMode && (
               <div style={{ fontSize: 10, fontWeight: 700, background: "rgba(255,179,0,0.25)", border: "1px solid rgba(255,179,0,0.5)", borderRadius: 20, padding: "2px 8px", color: "#fff9c4" }}>DEMO</div>
             )}
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: isOnline ? "#a5d6a7" : "#ef9a9a", boxShadow: isOnline ? "0 0 6px #a5d6a7" : "0 0 6px #ef9a9a" }} />
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: isOnline ? color.brand300 : color.dangerBorder, boxShadow: isOnline ? `0 0 6px ${color.brand300}` : `0 0 6px ${color.dangerBorder}` }} />
           </div>
         </div>
 
@@ -461,7 +462,7 @@ export default function SO() {
         {step < 3 && (
           <div style={{ display: "flex", gap: 4, marginTop: 10 }}>
             {[1, 2].map(s => (
-              <div key={s} style={{ flex: 1, height: 3, borderRadius: 2, background: s <= step ? "#a5d6a7" : "rgba(255,255,255,0.2)", transition: "background 0.3s" }} />
+              <div key={s} style={{ flex: 1, height: 3, borderRadius: 2, background: s <= step ? color.brand300 : "rgba(255,255,255,0.2)", transition: "background 0.3s" }} />
             ))}
           </div>
         )}
@@ -470,15 +471,15 @@ export default function SO() {
       {/* ── Modal double submit warning ── */}
       {showDoubleWarn && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "#fff", borderRadius: 16, padding: 24, maxWidth: 360, width: "100%" }}>
+          <div style={{ background: color.card, borderRadius: 16, padding: 24, maxWidth: 360, width: "100%" }}>
             <div style={{ fontSize: 36, textAlign: "center", marginBottom: 12 }}>⚠️</div>
-            <div style={{ fontWeight: 700, fontSize: 16, color: "#333", textAlign: "center", marginBottom: 8 }}>GH Sudah Diisi Hari Ini</div>
-            <div style={{ fontSize: 13, color: "#666", textAlign: "center", marginBottom: 20, lineHeight: 1.5 }}>
+            <div style={{ fontWeight: 700, fontSize: 16, color: color.text, textAlign: "center", marginBottom: 8 }}>GH Sudah Diisi Hari Ini</div>
+            <div style={{ fontSize: 13, color: color.textMuted, textAlign: "center", marginBottom: 20, lineHeight: 1.5 }}>
               <strong>{pendingGH}</strong> sudah disubmit hari ini. Yakin mau isi ulang?
             </div>
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => { setShowDoubleWarn(false); setPendingGH(""); }} style={{ flex: 1, padding: "11px", background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 10, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Batal</button>
-              <button onClick={() => doSelectGH(pendingGH)} style={{ flex: 1, padding: "11px", background: "#e53935", border: "none", borderRadius: 10, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Isi Ulang</button>
+              <button onClick={() => { setShowDoubleWarn(false); setPendingGH(""); }} style={{ flex: 1, padding: "11px", background: color.bg, border: `1px solid ${color.border}`, borderRadius: 10, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Batal</button>
+              <button onClick={() => doSelectGH(pendingGH)} style={{ flex: 1, padding: "11px", background: color.danger, border: "none", borderRadius: 10, color: color.card, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Isi Ulang</button>
             </div>
           </div>
         </div>
@@ -500,13 +501,13 @@ export default function SO() {
               return (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
                   {deadline.length > 0 && (
-                    <div style={{ background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 12, padding: "10px 12px" }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#e65100", marginBottom: 8 }}>
+                    <div style={{ background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 12, padding: "10px 12px" }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: color.warning, marginBottom: 8 }}>
                         🔔 Deadline SO <span style={{ fontWeight: 600, opacity: 0.7 }}>({deadline.length} GH)</span>
                       </div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                         {deadline.map(gh => (
-                          <div key={gh.name} style={{ ...chipBase, background: gh.reminderType === "hariH" ? "#fbe9e7" : "#fff8e1", border: `1px solid ${gh.reminderType === "hariH" ? "#ffab91" : "#ffe082"}`, color: gh.reminderType === "hariH" ? "#bf360c" : "#e65100" }}>
+                          <div key={gh.name} style={{ ...chipBase, background: gh.reminderType === "hariH" ? "#fbe9e7" : "#fff8e1", border: `1px solid ${gh.reminderType === "hariH" ? "#ffab91" : "#ffe082"}`, color: gh.reminderType === "hariH" ? "#bf360c" : color.warning }}>
                             {gh.name}
                             <span style={{ fontWeight: 600, fontSize: 10, opacity: 0.85 }}>{gh.reminderType === "hariH" ? "hari ini!" : "besok"}</span>
                           </div>
@@ -522,7 +523,7 @@ export default function SO() {
                       </div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                         {late1.map(gh => (
-                          <div key={gh.name} style={{ ...chipBase, background: "#fff", border: "1px solid #f48fb1", color: "#880e4f" }}>
+                          <div key={gh.name} style={{ ...chipBase, background: color.card, border: "1px solid #f48fb1", color: "#880e4f" }}>
                             {gh.name}
                             <span style={{ fontWeight: 600, fontSize: 10, opacity: 0.85 }}>+{gh.daysLate} hari</span>
                           </div>
@@ -538,7 +539,7 @@ export default function SO() {
                       </div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                         {late2.map(gh => (
-                          <div key={gh.name} style={{ ...chipBase, background: "#fff", border: "1px solid #f48fb1", color: "#880e4f" }}>
+                          <div key={gh.name} style={{ ...chipBase, background: color.card, border: "1px solid #f48fb1", color: "#880e4f" }}>
                             {gh.name}
                             <span style={{ fontWeight: 600, fontSize: 10, opacity: 0.85 }}>+{gh.daysLate} hari</span>
                           </div>
@@ -557,15 +558,15 @@ export default function SO() {
                   <div style={{ fontSize: 12, color: "#f57f17", fontWeight: 600 }}>Data REF tidak terjangkau</div>
                   <div style={{ fontSize: 11, color: "#a67c00", marginTop: 2 }}>Menampilkan data demo</div>
                 </div>
-                <button onClick={fetchRefData} style={{ padding: "5px 10px", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 7, color: "#e65100", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>Coba Lagi</button>
+                <button onClick={fetchRefData} style={{ padding: "5px 10px", background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 7, color: color.warning, fontSize: 11, cursor: "pointer", fontWeight: 600 }}>Coba Lagi</button>
               </div>
             )}
 
-            <div style={{ fontWeight: 700, fontSize: 18, color: "#1b5e20", marginBottom: 4 }}>Pilih Greenhouse</div>
-            <div style={{ fontSize: 12, color: "#888", marginBottom: 16 }}>Stock opname dilakukan pada checkpoint HST {SO_CHECKPOINT_1} &amp; HST {SO_CHECKPOINT_2}</div>
+            <div style={{ fontWeight: 700, fontSize: 18, color: color.brand900, marginBottom: 4 }}>Pilih Greenhouse</div>
+            <div style={{ fontSize: 12, color: color.textSoft, marginBottom: 16 }}>Stock opname dilakukan pada checkpoint HST {SO_CHECKPOINT_1} &amp; HST {SO_CHECKPOINT_2}</div>
 
             {loadingAll ? (
-              <div style={{ textAlign: "center", padding: "40px 0", color: "#aaa" }}>
+              <div style={{ textAlign: "center", padding: "40px 0", color: color.textGhost }}>
                 <div style={{ fontSize: 28 }}>🔄</div>
                 <div style={{ fontSize: 13, marginTop: 8 }}>Memuat data...</div>
               </div>
@@ -577,16 +578,16 @@ export default function SO() {
                   const hasReminder = aktif.some(g => g.hst === SO_CHECKPOINT_1 - 1 || g.hst === SO_CHECKPOINT_2 - 1);
                   const hasLate     = aktif.some(g => getStatus(g.hst, g.name, g.periode).late && !submittedToday.includes(g.name));
                   return (
-                    <div key={tipe.key} style={{ borderRadius: 14, border: `1.5px solid ${isOpen ? tipe.color : "#e0e0e0"}`, background: "#fff", overflow: "hidden", transition: "border-color 0.2s" }}>
+                    <div key={tipe.key} style={{ borderRadius: 14, border: `1.5px solid ${isOpen ? tipe.color : color.border}`, background: color.card, overflow: "hidden", transition: "border-color 0.2s" }}>
                       <button onClick={() => setOpenTipe(isOpen ? null : tipe.key)}
                         style={{ width: "100%", padding: "14px 16px", background: isOpen ? `${tipe.color}10` : "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                         <div style={{ textAlign: "left" }}>
                           <div style={{ fontSize: 15, fontWeight: 700, color: tipe.color }}>{tipe.label}</div>
-                          <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{aktif.length} GH aktif saat ini</div>
+                          <div style={{ fontSize: 12, color: color.textSoft, marginTop: 2 }}>{aktif.length} GH aktif saat ini</div>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           {hasLate && <div style={{ fontSize: 10, fontWeight: 700, background: "#fce4ec", border: "1px solid #f48fb1", borderRadius: 20, padding: "2px 8px", color: "#880e4f" }}>Terlambat ⏰</div>}
-                          {hasReminder && <div style={{ fontSize: 10, fontWeight: 700, background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 8px", color: "#e65100" }}>H-1 ⚠</div>}
+                          {hasReminder && <div style={{ fontSize: 10, fontWeight: 700, background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 20, padding: "2px 8px", color: color.warning }}>H-1 ⚠</div>}
                           <span style={{ fontSize: 18, color: tipe.color, transition: "transform 0.2s", display: "inline-block", transform: isOpen ? "rotate(90deg)" : "rotate(0deg)" }}>›</span>
                         </div>
                       </button>
@@ -594,7 +595,7 @@ export default function SO() {
                       {isOpen && (
                         <div style={{ padding: "0 12px 14px", borderTop: `1px solid ${tipe.color}20` }}>
                           {aktif.length === 0 ? (
-                            <div style={{ textAlign: "center", padding: "20px 0", color: "#aaa", fontSize: 13 }}>Tidak ada GH aktif untuk tipe ini.</div>
+                            <div style={{ textAlign: "center", padding: "20px 0", color: color.textGhost, fontSize: 13 }}>Tidak ada GH aktif untuk tipe ini.</div>
                           ) : (
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 12 }}>
                               {aktif.map(gh => {
@@ -604,16 +605,16 @@ export default function SO() {
                                 const alert    = isSODeadlineAlert(gh.hst);
                                 return (
                                   <button key={gh.name} onClick={() => handleSelectGH(gh.name)}
-                                    style={{ padding: "10px 8px", borderRadius: 12, cursor: "pointer", textAlign: "center", border: sudahIsi ? "1px solid #ffb74d" : (alert || lateInfo.late) ? `2px solid ${chip.border}` : "1px solid #e0e0e0", background: sudahIsi ? "#fff8e1" : "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, transition: "all 0.2s" }}>
-                                    <div style={{ fontSize: 12, fontWeight: 700, color: "#333", lineHeight: 1.3 }}>{gh.name}</div>
-                                    <div style={{ fontSize: 10, color: "#aaa" }}>P{gh.periode} · {gh.baris?.length || 0} baris</div>
+                                    style={{ padding: "10px 8px", borderRadius: 12, cursor: "pointer", textAlign: "center", border: sudahIsi ? `1px solid ${color.warningBorder}` : (alert || lateInfo.late) ? `2px solid ${chip.border}` : `1px solid ${color.border}`, background: sudahIsi ? "#fff8e1" : color.card, boxShadow: "0 1px 4px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, transition: "all 0.2s" }}>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: color.text, lineHeight: 1.3 }}>{gh.name}</div>
+                                    <div style={{ fontSize: 10, color: color.textGhost }}>P{gh.periode} · {gh.baris?.length || 0} baris</div>
                                     {gh.hst !== null && (
                                       <div style={{ background: chip.bg, border: `1px solid ${chip.border}`, borderRadius: 7, padding: "3px 10px", width: "100%" }}>
                                         <span style={{ fontSize: 15, fontWeight: 800, color: chip.color }}>{gh.hst}</span>
                                         <span style={{ fontSize: 10, color: chip.color, marginLeft: 3 }}>HST</span>
                                       </div>
                                     )}
-                                    {sudahIsi && <div style={{ fontSize: 10, background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 8px", color: "#e65100", fontWeight: 600 }}>✓ Sudah diisi</div>}
+                                    {sudahIsi && <div style={{ fontSize: 10, background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 20, padding: "2px 8px", color: color.warning, fontWeight: 600 }}>✓ Sudah diisi</div>}
                                     {alert && !sudahIsi && <div style={{ fontSize: 10, background: "#fbe9e7", border: "1px solid #ffab91", borderRadius: 20, padding: "2px 8px", color: "#bf360c", fontWeight: 600 }}>⚠ Deadline</div>}
                                     {lateInfo.late && !sudahIsi && <div style={{ fontSize: 10, background: "#fce4ec", border: "1px solid #f48fb1", borderRadius: 20, padding: "2px 8px", color: "#880e4f", fontWeight: 600 }}>⏰ Terlambat {lateInfo.daysLate} hari</div>}
                                   </button>
@@ -634,12 +635,12 @@ export default function SO() {
         {/* ══ STEP 2 — Form Input ══ */}
         {step === 2 && (
           <div>
-            <button onClick={() => setStep(1)} style={{ background: "none", border: "none", color: "#666", fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 12, display: "flex", alignItems: "center", gap: 4 }}>← Kembali</button>
+            <button onClick={() => setStep(1)} style={{ background: "none", border: "none", color: color.textMuted, fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 12, display: "flex", alignItems: "center", gap: 4 }}>← Kembali</button>
 
             {/* Info chips */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
-              <div style={{ background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#2e7d32", fontWeight: 700 }}>{selectedGH}</div>
-              <div style={{ background: "#f5f5f5", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#666" }}>Periode {ghInfo?.periode}</div>
+              <div style={{ background: color.brandBg, border: `1px solid ${color.brand300}`, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: color.brand700, fontWeight: 700 }}>{selectedGH}</div>
+              <div style={{ background: color.bg, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: color.textMuted }}>Periode {ghInfo?.periode}</div>
               {hstAktif !== null && (
                 <div style={{ background: chipStyle.bg, border: `1px solid ${chipStyle.border}`, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: chipStyle.color, fontWeight: 700 }}>{hstAktif} HST</div>
               )}
@@ -658,17 +659,17 @@ export default function SO() {
             )}
 
             {!isOnline && (
-              <div style={{ marginBottom: 12, padding: "8px 12px", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 9, display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ marginBottom: 12, padding: "8px 12px", background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 9, display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 14 }}>📵</span>
-                <span style={{ fontSize: 11, color: "#e65100" }}>Offline — data disimpan lokal & dikirim otomatis saat online</span>
+                <span style={{ fontSize: 11, color: color.warning }}>Offline — data disimpan lokal & dikirim otomatis saat online</span>
               </div>
             )}
 
-            <div style={{ fontWeight: 700, fontSize: 17, color: "#1b5e20", marginBottom: 2 }}>Input Populasi</div>
-            <div style={{ fontSize: 12, color: "#888", marginBottom: 8 }}>{filledCount}/{totalRows} baris terisi</div>
+            <div style={{ fontWeight: 700, fontSize: 17, color: color.brand900, marginBottom: 2 }}>Input Populasi</div>
+            <div style={{ fontSize: 12, color: color.textSoft, marginBottom: 8 }}>{filledCount}/{totalRows} baris terisi</div>
 
             {/* Progress bar */}
-            <div style={{ background: "#e0e0e0", borderRadius: 4, height: 5, marginBottom: 14, overflow: "hidden" }}>
+            <div style={{ background: color.border, borderRadius: 4, height: 5, marginBottom: 14, overflow: "hidden" }}>
               <div style={{ height: "100%", borderRadius: 4, background: "#4CAF50", width: `${totalRows > 0 ? (filledCount / totalRows) * 100 : 0}%`, transition: "width 0.3s" }} />
             </div>
 
@@ -676,7 +677,7 @@ export default function SO() {
             <div style={{ overflowX: "auto", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.08)", marginBottom: 16 }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
-                  <tr style={{ background: "#1b5e20", color: "#fff" }}>
+                  <tr style={{ background: color.brand900, color: color.card }}>
                     <th style={{ padding: "9px 10px", textAlign: "left", fontWeight: 700, fontSize: 11 }}>Baris</th>
                     <th style={{ padding: "9px 6px", textAlign: "left", fontWeight: 700, fontSize: 11 }}>Varian</th>
                     <th style={{ padding: "9px 10px", textAlign: "center", fontWeight: 700, fontSize: 11 }}>Populasi</th>
@@ -688,17 +689,17 @@ export default function SO() {
                     const filled   = row.populasi !== "";
                     const isManual = row.isManual;
                     return (
-                      <tr key={i} style={{ background: isManual ? "#f3e5f5" : filled ? "#f1f8e9" : i % 2 === 0 ? "#fff" : "#fafafa", transition: "background 0.2s" }}>
-                        <td style={{ padding: "6px 10px", fontWeight: 700, color: isManual ? "#6A1B9A" : "#1b5e20", whiteSpace: "nowrap" }}>
+                      <tr key={i} style={{ background: isManual ? color.purpleBg : filled ? "#f1f8e9" : i % 2 === 0 ? color.card : "#fafafa", transition: "background 0.2s" }}>
+                        <td style={{ padding: "6px 10px", fontWeight: 700, color: isManual ? color.purple700 : color.brand900, whiteSpace: "nowrap" }}>
                           {isManual ? (
                             <input type="text" value={row.baris} onChange={e => updateManualField(i, "baris", e.target.value)}
-                              placeholder="A" style={{ width: 44, textAlign: "center", border: "1.5px solid #ce93d8", borderRadius: 6, padding: "4px 6px", fontSize: 12, fontWeight: 700, color: "#6A1B9A", outline: "none", background: "#fff" }} />
+                              placeholder="A" style={{ width: 44, textAlign: "center", border: `1.5px solid ${color.purple300}`, borderRadius: 6, padding: "4px 6px", fontSize: 12, fontWeight: 700, color: color.purple700, outline: "none", background: color.card }} />
                           ) : row.baris}
                         </td>
-                        <td style={{ padding: "6px 6px", fontSize: 11, color: isManual ? "#6A1B9A" : "#666", whiteSpace: "nowrap" }}>
+                        <td style={{ padding: "6px 6px", fontSize: 11, color: isManual ? color.purple700 : color.textMuted, whiteSpace: "nowrap" }}>
                           {isManual ? (
                             <select value={row.varian} onChange={e => updateManualField(i, "varian", e.target.value)}
-                              style={{ border: "1.5px solid #ce93d8", borderRadius: 6, padding: "4px 6px", fontSize: 11, color: "#6A1B9A", outline: "none", background: "#fff", maxWidth: 110 }}>
+                              style={{ border: `1.5px solid ${color.purple300}`, borderRadius: 6, padding: "4px 6px", fontSize: 11, color: color.purple700, outline: "none", background: color.card, maxWidth: 110 }}>
                               <option value="">Pilih varian</option>
                               {VARIAN_LIST.map(v => <option key={v} value={v}>{v}</option>)}
                             </select>
@@ -708,11 +709,11 @@ export default function SO() {
                           <input type="number" inputMode="numeric" value={row.populasi}
                             onChange={e => updatePopulasi(i, e.target.value)}
                             placeholder="—"
-                            style={{ width: 70, height: 32, textAlign: "center", border: `1.5px solid ${filled ? (isManual ? "#ce93d8" : "#81c784") : "#e0e0e0"}`, borderRadius: 7, fontSize: 13, fontWeight: 600, color: filled ? (isManual ? "#6A1B9A" : "#2e7d32") : "#bbb", outline: "none", background: "#fff" }} />
+                            style={{ width: 70, height: 32, textAlign: "center", border: `1.5px solid ${filled ? (isManual ? color.purple300 : color.brand400) : color.border}`, borderRadius: 7, fontSize: 13, fontWeight: 600, color: filled ? (isManual ? color.purple700 : color.brand700) : "#bbb", outline: "none", background: color.card }} />
                         </td>
                         <td style={{ padding: "4px 6px", textAlign: "center" }}>
                           {isManual && (
-                            <button onClick={() => removeManualRow(i)} style={{ background: "none", border: "none", color: "#e53935", fontSize: 16, cursor: "pointer", padding: "2px 4px", lineHeight: 1 }}>×</button>
+                            <button onClick={() => removeManualRow(i)} style={{ background: "none", border: "none", color: color.danger, fontSize: 16, cursor: "pointer", padding: "2px 4px", lineHeight: 1 }}>×</button>
                           )}
                         </td>
                       </tr>
@@ -724,7 +725,7 @@ export default function SO() {
 
             {/* Tombol tambah baris manual */}
             <button onClick={addManualRow}
-              style={{ width: "100%", padding: "10px", background: "#f3e5f5", border: "1.5px dashed #ce93d8", borderRadius: 10, color: "#6A1B9A", fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 16 }}>
+              style={{ width: "100%", padding: "10px", background: color.purpleBg, border: `1.5px dashed ${color.purple300}`, borderRadius: 10, color: color.purple700, fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 16 }}>
               + Tambah baris / varian tidak terdaftar
             </button>
 
@@ -783,11 +784,11 @@ export default function SO() {
                         .then(() => alert("✅ Disalin ke clipboard!"))
                         .catch(() => alert("Gagal menyalin, coba lagi."));
                     }}
-                      style={{ padding: "5px 12px", background: "#558b2f", border: "none", borderRadius: 8, color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                      style={{ padding: "5px 12px", background: "#558b2f", border: "none", borderRadius: 8, color: color.card, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
                       📋 Copy
                     </button>
                   </div>
-                  <div style={{ fontFamily: "monospace", fontSize: 12, color: "#333", marginBottom: 10, whiteSpace: "pre-wrap", lineHeight: 1.7 }}>
+                  <div style={{ fontFamily: "monospace", fontSize: 12, color: color.text, marginBottom: 10, whiteSpace: "pre-wrap", lineHeight: 1.7 }}>
                     {lines.join("\n")}
                   </div>
                   <div style={{ borderTop: "1px solid #dce775", paddingTop: 8 }}>
@@ -795,12 +796,12 @@ export default function SO() {
                     {Object.entries(totalPerVarian).sort((a,b) => b[1]-a[1]).map(([v, t]) => (
                       <div key={v} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "2px 0" }}>
                         <span style={{ color: "#555" }}>{v}</span>
-                        <span style={{ fontWeight: 700, color: "#1b5e20", fontFamily: "monospace" }}>{t.toLocaleString("id-ID")}</span>
+                        <span style={{ fontWeight: 700, color: color.brand900, fontFamily: "monospace" }}>{t.toLocaleString("id-ID")}</span>
                       </div>
                     ))}
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700, borderTop: "1px solid #dce775", marginTop: 6, paddingTop: 6 }}>
                       <span>Total keseluruhan</span>
-                      <span style={{ color: "#1b5e20", fontFamily: "monospace" }}>{totalAll.toLocaleString("id-ID")}</span>
+                      <span style={{ color: color.brand900, fontFamily: "monospace" }}>{totalAll.toLocaleString("id-ID")}</span>
                     </div>
                   </div>
                 </div>
@@ -810,28 +811,28 @@ export default function SO() {
             {/* Input operator */}
             <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 11, color: "#388e3c", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
-                👤 Nama Operator <span style={{ color: "#e53935" }}>*</span>
+                👤 Nama Operator <span style={{ color: color.danger }}>*</span>
               </label>
               <input type="text" value={operator} onChange={e => setOperator(e.target.value)}
                 placeholder="Tulis nama lengkap..."
-                style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: "#fff", border: `1.5px solid ${operator.trim() ? "#81c784" : "#e0e0e0"}`, borderRadius: 10, color: "#333", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
+                style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: color.card, border: `1.5px solid ${operator.trim() ? color.brand400 : color.border}`, borderRadius: 10, color: color.text, fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
             </div>
 
             {/* Input alasan keterlambatan */}
             {soStatus.late && (
               <div style={{ marginBottom: 12 }}>
                 <label style={{ fontSize: 11, color: "#880e4f", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
-                  ⏰ Alasan Terlambat Mengisi SO <span style={{ color: "#e53935" }}>*</span>
+                  ⏰ Alasan Terlambat Mengisi SO <span style={{ color: color.danger }}>*</span>
                 </label>
                 <textarea value={keterangan} onChange={e => setKeterangan(e.target.value)}
                   placeholder={`Tulis alasan kenapa SO terlambat ${soStatus.daysLate} hari dari checkpoint HST ${soStatus.checkpoint}...`}
                   rows={3}
-                  style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: "#fff", border: `1.5px solid ${keterangan.trim() ? "#f48fb1" : "#e0e0e0"}`, borderRadius: 10, color: "#333", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit", resize: "vertical" }} />
+                  style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: color.card, border: `1.5px solid ${keterangan.trim() ? "#f48fb1" : color.border}`, borderRadius: 10, color: color.text, fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit", resize: "vertical" }} />
               </div>
             )}
 
             {!allNormalFilled && normalRows.length > 0 && (
-              <div style={{ fontSize: 12, color: "#e65100", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
+              <div style={{ fontSize: 12, color: color.warning, background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
                 ⚠️ {normalRows.length - filledNormal} baris referensi belum diisi
               </div>
             )}
@@ -841,14 +842,14 @@ export default function SO() {
               </div>
             )}
             {submitError && (
-              <div style={{ fontSize: 12, color: "#c62828", background: "#ffebee", border: "1px solid #ef9a9a", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
+              <div style={{ fontSize: 12, color: color.dangerDeep, background: color.dangerBg, border: `1px solid ${color.dangerBorder}`, borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
                 ⚠️ {submitError}
               </div>
             )}
             {syncing && (
               <div style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 12, color: "#666", marginBottom: 6 }}>Menyimpan {syncProgress.done}/{syncProgress.total} baris...</div>
-                <div style={{ background: "#e0e0e0", borderRadius: 4, height: 6, overflow: "hidden" }}>
+                <div style={{ fontSize: 12, color: color.textMuted, marginBottom: 6 }}>Menyimpan {syncProgress.done}/{syncProgress.total} baris...</div>
+                <div style={{ background: color.border, borderRadius: 4, height: 6, overflow: "hidden" }}>
                   <div style={{ height: "100%", borderRadius: 4, background: "#4CAF50", width: `${syncProgress.total > 0 ? (syncProgress.done / syncProgress.total) * 100 : 0}%`, transition: "width 0.3s" }} />
                 </div>
               </div>
@@ -862,10 +863,10 @@ export default function SO() {
             <div style={{ fontSize: 60, marginBottom: 12 }}>
               {isDemoMode ? "🧪" : savedOffline ? "💾" : "✅"}
             </div>
-            <div style={{ fontSize: 21, fontWeight: 800, color: isDemoMode ? "#f57f17" : savedOffline ? "#1565C0" : "#2e7d32", marginBottom: 6 }}>
+            <div style={{ fontSize: 21, fontWeight: 800, color: isDemoMode ? "#f57f17" : savedOffline ? color.info : color.brand700, marginBottom: 6 }}>
               {isDemoMode ? "Demo Selesai!" : savedOffline ? "Tersimpan Lokal!" : "Data SO Tersimpan!"}
             </div>
-            <div style={{ fontSize: 13, color: "#888", marginBottom: 20 }}>
+            <div style={{ fontSize: 13, color: color.textSoft, marginBottom: 20 }}>
               {isDemoMode
                 ? "Data tidak dikirim (mode demo)"
                 : savedOffline
@@ -874,30 +875,30 @@ export default function SO() {
             </div>
 
             {savedOffline && (
-              <div style={{ background: "#e3f2fd", border: "1px solid #90CAF9", borderRadius: 10, padding: "10px 14px", marginBottom: 16, textAlign: "left" }}>
-                <div style={{ fontSize: 12, color: "#1565C0", fontWeight: 600, marginBottom: 4 }}>📡 Cara sync:</div>
+              <div style={{ background: color.infoBg, border: `1px solid ${color.infoBorder}`, borderRadius: 10, padding: "10px 14px", marginBottom: 16, textAlign: "left" }}>
+                <div style={{ fontSize: 12, color: color.info, fontWeight: 600, marginBottom: 4 }}>📡 Cara sync:</div>
                 <div style={{ fontSize: 12, color: "#555" }}>Biarkan app terbuka saat koneksi kembali — data terkirim otomatis.</div>
               </div>
             )}
 
-            <div style={{ background: isDemoMode ? "#fff8e1" : savedOffline ? "#e3f2fd" : "#e8f5e9", border: `1px solid ${isDemoMode ? "#ffe082" : savedOffline ? "#90CAF9" : "#a5d6a7"}`, borderRadius: 14, padding: 16, textAlign: "left", marginBottom: 20 }}>
-              <div style={{ fontSize: 12, color: isDemoMode ? "#f57f17" : savedOffline ? "#1565C0" : "#2e7d32", fontWeight: 700, marginBottom: 10 }}>Ringkasan SO</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#333" }}>{selectedGH} · Periode {ghInfo?.periode} · {hstAktif} HST</div>
-              <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>Operator: {operator}</div>
-              <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>Tanggal: {todayISO}</div>
-              <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>Total baris: {tableData.filter(r => r.populasi !== "").length} baris</div>
-              <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>
+            <div style={{ background: isDemoMode ? "#fff8e1" : savedOffline ? color.infoBg : color.brandBg, border: `1px solid ${isDemoMode ? "#ffe082" : savedOffline ? color.infoBorder : color.brand300}`, borderRadius: 14, padding: 16, textAlign: "left", marginBottom: 20 }}>
+              <div style={{ fontSize: 12, color: isDemoMode ? "#f57f17" : savedOffline ? color.info : color.brand700, fontWeight: 700, marginBottom: 10 }}>Ringkasan SO</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: color.text }}>{selectedGH} · Periode {ghInfo?.periode} · {hstAktif} HST</div>
+              <div style={{ fontSize: 13, color: color.textMuted, marginTop: 2 }}>Operator: {operator}</div>
+              <div style={{ fontSize: 13, color: color.textMuted, marginTop: 2 }}>Tanggal: {todayISO}</div>
+              <div style={{ fontSize: 13, color: color.textMuted, marginTop: 2 }}>Total baris: {tableData.filter(r => r.populasi !== "").length} baris</div>
+              <div style={{ fontSize: 13, color: color.textMuted, marginTop: 2 }}>
                 Total populasi: {tableData.reduce((sum, r) => sum + (parseInt(r.populasi) || 0), 0).toLocaleString("id-ID")} tanaman
               </div>
               {soStatus.late && (
                 <div style={{ fontSize: 13, color: "#880e4f", marginTop: 6, paddingTop: 6, borderTop: "1px dashed #f48fb1" }}>
                   ⏰ Terlambat {soStatus.daysLate} hari (checkpoint HST {soStatus.checkpoint})<br />
-                  <span style={{ color: "#666" }}>Alasan: {keterangan}</span>
+                  <span style={{ color: color.textMuted }}>Alasan: {keterangan}</span>
                 </div>
               )}
             </div>
 
-            <button onClick={resetForm} style={{ width: "100%", padding: "15px", background: isDemoMode ? "#fff8e1" : savedOffline ? "#e3f2fd" : "#e8f5e9", border: `2px solid ${isDemoMode ? "#ffb74d" : savedOffline ? "#90CAF9" : "#81c784"}`, borderRadius: 12, color: isDemoMode ? "#e65100" : savedOffline ? "#1565C0" : "#2e7d32", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+            <button onClick={resetForm} style={{ width: "100%", padding: "15px", background: isDemoMode ? "#fff8e1" : savedOffline ? color.infoBg : color.brandBg, border: `2px solid ${isDemoMode ? color.warningBorder : savedOffline ? color.infoBorder : color.brand400}`, borderRadius: 12, color: isDemoMode ? color.warning : savedOffline ? color.info : color.brand700, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
               + Input GH Berikutnya
             </button>
           </div>
@@ -906,10 +907,10 @@ export default function SO() {
 
       {/* ── Bottom Nav ── */}
       {step === 2 && (
-        <div style={{ padding: "12px 16px 24px", borderTop: "1px solid #e0e0e0", background: "#fff", position: "sticky", bottom: 0, display: "flex", gap: 10 }}>
-          <button onClick={() => { setStep(1); setSubmitError(null); }} style={{ flex: 1, padding: "13px", background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 12, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>← Kembali</button>
+        <div style={{ padding: "12px 16px 24px", borderTop: `1px solid ${color.border}`, background: color.card, position: "sticky", bottom: 0, display: "flex", gap: 10 }}>
+          <button onClick={() => { setStep(1); setSubmitError(null); }} style={{ flex: 1, padding: "13px", background: color.bg, border: `1px solid ${color.border}`, borderRadius: 12, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>← Kembali</button>
           <button onClick={() => setConfirmOpen(true)} disabled={!canSubmit || syncing}
-            style={{ flex: 2, padding: "13px", border: "none", borderRadius: 12, background: canSubmit && !syncing ? (!isOnline ? "linear-gradient(135deg,#1565C0,#1976D2)" : "linear-gradient(135deg,#1b5e20,#2e7d32)") : "#e0e0e0", color: canSubmit && !syncing ? "#fff" : "#aaa", fontSize: 15, fontWeight: 700, cursor: canSubmit && !syncing ? "pointer" : "not-allowed", transition: "all 0.2s" }}>
+            style={{ flex: 2, padding: "13px", border: "none", borderRadius: 12, background: canSubmit && !syncing ? (!isOnline ? `linear-gradient(135deg,${color.info},#1976D2)` : `linear-gradient(135deg,${color.brand900},${color.brand700})`) : color.border, color: canSubmit && !syncing ? color.card : color.textGhost, fontSize: 15, fontWeight: 700, cursor: canSubmit && !syncing ? "pointer" : "not-allowed", transition: "all 0.2s" }}>
             {syncing
               ? `⏳ Mengirim...`
               : !isOnline && canSubmit

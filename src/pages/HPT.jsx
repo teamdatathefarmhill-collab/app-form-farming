@@ -4,6 +4,7 @@ import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
+import { color } from "../styles/tokens";
 
 const DB_NAME = "HPTOfflineDB";
 
@@ -46,9 +47,9 @@ function hitungHST(tgl) {
 }
 
 function hstColor(hst) {
-  if (hst <= 40) return { bg: "rgba(76,175,80,0.15)",  border: "rgba(76,175,80,0.4)",  text: "#81c784" };
+  if (hst <= 40) return { bg: "rgba(76,175,80,0.15)",  border: "rgba(76,175,80,0.4)",  text: color.brand400 };
   if (hst <= 50) return { bg: "rgba(255,179,0,0.12)",  border: "rgba(255,179,0,0.35)", text: "#FFB300" };
-  return           { bg: "rgba(229,57,53,0.12)",  border: "rgba(229,57,53,0.35)", text: "#ef9a9a" };
+  return           { bg: "rgba(229,57,53,0.12)",  border: "rgba(229,57,53,0.35)", text: color.dangerBorder };
 }
 
 const todayISO   = new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -58,7 +59,7 @@ const HAMA_LIST = [
   { key: "kutu_kebul",  label: "Kutu Kebul",     icon: "🦟", color: "#FF7043", unit: "ekor" },
   { key: "thrips",      label: "Thrips",          icon: "🐛", color: "#FFB300", unit: "ekor" },
   { key: "ulat_kupu",   label: "Ulat/Kupu-kupu", icon: "🦋", color: "#AB47BC", unit: "ekor" },
-  { key: "tungau",      label: "Tungau",          icon: "🕷️", color: "#E53935", unit: "per daun" },
+  { key: "tungau",      label: "Tungau",          icon: "🕷️", color: color.danger, unit: "per daun" },
   { key: "tikus",       label: "Tikus",           icon: "🐭", color: "#795548", unit: "ekor" },
   { key: "aphids",      label: "Aphids",          icon: "🐜", color: "#26A69A", unit: "ekor" },
   { key: "ulat_kompos", label: "Ulat Kompos",     icon: "🪱", color: "#8D6E63", unit: "ekor" },
@@ -75,7 +76,7 @@ const GEJALA_SEMAI = [
 
 const PENYAKIT_SKOR = [
   { key: "dm", label: "DM", fullLabel: "Downy Mildew",   icon: "💧", color: "#1E88E5", hasSkor: true },
-  { key: "pm", label: "PM", fullLabel: "Powdery Mildew", icon: "⬜", color: "#90CAF9", hasSkor: true },
+  { key: "pm", label: "PM", fullLabel: "Powdery Mildew", icon: "⬜", color: color.infoBorder, hasSkor: true },
 ];
 const PENYAKIT_SIMPLE = [
   { key: "gsb", label: "GSB", fullLabel: "Gummy Stem Blight", icon: "⚠️", color: "#EF5350" },
@@ -403,7 +404,7 @@ export default function HPT() {
         <div style={S.header}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", letterSpacing: -0.5 }}>🌿 Form HPT</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: color.card, letterSpacing: -0.5 }}>🌿 Form HPT</div>
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>{todayLabel}</div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
@@ -419,7 +420,7 @@ export default function HPT() {
               {isDemoMode && (
                 <span style={{ fontSize: 10, background: "rgba(255,179,0,0.15)", border: "1px solid rgba(255,179,0,0.3)", color: "#FFB300", padding: "2px 8px", borderRadius: 20, fontWeight: 700 }}>DEMO</span>
               )}
-              <span style={{ fontSize: 10, background: isOnline ? "rgba(76,175,80,0.15)" : "rgba(244,67,54,0.15)", border: `1px solid ${isOnline ? "rgba(76,175,80,0.3)" : "rgba(244,67,54,0.3)"}`, color: isOnline ? "#81c784" : "#ef9a9a", padding: "2px 8px", borderRadius: 20, fontWeight: 700 }}>
+              <span style={{ fontSize: 10, background: isOnline ? "rgba(76,175,80,0.15)" : "rgba(244,67,54,0.15)", border: `1px solid ${isOnline ? "rgba(76,175,80,0.3)" : "rgba(244,67,54,0.3)"}`, color: isOnline ? color.brand400 : color.dangerBorder, padding: "2px 8px", borderRadius: 20, fontWeight: 700 }}>
                 {isOnline ? "● Online" : "● Offline"}
               </span>
             </div>
@@ -428,7 +429,7 @@ export default function HPT() {
           {!isOnline && (
             <div style={{ marginTop: 10, padding: "7px 12px", background: "rgba(244,67,54,0.1)", border: "1px solid rgba(244,67,54,0.25)", borderRadius: 8, display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 14 }}>📵</span>
-              <span style={{ fontSize: 11, color: "#ef9a9a" }}>Mode offline — data tersimpan lokal & sync otomatis saat online</span>
+              <span style={{ fontSize: 11, color: color.dangerBorder }}>Mode offline — data tersimpan lokal & sync otomatis saat online</span>
             </div>
           )}
 
@@ -438,8 +439,8 @@ export default function HPT() {
               const active = step === s, done = step > s;
               return (
                 <div key={s} style={{ flex: 1, textAlign: "center" }}>
-                  <div style={{ height: 3, borderRadius: 2, marginBottom: 4, background: done ? "#4CAF50" : active ? "#81c784" : "rgba(255,255,255,0.1)", transition: "background 0.3s" }} />
-                  <div style={{ fontSize: 9, color: active ? "#81c784" : done ? "#4CAF50" : "rgba(255,255,255,0.25)", fontWeight: active ? 700 : 500 }}>{label}</div>
+                  <div style={{ height: 3, borderRadius: 2, marginBottom: 4, background: done ? "#4CAF50" : active ? color.brand400 : "rgba(255,255,255,0.1)", transition: "background 0.3s" }} />
+                  <div style={{ fontSize: 9, color: active ? color.brand400 : done ? "#4CAF50" : "rgba(255,255,255,0.25)", fontWeight: active ? 700 : 500 }}>{label}</div>
                 </div>
               );
             })}
@@ -454,7 +455,7 @@ export default function HPT() {
               {/* Tab Produksi / Semai */}
               <div style={{ display: "flex", gap: 6, marginBottom: 14, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 4 }}>
                 {[{ key: "produksi", label: "🌿 GH Produksi" }, { key: "semai", label: "🌱 Semai" }].map(tab => (
-                  <button key={tab.key} onClick={() => { setActiveTab(tab.key); setSelectedGH(""); setSelectedTipe(""); }} style={{ flex: 1, padding: "8px 0", background: activeTab === tab.key ? "rgba(76,175,80,0.2)" : "transparent", border: `1px solid ${activeTab === tab.key ? "rgba(76,175,80,0.4)" : "transparent"}`, borderRadius: 8, cursor: "pointer", color: activeTab === tab.key ? "#81c784" : "rgba(255,255,255,0.4)", fontSize: 13, fontWeight: 700, transition: "all 0.2s" }}>
+                  <button key={tab.key} onClick={() => { setActiveTab(tab.key); setSelectedGH(""); setSelectedTipe(""); }} style={{ flex: 1, padding: "8px 0", background: activeTab === tab.key ? "rgba(76,175,80,0.2)" : "transparent", border: `1px solid ${activeTab === tab.key ? "rgba(76,175,80,0.4)" : "transparent"}`, borderRadius: 8, cursor: "pointer", color: activeTab === tab.key ? color.brand400 : "rgba(255,255,255,0.4)", fontSize: 13, fontWeight: 700, transition: "all 0.2s" }}>
                     {tab.label}
                   </button>
                 ))}
@@ -463,7 +464,7 @@ export default function HPT() {
               {activeTab === "semai" && (
                 <div style={{ marginBottom: 12, padding: "8px 12px", background: "rgba(76,175,80,0.07)", border: "1px solid rgba(76,175,80,0.25)", borderRadius: 9, display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ fontSize: 14 }}>🌱</span>
-                  <span style={{ fontSize: 11, color: "#81c784" }}>🌱 HPT Semai: Keriting, Cacat, Kerdil, Tidak Tumbuh</span>
+                  <span style={{ fontSize: 11, color: color.brand400 }}>🌱 HPT Semai: Keriting, Cacat, Kerdil, Tidak Tumbuh</span>
                 </div>
               )}
 
@@ -475,7 +476,7 @@ export default function HPT() {
                     {/* Pilih Tipe */}
                     {!selectedTipe && (
                       <>
-                        <div style={{ fontSize: 11, color: "#81c784", fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 10 }}>Pilih Tipe Irigasi</div>
+                        <div style={{ fontSize: 11, color: color.brand400, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 10 }}>Pilih Tipe Irigasi</div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           {TIPE_GH.map(tipe => {
                             const ghDiTipe = ghAktif.filter(([gh]) => tipe.pattern(gh));
@@ -485,7 +486,7 @@ export default function HPT() {
                                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                                   <span style={{ fontSize: 22 }}>{tipe.icon}</span>
                                   <div>
-                                    <div style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>{tipe.label}</div>
+                                    <div style={{ fontSize: 15, fontWeight: 800, color: color.card }}>{tipe.label}</div>
                                     <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>{ghDiTipe.length} GH aktif</div>
                                   </div>
                                 </div>
@@ -522,10 +523,10 @@ export default function HPT() {
                                 const selected = selectedGH === gh;
                                 return (
                                   <button key={gh} onClick={() => handleSelectGH(gh)} style={{ padding: "12px 12px 10px", background: selected ? "rgba(76,175,80,0.12)" : done ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.04)", border: `1px solid ${selected ? "rgba(76,175,80,0.45)" : done ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.1)"}`, borderRadius: 14, cursor: "pointer", textAlign: "left", transition: "all 0.2s", opacity: done ? 0.7 : 1 }}>
-                                    <div style={{ fontSize: 13, fontWeight: 800, color: selected ? "#81c784" : "#fff", marginBottom: 3 }}>{gh}</div>
+                                    <div style={{ fontSize: 13, fontWeight: 800, color: selected ? color.brand400 : color.card, marginBottom: 3 }}>{gh}</div>
                                     <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginBottom: 10 }}>P{info.periode}</div>
                                     <div style={{ display: "inline-block", padding: "5px 10px", borderRadius: 8, background: done ? "rgba(76,175,80,0.15)" : (hc ? hc.bg : "rgba(255,255,255,0.06)"), border: `1px solid ${done ? "rgba(76,175,80,0.3)" : (hc ? hc.border : "rgba(255,255,255,0.1)")}` }}>
-                                      {done ? <span style={{ fontSize: 12, fontWeight: 700, color: "#81c784" }}>✓ Done</span>
+                                      {done ? <span style={{ fontSize: 12, fontWeight: 700, color: color.brand400 }}>✓ Done</span>
                                         : h !== null ? <span style={{ fontSize: 14, fontWeight: 800, color: hc.text }}>{h} HST</span>
                                         : <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>– HST</span>}
                                     </div>
@@ -554,12 +555,12 @@ export default function HPT() {
                     return (
                       <button key={nama} onClick={() => handleSelectGH(nama)} style={{ padding: "12px 14px", background: selected ? "rgba(76,175,80,0.12)" : done ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.04)", border: `1px solid ${selected ? "rgba(76,175,80,0.45)" : done ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.1)"}`, borderRadius: 12, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", transition: "all 0.2s", opacity: done ? 0.6 : 1 }}>
                         <div style={{ textAlign: "left" }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: selected ? "#81c784" : "#fff" }}>{nama}</div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: selected ? color.brand400 : color.card }}>{nama}</div>
                           <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>Periode {info.periode}{info.hssRef ? ` · Ref: ${info.hssRef} HSS` : ""}</div>
                         </div>
                         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                          {done && <span style={{ fontSize: 10, color: "#81c784", background: "rgba(76,175,80,0.1)", border: "1px solid rgba(76,175,80,0.3)", borderRadius: 20, padding: "2px 7px" }}>✓ Done</span>}
-                          {hss !== null && <span style={{ fontSize: 11, fontWeight: 700, color: "#81c784", background: "rgba(76,175,80,0.1)", border: "1px solid rgba(76,175,80,0.25)", borderRadius: 20, padding: "3px 9px" }}>{hss} HSS</span>}
+                          {done && <span style={{ fontSize: 10, color: color.brand400, background: "rgba(76,175,80,0.1)", border: "1px solid rgba(76,175,80,0.3)", borderRadius: 20, padding: "2px 7px" }}>✓ Done</span>}
+                          {hss !== null && <span style={{ fontSize: 11, fontWeight: 700, color: color.brand400, background: "rgba(76,175,80,0.1)", border: "1px solid rgba(76,175,80,0.25)", borderRadius: 20, padding: "3px 9px" }}>{hss} HSS</span>}
                         </div>
                       </button>
                     );
@@ -584,7 +585,7 @@ export default function HPT() {
           {step === 2 && (
             <div>
               <div style={{ padding: "9px 12px", background: "rgba(76,175,80,0.06)", border: "1px solid rgba(76,175,80,0.12)", borderRadius: 10, marginBottom: activeTab === "semai" ? 8 : 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ fontSize: 12, color: "#81c784", fontWeight: 600 }}>{selectedGH}</div>
+                <div style={{ fontSize: 12, color: color.brand400, fontWeight: 600 }}>{selectedGH}</div>
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{operator} · {activeTab === "semai" ? `${hst} HSS` : `${hst} HST`}</div>
               </div>
 
@@ -597,7 +598,7 @@ export default function HPT() {
 
               {activeTab === "semai" && (
                 <div style={{ marginBottom: 14, padding: "7px 12px", background: "rgba(76,175,80,0.06)", border: "1px solid rgba(76,175,80,0.2)", borderRadius: 8 }}>
-                  <span style={{ fontSize: 11, color: "#81c784" }}>🌱 Pengamatan gejala bibit</span>
+                  <span style={{ fontSize: 11, color: color.brand400 }}>🌱 Pengamatan gejala bibit</span>
                 </div>
               )}
 
@@ -613,11 +614,11 @@ export default function HPT() {
                           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 7 }}>
                             <span style={{ fontSize: 15 }}>{g.icon}</span>
                             <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: 11, fontWeight: 700, color: hasVal ? "#fff" : "rgba(255,255,255,0.55)" }}>{g.label}</div>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: hasVal ? color.card : "rgba(255,255,255,0.55)" }}>{g.label}</div>
                               <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)" }}>{g.unit}</div>
                             </div>
                           </div>
-                          <input type="number" inputMode="numeric" value={val} onChange={e => handleGejalaSemai(g.key, e.target.value)} placeholder="0" style={{ width: "100%", padding: "7px 10px", background: "rgba(0,0,0,0.3)", border: `1px solid ${hasVal ? g.color : "rgba(255,255,255,0.12)"}`, borderRadius: 7, color: hasVal ? g.color : "#fff", fontSize: 15, fontWeight: 700, outline: "none", textAlign: "center", boxSizing: "border-box" }} />
+                          <input type="number" inputMode="numeric" value={val} onChange={e => handleGejalaSemai(g.key, e.target.value)} placeholder="0" style={{ width: "100%", padding: "7px 10px", background: "rgba(0,0,0,0.3)", border: `1px solid ${hasVal ? g.color : "rgba(255,255,255,0.12)"}`, borderRadius: 7, color: hasVal ? g.color : color.card, fontSize: 15, fontWeight: 700, outline: "none", textAlign: "center", boxSizing: "border-box" }} />
                         </div>
                       );
                     })}
@@ -635,11 +636,11 @@ export default function HPT() {
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 7 }}>
                         <span style={{ fontSize: 15 }}>{h.icon}</span>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: hasVal ? "#fff" : "rgba(255,255,255,0.55)" }}>{h.label}</div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: hasVal ? color.card : "rgba(255,255,255,0.55)" }}>{h.label}</div>
                           <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)" }}>{h.unit}</div>
                         </div>
                       </div>
-                      <input type="number" inputMode="numeric" value={val} onChange={e => handleHama(h.key, e.target.value)} placeholder="0" style={{ width: "100%", padding: "7px 10px", background: "rgba(0,0,0,0.3)", border: `1px solid ${hasVal ? h.color : "rgba(255,255,255,0.12)"}`, borderRadius: 7, color: hasVal ? h.color : "#fff", fontSize: 15, fontWeight: 700, outline: "none", textAlign: "center", boxSizing: "border-box" }} />
+                      <input type="number" inputMode="numeric" value={val} onChange={e => handleHama(h.key, e.target.value)} placeholder="0" style={{ width: "100%", padding: "7px 10px", background: "rgba(0,0,0,0.3)", border: `1px solid ${hasVal ? h.color : "rgba(255,255,255,0.12)"}`, borderRadius: 7, color: hasVal ? h.color : color.card, fontSize: 15, fontWeight: 700, outline: "none", textAlign: "center", boxSizing: "border-box" }} />
                     </div>
                   );
                 })}
@@ -650,12 +651,12 @@ export default function HPT() {
                 {PENYAKIT_SKOR.map(p => {
                   const pd = hptData.penyakit[p.key];
                   const active = pd && Object.values(pd).some(v => v !== "" && v !== "0");
-                  const inputStyle = (field) => ({ width: "100%", padding: "7px 8px", background: "rgba(0,0,0,0.3)", border: `1px solid ${pd?.[field] && pd[field] !== "0" ? p.color : "rgba(255,255,255,0.1)"}`, borderRadius: 7, color: pd?.[field] && pd[field] !== "0" ? p.color : "#fff", fontSize: 14, fontWeight: 700, outline: "none", textAlign: "center", boxSizing: "border-box" });
+                  const inputStyle = (field) => ({ width: "100%", padding: "7px 8px", background: "rgba(0,0,0,0.3)", border: `1px solid ${pd?.[field] && pd[field] !== "0" ? p.color : "rgba(255,255,255,0.1)"}`, borderRadius: 7, color: pd?.[field] && pd[field] !== "0" ? p.color : color.card, fontSize: 14, fontWeight: 700, outline: "none", textAlign: "center", boxSizing: "border-box" });
                   return (
                     <div key={p.key} style={{ background: active ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.025)", border: `1px solid ${active ? p.color + "44" : "rgba(255,255,255,0.07)"}`, borderRadius: 12, padding: "12px 14px", transition: "all 0.2s" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                         <span style={{ fontSize: 18 }}>{p.icon}</span>
-                        <span style={{ fontSize: 14, fontWeight: 800, color: active ? p.color : "#fff" }}>{p.label}</span>
+                        <span style={{ fontSize: 14, fontWeight: 800, color: active ? p.color : color.card }}>{p.label}</span>
                         <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{p.fullLabel}</span>
                       </div>
                       <div style={{ marginBottom: 10 }}>
@@ -686,7 +687,7 @@ export default function HPT() {
                   return (
                     <div key={p.key} style={{ background: active ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.025)", border: `1px solid ${active ? p.color + "44" : "rgba(255,255,255,0.07)"}`, borderRadius: 12, padding: "12px 14px", transition: "all 0.2s" }}>
                       <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>Jumlah Tanaman Terserang</div>
-                      <input type="number" inputMode="numeric" value={pd?.jumlah || ""} onChange={e => handlePenyakitField(p.key, "jumlah", e.target.value)} placeholder="0 tanaman" style={{ width: "100%", padding: "9px 12px", background: "rgba(0,0,0,0.3)", border: `1px solid ${active ? p.color : "rgba(255,255,255,0.1)"}`, borderRadius: 8, color: active ? p.color : "#fff", fontSize: 15, fontWeight: 700, outline: "none", textAlign: "center", boxSizing: "border-box" }} />
+                      <input type="number" inputMode="numeric" value={pd?.jumlah || ""} onChange={e => handlePenyakitField(p.key, "jumlah", e.target.value)} placeholder="0 tanaman" style={{ width: "100%", padding: "9px 12px", background: "rgba(0,0,0,0.3)", border: `1px solid ${active ? p.color : "rgba(255,255,255,0.1)"}`, borderRadius: 8, color: active ? p.color : color.card, fontSize: 15, fontWeight: 700, outline: "none", textAlign: "center", boxSizing: "border-box" }} />
                     </div>
                   );
                 })}
@@ -699,7 +700,7 @@ export default function HPT() {
                 type="text" value={operator}
                 onChange={e => setOperator(e.target.value)}
                 placeholder="Masukkan nama operator..."
-                style={{ width: "100%", marginBottom: 16, padding: "13px 14px", background: "rgba(255,255,255,0.05)", border: `1px solid ${operator.length >= 2 ? "rgba(76,175,80,0.4)" : "rgba(255,255,255,0.1)"}`, borderRadius: 12, color: "#fff", fontSize: 15, outline: "none", boxSizing: "border-box" }}
+                style={{ width: "100%", marginBottom: 16, padding: "13px 14px", background: "rgba(255,255,255,0.05)", border: `1px solid ${operator.length >= 2 ? "rgba(76,175,80,0.4)" : "rgba(255,255,255,0.1)"}`, borderRadius: 12, color: color.card, fontSize: 15, outline: "none", boxSizing: "border-box" }}
               />
 
               {activeTab === "semai" && semuaGejalaSemai0 && (
@@ -708,9 +709,9 @@ export default function HPT() {
                     <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef5350", display: "inline-block" }} />
                     Keterangan (wajib bila semua pengamatan 0)
                   </div>
-                  <textarea value={hptData.keteranganWajib} onChange={e => setHptData(d => ({ ...d, keteranganWajib: e.target.value }))} placeholder="Jelaskan kondisi bibit hari ini..." rows={3} style={{ width: "100%", padding: "11px 13px", background: "rgba(229,57,53,0.05)", border: `1px solid ${hptData.keteranganWajib.trim() ? "rgba(76,175,80,0.35)" : "rgba(229,57,53,0.35)"}`, borderRadius: 10, color: "#fff", fontSize: 13, outline: "none", resize: "none", boxSizing: "border-box" }} />
+                  <textarea value={hptData.keteranganWajib} onChange={e => setHptData(d => ({ ...d, keteranganWajib: e.target.value }))} placeholder="Jelaskan kondisi bibit hari ini..." rows={3} style={{ width: "100%", padding: "11px 13px", background: "rgba(229,57,53,0.05)", border: `1px solid ${hptData.keteranganWajib.trim() ? "rgba(76,175,80,0.35)" : "rgba(229,57,53,0.35)"}`, borderRadius: 10, color: color.card, fontSize: 13, outline: "none", resize: "none", boxSizing: "border-box" }} />
                   {!hptData.keteranganWajib.trim() && (
-                    <div style={{ marginTop: 6, padding: "7px 10px", background: "rgba(229,57,53,0.08)", border: "1px solid rgba(229,57,53,0.2)", borderRadius: 7, fontSize: 11, color: "#ef9a9a", display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{ marginTop: 6, padding: "7px 10px", background: "rgba(229,57,53,0.08)", border: "1px solid rgba(229,57,53,0.2)", borderRadius: 7, fontSize: 11, color: color.dangerBorder, display: "flex", alignItems: "center", gap: 6 }}>
                       ⚠️ Semua nilai pengamatan masih 0. Wajib isi keterangan sebelum submit.
                     </div>
                   )}
@@ -718,10 +719,10 @@ export default function HPT() {
               )}
 
               <div style={{ ...S.sectionTitle, marginTop: 16 }}>📝 {activeTab === "semai" ? "Keterangan tambahan (opsional)" : "Keterangan (opsional)"}</div>
-              <textarea value={hptData.keterangan} onChange={e => setHptData(d => ({ ...d, keterangan: e.target.value }))} placeholder="Catatan tambahan..." rows={3} style={{ width: "100%", padding: "11px 13px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "#fff", fontSize: 13, outline: "none", resize: "none", boxSizing: "border-box" }} />
+              <textarea value={hptData.keterangan} onChange={e => setHptData(d => ({ ...d, keterangan: e.target.value }))} placeholder="Catatan tambahan..." rows={3} style={{ width: "100%", padding: "11px 13px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: color.card, fontSize: 13, outline: "none", resize: "none", boxSizing: "border-box" }} />
 
               {submitError && (
-                <div style={{ padding: 12, background: "rgba(244,67,54,0.1)", border: "1px solid rgba(244,67,54,0.3)", borderRadius: 10, fontSize: 13, color: "#ef9a9a", marginTop: 12 }}>
+                <div style={{ padding: 12, background: "rgba(244,67,54,0.1)", border: "1px solid rgba(244,67,54,0.3)", borderRadius: 10, fontSize: 13, color: color.dangerBorder, marginTop: 12 }}>
                   ⚠️ {submitError}
                 </div>
               )}
@@ -750,7 +751,7 @@ export default function HPT() {
               )}
 
               <div style={{ background: isDemoMode ? "rgba(255,179,0,0.07)" : savedOffline ? "rgba(33,150,243,0.08)" : "rgba(76,175,80,0.08)", border: `1px solid ${isDemoMode ? "rgba(255,179,0,0.25)" : savedOffline ? "rgba(33,150,243,0.3)" : "rgba(76,175,80,0.25)"}`, borderRadius: 14, padding: "14px 16px", textAlign: "left", marginBottom: 20 }}>
-                <div style={{ fontSize: 12, color: isDemoMode ? "#FFB300" : savedOffline ? "#64B5F6" : "#81c784", fontWeight: 700, marginBottom: 10 }}>Ringkasan</div>
+                <div style={{ fontSize: 12, color: isDemoMode ? "#FFB300" : savedOffline ? "#64B5F6" : color.brand400, fontWeight: 700, marginBottom: 10 }}>Ringkasan</div>
                 <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>{selectedGH} · Periode {ghInfo?.periode} · {hst} HST</div>
                 <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 10 }}>Operator: {operator}</div>
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 5 }}>Hama</div>
@@ -804,12 +805,12 @@ export default function HPT() {
               <button onClick={() => setStep(s => s - 1)} style={{ flex: 1, padding: 14, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "rgba(255,255,255,0.65)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>← Kembali</button>
             )}
             {step === 1 && (
-              <button onClick={() => setStep(2)} disabled={!selectedGH} style={{ flex: 2, padding: 14, border: "none", borderRadius: 12, background: selectedGH ? "linear-gradient(135deg, #2e7d32, #43a047)" : "rgba(255,255,255,0.05)", color: selectedGH ? "#fff" : "rgba(255,255,255,0.25)", fontSize: 15, fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}>
+              <button onClick={() => setStep(2)} disabled={!selectedGH} style={{ flex: 2, padding: 14, border: "none", borderRadius: 12, background: selectedGH ? `linear-gradient(135deg, ${color.brand700}, #43a047)` : "rgba(255,255,255,0.05)", color: selectedGH ? color.card : "rgba(255,255,255,0.25)", fontSize: 15, fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}>
                 Lanjut →
               </button>
             )}
             {step === 2 && (
-              <button onClick={() => setConfirmOpen(true)} disabled={syncing || !canProceedStep2} style={{ flex: 2, padding: 14, background: syncing || !canProceedStep2 ? "rgba(255,255,255,0.05)" : isDemoMode ? "linear-gradient(135deg, #5d4037, #795548)" : !isOnline ? "linear-gradient(135deg, #1565C0, #1976D2)" : "linear-gradient(135deg, #1b5e20, #2e7d32)", border: "none", borderRadius: 12, color: syncing || !canProceedStep2 ? "rgba(255,255,255,0.25)" : "#fff", fontSize: 15, fontWeight: 700, cursor: syncing || !canProceedStep2 ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <button onClick={() => setConfirmOpen(true)} disabled={syncing || !canProceedStep2} style={{ flex: 2, padding: 14, background: syncing || !canProceedStep2 ? "rgba(255,255,255,0.05)" : isDemoMode ? "linear-gradient(135deg, #5d4037, #795548)" : !isOnline ? `linear-gradient(135deg, ${color.info}, #1976D2)` : `linear-gradient(135deg, ${color.brand900}, ${color.brand700})`, border: "none", borderRadius: 12, color: syncing || !canProceedStep2 ? "rgba(255,255,255,0.25)" : color.card, fontSize: 15, fontWeight: 700, cursor: syncing || !canProceedStep2 ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 {syncing ? "⏳ Menyimpan..." : isDemoMode ? "Submit Demo 🧪" : !isOnline ? "💾 Simpan Offline" : "Submit HPT ✓"}
               </button>
             )}

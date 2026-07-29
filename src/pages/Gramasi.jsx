@@ -4,6 +4,7 @@ import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
+import { color } from "../styles/tokens";
 
 const DB_NAME = "GramasiOfflineDB";
 
@@ -100,7 +101,7 @@ function getDeltaWarning(currVal, prevVal, hst) {
 }
 
 function hstColor(hst) {
-  if (hst <= 40) return { bg: "#e8f5e9", border: "#a5d6a7", text: "#2e7d32", badge: "#c8e6c9" };
+  if (hst <= 40) return { bg: color.brandBg, border: color.brand300, text: color.brand700, badge: "#c8e6c9" };
   if (hst <= 50) return { bg: "#fff8e1", border: "#ffe082", text: "#f57f17", badge: "#fff9c4" };
   return             { bg: "#fbe9e7", border: "#ffab91", text: "#bf360c", badge: "#fce4ec" };
 }
@@ -376,10 +377,10 @@ export default function Gramasi() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f5f5f5", fontFamily: "'DM Sans','Segoe UI',sans-serif", margin: "0 auto" }}>
+    <div style={{ minHeight: "100vh", background: color.bg, fontFamily: "'DM Sans','Segoe UI',sans-serif", margin: "0 auto" }}>
 
       {/* ── Header ── */}
-      <div style={{ background: "#2e7d32", color: "#fff", padding: "14px 16px 10px", position: "sticky", top: 0, zIndex: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
+      <div style={{ background: color.brand700, color: color.card, padding: "14px 16px 10px", position: "sticky", top: 0, zIndex: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <div style={{ fontSize: 10, opacity: 0.75, letterSpacing: 1.5, textTransform: "uppercase" }}>Form Gramasi Harian</div>
@@ -394,7 +395,7 @@ export default function Gramasi() {
                   fontSize: 10, fontWeight: 700,
                   background: isOnline ? "rgba(33,150,243,0.3)" : "rgba(255,179,0,0.3)",
                   border: `1px solid ${isOnline ? "rgba(33,150,243,0.6)" : "rgba(255,179,0,0.6)"}`,
-                  color: "#fff", padding: "2px 8px", borderRadius: 20,
+                  color: color.card, padding: "2px 8px", borderRadius: 20,
                   cursor: isOnline ? "pointer" : "default",
                   display: "flex", alignItems: "center", gap: 4,
                 }}
@@ -405,7 +406,7 @@ export default function Gramasi() {
             {isDemoMode && (
               <div style={{ fontSize: 10, fontWeight: 700, background: "rgba(255,179,0,0.25)", border: "1px solid rgba(255,179,0,0.5)", borderRadius: 20, padding: "2px 8px", color: "#fff9c4" }}>DEMO</div>
             )}
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: isOnline ? "#a5d6a7" : "#ef9a9a", boxShadow: isOnline ? "0 0 6px #a5d6a7" : "0 0 6px #ef9a9a" }} />
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: isOnline ? color.brand300 : color.dangerBorder, boxShadow: isOnline ? `0 0 6px ${color.brand300}` : `0 0 6px ${color.dangerBorder}` }} />
           </div>
         </div>
 
@@ -419,7 +420,7 @@ export default function Gramasi() {
         {step < 3 && (
           <div style={{ display: "flex", gap: 4, marginTop: 10 }}>
             {[1, 2].map(s => (
-              <div key={s} style={{ flex: 1, height: 3, borderRadius: 2, background: s <= step ? "#a5d6a7" : "rgba(255,255,255,0.2)", transition: "background 0.3s" }} />
+              <div key={s} style={{ flex: 1, height: 3, borderRadius: 2, background: s <= step ? color.brand300 : "rgba(255,255,255,0.2)", transition: "background 0.3s" }} />
             ))}
           </div>
         )}
@@ -428,15 +429,15 @@ export default function Gramasi() {
       {/* Modal Warning Double Submit */}
       {showWarning && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "#fff", borderRadius: 16, padding: 24, maxWidth: "100%", width: "100%", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
+          <div style={{ background: color.card, borderRadius: 16, padding: 24, maxWidth: "100%", width: "100%", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
             <div style={{ fontSize: 36, textAlign: "center", marginBottom: 12 }}>⚠️</div>
-            <div style={{ fontWeight: 700, fontSize: 16, color: "#333", textAlign: "center", marginBottom: 8 }}>GH Sudah Diisi Hari Ini</div>
-            <div style={{ fontSize: 13, color: "#666", textAlign: "center", marginBottom: 20, lineHeight: 1.5 }}>
+            <div style={{ fontWeight: 700, fontSize: 16, color: color.text, textAlign: "center", marginBottom: 8 }}>GH Sudah Diisi Hari Ini</div>
+            <div style={{ fontSize: 13, color: color.textMuted, textAlign: "center", marginBottom: 20, lineHeight: 1.5 }}>
               <strong>{pendingGH}</strong> sudah disubmit hari ini. Yakin mau isi ulang? Data baru akan ditambahkan ke Sheets.
             </div>
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => { setShowWarning(false); setPendingGH(""); }} style={{ flex: 1, padding: "11px", background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 10, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Batal</button>
-              <button onClick={() => doSelectGH(pendingGH)} style={{ flex: 1, padding: "11px", background: "#e53935", border: "none", borderRadius: 10, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Isi Ulang</button>
+              <button onClick={() => { setShowWarning(false); setPendingGH(""); }} style={{ flex: 1, padding: "11px", background: color.bg, border: `1px solid ${color.border}`, borderRadius: 10, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Batal</button>
+              <button onClick={() => doSelectGH(pendingGH)} style={{ flex: 1, padding: "11px", background: color.danger, border: "none", borderRadius: 10, color: color.card, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Isi Ulang</button>
             </div>
           </div>
         </div>
@@ -447,11 +448,11 @@ export default function Gramasi() {
         {/* ══ STEP 1 — Pilih GH ══ */}
         {step === 1 && (
           <div>
-            <div style={{ fontWeight: 700, fontSize: 18, color: "#1b5e20", marginBottom: 4 }}>Pilih Greenhouse</div>
-            <div style={{ fontSize: 12, color: "#888", marginBottom: 14, display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ fontWeight: 700, fontSize: 18, color: color.brand900, marginBottom: 4 }}>Pilih Greenhouse</div>
+            <div style={{ fontSize: 12, color: color.textSoft, marginBottom: 14, display: "flex", alignItems: "center", gap: 6 }}>
               GH aktif dengan HST {HST_MIN}–{HST_MAX} hari
               {loadingSubmitted && (
-                <span style={{ fontSize: 10, color: "#aaa", background: "#f5f5f5", borderRadius: 20, padding: "2px 8px" }}>🔄 cek status GH...</span>
+                <span style={{ fontSize: 10, color: color.textGhost, background: color.bg, borderRadius: 20, padding: "2px 8px" }}>🔄 cek status GH...</span>
               )}
             </div>
 
@@ -466,12 +467,12 @@ export default function Gramasi() {
             )}
 
             {loadingGH ? (
-              <div style={{ textAlign: "center", padding: "40px 0", color: "#aaa" }}>
+              <div style={{ textAlign: "center", padding: "40px 0", color: color.textGhost }}>
                 <div style={{ fontSize: 28 }}>🔄</div>
                 <div style={{ fontSize: 13, marginTop: 8 }}>Memuat data GH...</div>
               </div>
             ) : ghAktif.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "32px 0", color: "#aaa", fontSize: 13 }}>Tidak ada GH aktif (HST {HST_MIN}–{HST_MAX})</div>
+              <div style={{ textAlign: "center", padding: "32px 0", color: color.textGhost, fontSize: 13 }}>Tidak ada GH aktif (HST {HST_MIN}–{HST_MAX})</div>
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 {ghAktif.map(([gh, info]) => {
@@ -480,9 +481,9 @@ export default function Gramasi() {
                   const dipilih  = selectedGH === gh;
                   const sudahIsi = submittedToday.includes(gh);
                   return (
-                    <button key={gh} onClick={() => handleSelectGH(gh)} style={{ padding: "12px 10px", borderRadius: 14, cursor: "pointer", textAlign: "center", border: dipilih ? "2px solid #2e7d32" : sudahIsi ? "1px solid #ffb74d" : "1px solid #e0e0e0", background: dipilih ? "#e8f5e9" : sudahIsi ? "#fff8e1" : "#fff", boxShadow: dipilih ? "0 2px 10px rgba(46,125,50,0.15)" : "0 1px 4px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column", alignItems: "center", gap: 7, transition: "all 0.2s" }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: dipilih ? "#2e7d32" : "#333", lineHeight: 1.3 }}>{gh}</div>
-                      <div style={{ fontSize: 10, color: "#aaa" }}>P{info.periode} · {info.baris?.length || 0} baris</div>
+                    <button key={gh} onClick={() => handleSelectGH(gh)} style={{ padding: "12px 10px", borderRadius: 14, cursor: "pointer", textAlign: "center", border: dipilih ? `2px solid ${color.brand700}` : sudahIsi ? `1px solid ${color.warningBorder}` : `1px solid ${color.border}`, background: dipilih ? color.brandBg : sudahIsi ? "#fff8e1" : color.card, boxShadow: dipilih ? "0 2px 10px rgba(46,125,50,0.15)" : "0 1px 4px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column", alignItems: "center", gap: 7, transition: "all 0.2s" }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: dipilih ? color.brand700 : color.text, lineHeight: 1.3 }}>{gh}</div>
+                      <div style={{ fontSize: 10, color: color.textGhost }}>P{info.periode} · {info.baris?.length || 0} baris</div>
                       {hstGH !== null && (
                         <div style={{ background: c.badge, border: `1px solid ${c.border}`, borderRadius: 8, padding: "4px 12px", width: "100%" }}>
                           <span style={{ fontSize: 17, fontWeight: 800, color: c.text }}>{hstGH}</span>
@@ -490,7 +491,7 @@ export default function Gramasi() {
                         </div>
                       )}
                       {sudahIsi && (
-                        <div style={{ fontSize: 10, background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 20, padding: "2px 10px", color: "#e65100", fontWeight: 600 }}>✓ Sudah diisi hari ini</div>
+                        <div style={{ fontSize: 10, background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 20, padding: "2px 10px", color: color.warning, fontWeight: 600 }}>✓ Sudah diisi hari ini</div>
                       )}
                       {dipilih && !sudahIsi && <div style={{ fontSize: 13 }}>✅</div>}
                     </button>
@@ -505,36 +506,36 @@ export default function Gramasi() {
         {step === 2 && (
           <div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
-              <div style={{ background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#2e7d32", fontWeight: 700 }}>{selectedGH}</div>
-              <div style={{ background: "#f5f5f5", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#666" }}>Periode {ghInfo?.periode}</div>
+              <div style={{ background: color.brandBg, border: `1px solid ${color.brand300}`, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: color.brand700, fontWeight: 700 }}>{selectedGH}</div>
+              <div style={{ background: color.bg, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: color.textMuted }}>Periode {ghInfo?.periode}</div>
               {hst !== null && (
                 <div style={{ background: col.badge, border: `1px solid ${col.border}`, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: col.text, fontWeight: 700 }}>{hst} HST</div>
               )}
             </div>
 
             {!isOnline && (
-              <div style={{ marginBottom: 12, padding: "8px 12px", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 9, display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ marginBottom: 12, padding: "8px 12px", background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 9, display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 14 }}>📵</span>
-                <span style={{ fontSize: 11, color: "#e65100" }}>Offline — data akan disimpan lokal & dikirim otomatis saat online</span>
+                <span style={{ fontSize: 11, color: color.warning }}>Offline — data akan disimpan lokal & dikirim otomatis saat online</span>
               </div>
             )}
 
-            <div style={{ fontWeight: 700, fontSize: 17, color: "#1b5e20", marginBottom: 2 }}>Input Gramasi</div>
-            <div style={{ fontSize: 12, color: "#888", marginBottom: 8 }}>{filledCount}/{tableData.length} baris terisi</div>
+            <div style={{ fontWeight: 700, fontSize: 17, color: color.brand900, marginBottom: 2 }}>Input Gramasi</div>
+            <div style={{ fontSize: 12, color: color.textSoft, marginBottom: 8 }}>{filledCount}/{tableData.length} baris terisi</div>
 
-            <div style={{ background: "#e0e0e0", borderRadius: 4, height: 5, marginBottom: 14, overflow: "hidden" }}>
+            <div style={{ background: color.border, borderRadius: 4, height: 5, marginBottom: 14, overflow: "hidden" }}>
               <div style={{ height: "100%", borderRadius: 4, background: "#4CAF50", width: `${tableData.length > 0 ? (filledCount / tableData.length) * 100 : 0}%`, transition: "width 0.3s" }} />
             </div>
 
             <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 11, color: "#388e3c", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
-                👤 Nama Operator <span style={{ color: "#e53935" }}>*</span>
+                👤 Nama Operator <span style={{ color: color.danger }}>*</span>
               </label>
               <input
                 type="text" value={operator}
                 onChange={e => setOperator(e.target.value)}
                 placeholder="Tulis nama lengkap..."
-                style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: "#fff", border: `1.5px solid ${operator.trim() ? "#81c784" : "#e0e0e0"}`, borderRadius: 10, color: "#333", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+                style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: color.card, border: `1.5px solid ${operator.trim() ? color.brand400 : color.border}`, borderRadius: 10, color: color.text, fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
               />
             </div>
 
@@ -570,7 +571,7 @@ export default function Gramasi() {
               return (
                 <>
                   {flatWarnings.length > 0 && (
-                    <div style={{ fontSize: 11, color: "#e65100", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 8, padding: "8px 12px", marginBottom: 10, lineHeight: 1.6 }}>
+                    <div style={{ fontSize: 11, color: color.warning, background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 8, padding: "8px 12px", marginBottom: 10, lineHeight: 1.6 }}>
                       ⚠️ <strong>Cek lagi — {flatWarnings.length} nilai beda jauh dari pengukuran sebelumnya:</strong>
                       <ul style={{ margin: "4px 0 0", paddingLeft: 16 }}>
                         {flatWarnings.map((msg, idx) => <li key={idx}>{msg}</li>)}
@@ -581,7 +582,7 @@ export default function Gramasi() {
                   <div style={{ overflowX: "auto", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.08)", marginBottom: 16 }}>
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                       <thead>
-                        <tr style={{ background: "#2e7d32", color: "#fff" }}>
+                        <tr style={{ background: color.brand700, color: color.card }}>
                           {["Baris","Varian","S1 (g)","S2 (g)","S3 (g)","Avg"].map(h => (
                             <th key={h} style={{ padding: "9px 6px", textAlign: ["Baris","Varian"].includes(h) ? "left" : "center", fontWeight: 700, fontSize: 11, whiteSpace: "nowrap" }}>{h}</th>
                           ))}
@@ -593,9 +594,9 @@ export default function Gramasi() {
                           const rowFull = row.s1 !== "" && row.s2 !== "" && row.s3 !== "";
                           const w       = rowWarnings[i];
                           return (
-                            <tr key={i} style={{ background: rowFull ? "#f1f8e9" : i % 2 === 0 ? "#fff" : "#fafafa", transition: "background 0.2s" }}>
-                              <td style={{ padding: "6px 8px", fontWeight: 700, color: "#2e7d32", whiteSpace: "nowrap" }}>{row.baris}</td>
-                              <td style={{ padding: "6px 6px", fontSize: 11, color: "#666", whiteSpace: "nowrap" }}>{row.varian}</td>
+                            <tr key={i} style={{ background: rowFull ? "#f1f8e9" : i % 2 === 0 ? color.card : "#fafafa", transition: "background 0.2s" }}>
+                              <td style={{ padding: "6px 8px", fontWeight: 700, color: color.brand700, whiteSpace: "nowrap" }}>{row.baris}</td>
+                              <td style={{ padding: "6px 6px", fontSize: 11, color: color.textMuted, whiteSpace: "nowrap" }}>{row.varian}</td>
                               {["s1","s2","s3"].map(s => (
                                 <td key={s} style={{ padding: "4px 3px", textAlign: "center" }}>
                                   <input
@@ -604,11 +605,11 @@ export default function Gramasi() {
                                     onChange={e => updateCell(i, s, e.target.value)}
                                     placeholder="—"
                                     title={w[s] ? (w[s].type === "naik" ? `Naik ekstrem dari ${w[s].prev}g` : `Turun dari ${w[s].prev}g`) : undefined}
-                                    style={{ width: 52, height: 32, textAlign: "center", border: `1.5px solid ${w[s] ? "#e53935" : row[s] !== "" ? "#81c784" : "#e0e0e0"}`, borderRadius: 7, fontSize: 13, fontWeight: 600, color: w[s] ? "#c62828" : row[s] !== "" ? "#2e7d32" : "#bbb", outline: "none", background: w[s] ? "#ffebee" : "#fff" }}
+                                    style={{ width: 52, height: 32, textAlign: "center", border: `1.5px solid ${w[s] ? color.danger : row[s] !== "" ? color.brand400 : color.border}`, borderRadius: 7, fontSize: 13, fontWeight: 600, color: w[s] ? color.dangerDeep : row[s] !== "" ? color.brand700 : "#bbb", outline: "none", background: w[s] ? color.dangerBg : color.card }}
                                   />
                                 </td>
                               ))}
-                              <td style={{ padding: "6px 8px", textAlign: "center", fontWeight: 700, color: w.avg ? "#c62828" : avg ? "#1b5e20" : "#ccc", fontSize: 13 }}>
+                              <td style={{ padding: "6px 8px", textAlign: "center", fontWeight: 700, color: w.avg ? color.dangerDeep : avg ? color.brand900 : "#ccc", fontSize: 13 }}>
                                 {w.avg ? "⚠️ " : ""}{avg || "—"}
                               </td>
                             </tr>
@@ -623,33 +624,33 @@ export default function Gramasi() {
 
             <div style={{ marginBottom: 12, marginTop: 4 }}>
               <label style={{ fontSize: 11, color: "#388e3c", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
-                📝 Keterangan <span style={{ fontSize: 10, color: "#aaa", textTransform: "none", letterSpacing: 0, fontWeight: 400 }}>— opsional</span>
+                📝 Keterangan <span style={{ fontSize: 10, color: color.textGhost, textTransform: "none", letterSpacing: 0, fontWeight: 400 }}>— opsional</span>
               </label>
               <input
                 type="text" value={keterangan}
                 onChange={e => setKeterangan(e.target.value)}
                 placeholder="Contoh: ganti sampel dari kemarin, baris C rusak..."
-                style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: "#fff", border: `1.5px solid ${keterangan.trim() ? "#81c784" : "#e0e0e0"}`, borderRadius: 10, color: "#333", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+                style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: color.card, border: `1.5px solid ${keterangan.trim() ? color.brand400 : color.border}`, borderRadius: 10, color: color.text, fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
               />
             </div>
 
             {!allFilled && tableData.length > 0 && (
-              <div style={{ fontSize: 12, color: "#e65100", background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
+              <div style={{ fontSize: 12, color: color.warning, background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
                 ⚠️ {tableData.length - filledCount} baris belum lengkap (perlu 3 sampel)
               </div>
             )}
 
             {submitError && (
-              <div style={{ fontSize: 12, color: "#c62828", background: "#ffebee", border: "1px solid #ef9a9a", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
+              <div style={{ fontSize: 12, color: color.dangerDeep, background: color.dangerBg, border: `1px solid ${color.dangerBorder}`, borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
                 ⚠️ {submitError}
               </div>
             )}
 
             {syncing && (
               <div style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 12, color: "#666", marginBottom: 6 }}>Mengirim data...</div>
-                <div style={{ background: "#e0e0e0", borderRadius: 4, height: 6, overflow: "hidden" }}>
-                  <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#2e7d32,#4CAF50)", width: `${syncProgress.total > 0 ? (syncProgress.done / syncProgress.total) * 100 : 0}%`, transition: "width 0.3s" }} />
+                <div style={{ fontSize: 12, color: color.textMuted, marginBottom: 6 }}>Mengirim data...</div>
+                <div style={{ background: color.border, borderRadius: 4, height: 6, overflow: "hidden" }}>
+                  <div style={{ height: "100%", borderRadius: 4, background: `linear-gradient(90deg,${color.brand700},#4CAF50)`, width: `${syncProgress.total > 0 ? (syncProgress.done / syncProgress.total) * 100 : 0}%`, transition: "width 0.3s" }} />
                 </div>
               </div>
             )}
@@ -662,10 +663,10 @@ export default function Gramasi() {
             <div style={{ fontSize: 60, marginBottom: 12 }}>
               {isDemoMode ? "🧪" : savedOffline ? "💾" : "✅"}
             </div>
-            <div style={{ fontSize: 21, fontWeight: 800, color: isDemoMode ? "#f57f17" : savedOffline ? "#1565C0" : "#2e7d32", marginBottom: 6 }}>
+            <div style={{ fontSize: 21, fontWeight: 800, color: isDemoMode ? "#f57f17" : savedOffline ? color.info : color.brand700, marginBottom: 6 }}>
               {isDemoMode ? "Demo Selesai!" : savedOffline ? "Tersimpan Lokal!" : "Data Tersimpan!"}
             </div>
-            <div style={{ fontSize: 13, color: "#888", marginBottom: 20 }}>
+            <div style={{ fontSize: 13, color: color.textSoft, marginBottom: 20 }}>
               {isDemoMode
                 ? "Data tidak dikirim (mode demo)"
                 : savedOffline
@@ -674,22 +675,22 @@ export default function Gramasi() {
             </div>
 
             {savedOffline && (
-              <div style={{ background: "#e3f2fd", border: "1px solid #90CAF9", borderRadius: 10, padding: "10px 14px", marginBottom: 16, textAlign: "left" }}>
-                <div style={{ fontSize: 12, color: "#1565C0", fontWeight: 600, marginBottom: 4 }}>📡 Cara sync:</div>
+              <div style={{ background: color.infoBg, border: `1px solid ${color.infoBorder}`, borderRadius: 10, padding: "10px 14px", marginBottom: 16, textAlign: "left" }}>
+                <div style={{ fontSize: 12, color: color.info, fontWeight: 600, marginBottom: 4 }}>📡 Cara sync:</div>
                 <div style={{ fontSize: 12, color: "#555" }}>Biarkan app terbuka saat koneksi kembali — data terkirim otomatis. Atau klik badge "pending" di header.</div>
-                {pendingCount > 0 && <div style={{ fontSize: 12, color: "#1565C0", marginTop: 6 }}>{pendingCount} record menunggu sync.</div>}
+                {pendingCount > 0 && <div style={{ fontSize: 12, color: color.info, marginTop: 6 }}>{pendingCount} record menunggu sync.</div>}
               </div>
             )}
 
-            <div style={{ background: isDemoMode ? "#fff8e1" : savedOffline ? "#e3f2fd" : "#e8f5e9", border: `1px solid ${isDemoMode ? "#ffe082" : savedOffline ? "#90CAF9" : "#a5d6a7"}`, borderRadius: 14, padding: "16px", textAlign: "left", marginBottom: 20 }}>
-              <div style={{ fontSize: 12, color: isDemoMode ? "#f57f17" : savedOffline ? "#1565C0" : "#2e7d32", fontWeight: 700, marginBottom: 10 }}>Ringkasan</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#333" }}>{selectedGH} · Periode {ghInfo?.periode} · {hst} HST</div>
-              <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>Operator: {operator}</div>
-              <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>Tanggal: {todayISO}</div>
+            <div style={{ background: isDemoMode ? "#fff8e1" : savedOffline ? color.infoBg : color.brandBg, border: `1px solid ${isDemoMode ? "#ffe082" : savedOffline ? color.infoBorder : color.brand300}`, borderRadius: 14, padding: "16px", textAlign: "left", marginBottom: 20 }}>
+              <div style={{ fontSize: 12, color: isDemoMode ? "#f57f17" : savedOffline ? color.info : color.brand700, fontWeight: 700, marginBottom: 10 }}>Ringkasan</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: color.text }}>{selectedGH} · Periode {ghInfo?.periode} · {hst} HST</div>
+              <div style={{ fontSize: 13, color: color.textMuted, marginTop: 2 }}>Operator: {operator}</div>
+              <div style={{ fontSize: 13, color: color.textMuted, marginTop: 2 }}>Tanggal: {todayISO}</div>
               {keterangan.trim() && (
-                <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>Keterangan: {keterangan}</div>
+                <div style={{ fontSize: 13, color: color.textMuted, marginTop: 2 }}>Keterangan: {keterangan}</div>
               )}
-              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(0,0,0,0.06)", fontSize: 13, fontWeight: 700, color: isDemoMode ? "#f57f17" : savedOffline ? "#1565C0" : "#2e7d32" }}>
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(0,0,0,0.06)", fontSize: 13, fontWeight: 700, color: isDemoMode ? "#f57f17" : savedOffline ? color.info : color.brand700 }}>
                 Avg keseluruhan: {(() => {
                   const avgs = tableData.map(r => parseFloat(calcAvg(r.s1, r.s2, r.s3))).filter(v => v > 0);
                   return avgs.length > 0 ? (avgs.reduce((a, b) => a + b, 0) / avgs.length).toFixed(2) + " g" : "—";
@@ -697,7 +698,7 @@ export default function Gramasi() {
               </div>
             </div>
 
-            <button onClick={resetForm} style={{ width: "100%", padding: "15px", background: isDemoMode ? "#fff8e1" : savedOffline ? "#e3f2fd" : "#e8f5e9", border: `2px solid ${isDemoMode ? "#ffb74d" : savedOffline ? "#90CAF9" : "#81c784"}`, borderRadius: 12, color: isDemoMode ? "#e65100" : savedOffline ? "#1565C0" : "#2e7d32", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+            <button onClick={resetForm} style={{ width: "100%", padding: "15px", background: isDemoMode ? "#fff8e1" : savedOffline ? color.infoBg : color.brandBg, border: `2px solid ${isDemoMode ? color.warningBorder : savedOffline ? color.infoBorder : color.brand400}`, borderRadius: 12, color: isDemoMode ? color.warning : savedOffline ? color.info : color.brand700, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
               + Input GH Berikutnya
             </button>
           </div>
@@ -706,17 +707,17 @@ export default function Gramasi() {
 
       {/* ── Bottom Nav ── */}
       {step < 3 && (
-        <div style={{ padding: "12px 16px 24px", borderTop: "1px solid #e0e0e0", background: "#fff", position: "sticky", bottom: 0, display: "flex", gap: 10 }}>
+        <div style={{ padding: "12px 16px 24px", borderTop: `1px solid ${color.border}`, background: color.card, position: "sticky", bottom: 0, display: "flex", gap: 10 }}>
           {step > 1 && (
-            <button onClick={() => { setStep(s => s - 1); setSubmitError(null); }} style={{ flex: 1, padding: "13px", background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: 12, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>← Kembali</button>
+            <button onClick={() => { setStep(s => s - 1); setSubmitError(null); }} style={{ flex: 1, padding: "13px", background: color.bg, border: `1px solid ${color.border}`, borderRadius: 12, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>← Kembali</button>
           )}
           {step === 1 && (
-            <button onClick={() => setStep(2)} disabled={!selectedGH} style={{ flex: 2, padding: "13px", border: "none", borderRadius: 12, background: selectedGH ? "linear-gradient(135deg,#2e7d32,#43a047)" : "#e0e0e0", color: selectedGH ? "#fff" : "#aaa", fontSize: 15, fontWeight: 700, cursor: selectedGH ? "pointer" : "not-allowed", transition: "all 0.2s" }}>
+            <button onClick={() => setStep(2)} disabled={!selectedGH} style={{ flex: 2, padding: "13px", border: "none", borderRadius: 12, background: selectedGH ? `linear-gradient(135deg,${color.brand700},#43a047)` : color.border, color: selectedGH ? color.card : color.textGhost, fontSize: 15, fontWeight: 700, cursor: selectedGH ? "pointer" : "not-allowed", transition: "all 0.2s" }}>
               Lanjut Input →
             </button>
           )}
           {step === 2 && (
-            <button onClick={() => setConfirmOpen(true)} disabled={!canSubmit || syncing} style={{ flex: 2, padding: "13px", border: "none", borderRadius: 12, background: canSubmit && !syncing ? (!isOnline ? "linear-gradient(135deg,#1565C0,#1976D2)" : "linear-gradient(135deg,#1b5e20,#2e7d32)") : "#e0e0e0", color: canSubmit && !syncing ? "#fff" : "#aaa", fontSize: 15, fontWeight: 700, cursor: canSubmit && !syncing ? "pointer" : "not-allowed", transition: "all 0.2s" }}>
+            <button onClick={() => setConfirmOpen(true)} disabled={!canSubmit || syncing} style={{ flex: 2, padding: "13px", border: "none", borderRadius: 12, background: canSubmit && !syncing ? (!isOnline ? `linear-gradient(135deg,${color.info},#1976D2)` : `linear-gradient(135deg,${color.brand900},${color.brand700})`) : color.border, color: canSubmit && !syncing ? color.card : color.textGhost, fontSize: 15, fontWeight: 700, cursor: canSubmit && !syncing ? "pointer" : "not-allowed", transition: "all 0.2s" }}>
               {syncing
                 ? `⏳ Mengirim...`
                 : !isOnline && canSubmit
