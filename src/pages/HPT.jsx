@@ -115,7 +115,7 @@ const TIPE_GH = [
       }
       if (upper.startsWith("TOHUDAN")) {
         const num = parseInt(upper.replace("TOHUDAN", "").trim());
-        return num === 14 || num === 15 || num === 16 || num === 19 || num === 20 || num === 21;
+        return num === 14 || num === 21;
       }
       return false;
     },
@@ -147,7 +147,7 @@ const TIPE_GH = [
       const upper = gh.toUpperCase();
       if (upper.startsWith("TOHUDAN")) {
         const num = parseInt(upper.replace("TOHUDAN", "").trim());
-        return num === 17 || num === 18;
+        return num === 15 || num === 16 || num === 17 || num === 18 || num === 19 || num === 20;
       }
       return false;
     },
