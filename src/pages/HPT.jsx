@@ -113,6 +113,10 @@ const TIPE_GH = [
         const num = parseInt(upper.replace("COLOMADU", "").trim());
         return num >= 1 && num <= 4;
       }
+      if (upper.startsWith("TOHUDAN")) {
+        const num = parseInt(upper.replace("TOHUDAN", "").trim());
+        return num === 14 || num === 15 || num === 16 || num === 19 || num === 20 || num === 21;
+      }
       return false;
     },
   },
@@ -125,7 +129,7 @@ const TIPE_GH = [
       const upper = gh.toUpperCase();
       if (upper.startsWith("TOHUDAN")) {
         const num = parseInt(upper.replace("TOHUDAN", "").trim());
-        return (num >= 1 && num <= 14) || num === 22;
+        return (num >= 1 && num <= 13) || num === 22;
       }
       if (upper.startsWith("SAWAHAN")) {
         const num = parseInt(upper.replace("SAWAHAN", "").trim());
@@ -143,7 +147,7 @@ const TIPE_GH = [
       const upper = gh.toUpperCase();
       if (upper.startsWith("TOHUDAN")) {
         const num = parseInt(upper.replace("TOHUDAN", "").trim());
-        return num >= 15 && num <= 21;
+        return num === 17 || num === 18;
       }
       return false;
     },
