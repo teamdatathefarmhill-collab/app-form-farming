@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useDraft } from "../hooks/useDraft";
 import { useAuth } from "../hooks/useAuth";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
-import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
+import { useGHBlockedList } from "../hooks/useGHBlockedList";
 import { color } from "../styles/tokens";
 
 const SCRIPT_URL = import.meta.env.VITE_GAS_PENYIRAMAN_URL;
@@ -168,7 +168,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
     : Object.values(allVarianErrors).some(e => Object.keys(e).length > 0);
 
   const handleSelectGH = (g) => {
-    if (warnIfGHBlocked(g, blockedMap)) return;
+    // Menu Penyiraman: GH Shutdown/Restart tetap bisa dipilih & diisi (tidak diblokir)
     setGh(g);
     const vList = refSource[g]?.varian?.length > 0 ? refSource[g].varian : ["Elysia", "Greeniegal"];
     const init = {};
@@ -324,7 +324,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
   };
 
   const handleSubmit = async () => {
-    if (warnIfGHBlocked(gh, blockedMap)) return;
+    // Menu Penyiraman: submit tetap diizinkan walau GH sedang Shutdown/Restart
     setSubmitting(true);
     setSubmitError(null);
     const payloads = buildPayloads();
@@ -408,6 +408,8 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
                     const hst  = info?.hst ?? null;
                     const c    = hstColor(hst);
                     const sel  = gh === g;
+                    // Menu Penyiraman tetap membuka GH Shutdown/Restart — badge ini hanya info, bukan penghalang
+                    const blockedInfo = blockedMap[g.trim().toUpperCase()];
                     return (
                       <button key={g} onClick={() => handleSelectGH(g)}
                         style={{ padding: "10px 8px", borderRadius: 10, cursor: "pointer", textAlign: "center", border: sel ? "2px solid #0277bd" : `1px solid ${color.border}`, background: sel ? "#e1f5fe" : color.card, color: sel ? "#0277bd" : color.text, fontSize: 13, fontWeight: sel ? 700 : 500, transition: "all 0.2s" }}>
@@ -417,6 +419,11 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
                           <div style={{ marginTop: 4, background: c.bg, border: `1px solid ${c.border}`, borderRadius: 6, padding: "2px 6px", display: "inline-block" }}>
                             <span style={{ fontSize: 12, fontWeight: 800, color: c.text }}>{hst}</span>
                             <span style={{ fontSize: 9, color: c.text, marginLeft: 2 }}>HST</span>
+                          </div>
+                        )}
+                        {blockedInfo && (
+                          <div style={{ marginTop: 4, fontSize: 9, color: color.dangerDeep, background: color.dangerBg, border: `1px solid ${color.dangerBorder}`, borderRadius: 6, padding: "1px 5px", display: "inline-block" }}>
+                            ⚠ {blockedInfo.aksi}
                           </div>
                         )}
                         {sel && <div style={{ fontSize: 11, marginTop: 3 }}>✓</div>}
