@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useDraft } from "../hooks/useDraft";
 import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
-import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
+import { useGHBlockedList } from "../hooks/useGHBlockedList";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 import { color } from "../styles/tokens";
 
@@ -163,7 +163,7 @@ export default function PemetaanGH() {
   const semaiAktif = Object.entries(semaiData).map(([gh, info]) => ({ gh, ...info }));
 
   const handleSelectGH = (gh) => {
-    if (warnIfGHBlocked(gh, blockedMap)) return;
+    // Menu Pemetaan: GH Shutdown/Restart tetap bisa dipilih & diisi (tidak diblokir)
     setSelectedGH(gh);
     const produksiInfo = findProduksiInfo(produksiData, gh);
     setBarisRows(buildBarisRows(produksiInfo));
@@ -317,7 +317,7 @@ export default function PemetaanGH() {
   });
 
   const handleSubmit = async () => {
-    if (warnIfGHBlocked(selectedGH, blockedMap)) return;
+    // Menu Pemetaan: submit tetap diizinkan walau GH sedang Shutdown/Restart
     setSyncing(true);
     setSubmitError(null);
     const payload = buildPayload();
@@ -431,12 +431,19 @@ export default function PemetaanGH() {
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {semaiAktif.map((item) => {
                   const dipilih = selectedGH === item.gh;
+                  // Menu Pemetaan tetap membuka GH Shutdown/Restart — badge ini hanya info, bukan penghalang
+                  const blockedInfo = blockedMap[item.gh.trim().toUpperCase()];
                   return (
                     <button key={item.gh} onClick={() => handleSelectGH(item.gh)}
                       style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "12px 13px", borderRadius: 12, border: dipilih ? `1.5px solid ${color.brand700}` : `1.5px solid ${color.border}`, background: dipilih ? color.brandBg : color.card, cursor: "pointer", textAlign: "left" }}>
                       <div>
                         <div style={{ fontSize: 13.5, fontWeight: 800, color: dipilih ? color.brand900 : color.text }}>{item.gh}</div>
                         <div style={{ fontSize: 10.5, color: color.textFaint, marginTop: 2 }}>P{item.periode} · {item.varian?.length || 0} varian</div>
+                        {blockedInfo && (
+                          <div style={{ marginTop: 4, fontSize: 9, color: color.dangerDeep, background: color.dangerBg, border: `1px solid ${color.dangerBorder}`, borderRadius: 6, padding: "1px 5px", display: "inline-block" }}>
+                            ⚠ {blockedInfo.aksi}
+                          </div>
+                        )}
                       </div>
                       {dipilih && <div style={{ fontSize: 11, fontWeight: 800, background: color.brandBg, color: color.brand700, border: `1px solid ${color.brand700}`, borderRadius: 20, padding: "3px 10px" }}>✓ Dipilih</div>}
                     </button>
