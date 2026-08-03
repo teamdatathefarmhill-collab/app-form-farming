@@ -12,6 +12,7 @@ const SCRIPT_URL = import.meta.env.VITE_GAS_VIGOR_URL;
 
 // ─── Changelog ───────────────────────────────────────────────────────────────
 export const CHANGELOG = [
+  "Tipe GH RnD dihapus dari Pilih GH — Tohudan 22, Sawahan Tunnel 1 & Open Field 1 kini kembali masuk tipe Kolam",
   "Tambah Netting Buah (Crack Basah) di checkpoint HST 45",
   "Kesegaran Tanaman (Kelayuan) di HST 38/45/54 kini satu section dengan Warna Daun (sebelumnya section terpisah)",
   "Tambah Kesegaran Tanaman (Kelayuan) di checkpoint HST 7, 14, 18, 33 (sebelumnya hanya HST 38/45/54)",
@@ -45,8 +46,8 @@ const TIPE_GH = [
     key: "kolam", label: "Kolam", icon: "🏊", color: "#00897B",
     pattern: (gh) => {
       const upper = gh.toUpperCase().trim();
-      if (upper === "SAWAHAN TUNNEL 1") return false;
-      if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return (n >= 1 && n <= 11) || n === 13; }
+      if (upper === "SAWAHAN TUNNEL 1" || upper === "OPEN FIELD 1") return true;
+      if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return (n >= 1 && n <= 11) || n === 13 || n === 22; }
       if (upper.startsWith("SAWAHAN")) { const n = parseInt(upper.replace("SAWAHAN","").trim()); return n >= 1 && n <= 4; }
       return false;
     },
@@ -56,16 +57,6 @@ const TIPE_GH = [
     pattern: (gh) => {
       const upper = gh.toUpperCase();
       if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return n === 15 || n === 16 || n === 17 || n === 18 || n === 19 || n === 20; }
-      return false;
-    },
-  },
-  {
-    key: "rnd", label: "RnD", icon: "🔬", color: "#7B1FA2",
-    pattern: (gh) => {
-      const upper = gh.toUpperCase().trim();
-      if (upper === "SAWAHAN TUNNEL 1") return true;
-      if (upper === "OPEN FIELD 1") return true;
-      if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return n === 22; }
       return false;
     },
   },
@@ -736,8 +727,6 @@ export default function Vigor({ initialGH, onDone } = {}) {
                             ? "Sistem Kolam: ambil mulai dari tanaman ke-16 dari baris depan sejumlah 7 tanaman, dan ke-16 dari baris belakang sejumlah 7 tanaman (total 14 tanaman)"
                             : tipeGH?.key === "dutch"
                             ? "Sistem DB: ambil mulai dari bucket/polybag ke-16 dari baris depan sejumlah 7 tanaman, dan ke-16 dari baris belakang sejumlah 7 tanaman (total 14 tanaman)"
-                            : tipeGH?.key === "rnd"
-                            ? "GH RnD: ambil sampel sesuai protokol riset yang berlaku — pastikan konsistensi titik sampling antar pengamatan"
                             : "Ambil sampel setelah 10 tanaman depan dan 10 tanaman belakang, hindari tanaman yang terpengaruh variabel luar";
                           return <div style={{ fontSize: 10, color: color.textSoft, marginBottom: 4 }}>{samplingText}</div>;
                         })()}

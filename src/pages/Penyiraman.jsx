@@ -8,12 +8,10 @@ import { color } from "../styles/tokens";
 const SCRIPT_URL = import.meta.env.VITE_GAS_PENYIRAMAN_URL;
 
 const GH_PER_TIPE = {
-  "RnD": [
-    "SAWAHAN TUNNEL 1", "TOHUDAN 22", "OPEN FIELD 1"
-  ],
   "Kolam (Tohudan)": [
     "TOHUDAN 1","TOHUDAN 2","TOHUDAN 3","TOHUDAN 4","TOHUDAN 5","TOHUDAN 6",
-    "TOHUDAN 7","TOHUDAN 8","TOHUDAN 9","TOHUDAN 10","TOHUDAN 11","TOHUDAN 12","TOHUDAN 13"
+    "TOHUDAN 7","TOHUDAN 8","TOHUDAN 9","TOHUDAN 10","TOHUDAN 11","TOHUDAN 12","TOHUDAN 13",
+    "TOHUDAN 22"
   ],
   "Drip (Tohudan/Bergas)": [
     "COLOMADU 1","COLOMADU 2","COLOMADU 3","COLOMADU 4",
@@ -21,7 +19,7 @@ const GH_PER_TIPE = {
     "TOHUDAN 14","TOHUDAN 21",
   ],
   "Kolam (Sawahan)": [
-    "SAWAHAN 1","SAWAHAN 2","SAWAHAN 3","SAWAHAN 4"
+    "SAWAHAN 1","SAWAHAN 2","SAWAHAN 3","SAWAHAN 4","SAWAHAN TUNNEL 1","OPEN FIELD 1"
   ],
   "Dutch Bucket": [
     "TOHUDAN 15","TOHUDAN 16","TOHUDAN 17","TOHUDAN 18","TOHUDAN 19","TOHUDAN 20",
@@ -31,7 +29,8 @@ const GH_PER_TIPE = {
 const TIPE_LIST = Object.keys(GH_PER_TIPE);
 const isMultiSuhuRH = (gh) => gh === "SAWAHAN 3" || gh === "SAWAHAN 4";
 const isDutchBucket = (tipe) => tipe === "Dutch Bucket";
-const isRnD = (tipe) => tipe === "RnD";
+const RND_REF_GH_LIST = ["SAWAHAN TUNNEL 1", "TOHUDAN 22", "OPEN FIELD 1"];
+const isRndRefGH = (gh) => RND_REF_GH_LIST.includes((gh || "").toUpperCase().trim());
 
 // Batas deteksi typo: ~2x dari nilai maksimal wajar masing-masing field
 const TYPO_LIMITS = {
@@ -156,7 +155,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
 
   const isDB        = isDutchBucket(tipe);
   const multiSuhuRH = isMultiSuhuRH(gh);
-  const refSource   = isRnD(tipe) ? refDataRnd : refData;
+  const refSource   = isRndRefGH(gh) ? refDataRnd : refData;
   const varianList  = !isDB && gh ? (refSource[gh]?.varian?.length > 0 ? refSource[gh].varian : ["Elysia", "Greeniegal"]) : [];
 
   const hst = refSource[gh]?.hst ?? null;

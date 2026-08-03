@@ -42,7 +42,8 @@ const TIPE_GH = [
   {
     key: "kolam", label: "Kolam", icon: "🏊", color: "#00897B",
     pattern: (gh) => {
-      const upper = gh.toUpperCase();
+      const upper = gh.toUpperCase().trim();
+      if (upper === "SAWAHAN TUNNEL 1" || upper === "TOHUDAN 22" || upper === "OPEN FIELD 1") return true;
       if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return (n >= 1 && n <= 11) || n === 13; }
       if (upper.startsWith("SAWAHAN")) { const n = parseInt(upper.replace("SAWAHAN","").trim()); return n >= 1 && n <= 4; }
       return false;
@@ -54,13 +55,6 @@ const TIPE_GH = [
       const upper = gh.toUpperCase();
       if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return n === 15 || n === 16 || n === 17 || n === 18 || n === 19 || n === 20; }
       return false;
-    },
-  },
-  {
-    key: "rnd", label: "RnD", icon: "🧪", color: "#8E24AA",
-    pattern: (gh) => {
-      const upper = gh.toUpperCase();
-      return upper === "SAWAHAN TUNNEL 1" || upper === "TOHUDAN 22" || upper === "OPEN FIELD 1";
     },
   },
   {
@@ -740,7 +734,7 @@ export default function Sanitasi() {
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {/* Tipe produksi — drip, kolam, dutch, rnd */}
+                {/* Tipe produksi — drip, kolam, dutch */}
                 {TIPE_GH.filter(t => t.key !== "semai").map(tipe => {
                   const ghDiTipe = ghAktif.filter(([gh]) => tipe.pattern(gh));
                   const isOpen   = selectedTipe === tipe.key;
