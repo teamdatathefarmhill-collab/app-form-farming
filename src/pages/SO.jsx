@@ -21,14 +21,14 @@ function buildGHNames() {
   const drip = [
     ...["BERGAS 1","BERGAS 2","BERGAS 3","BERGAS 4","BERGAS 5","BERGAS 7","BERGAS 8"],
     ...["COLOMADU 1","COLOMADU 2","COLOMADU 3","COLOMADU 4"],
-    ...["TOHUDAN 14","TOHUDAN 21"],
+    ...["TOHUDAN 14","TOHUDAN 15","TOHUDAN 16","TOHUDAN 19","TOHUDAN 20","TOHUDAN 21"],
   ];
   const kolam = [
     ...Array.from({ length: 13 }, (_, i) => `TOHUDAN ${i + 1}`),
     ...["SAWAHAN 1","SAWAHAN 2","SAWAHAN 3","SAWAHAN 4"],
     "TOHUDAN 22","SAWAHAN TUNNEL 1",
   ];
-  const dutch_bucket = ["TOHUDAN 15","TOHUDAN 16","TOHUDAN 17","TOHUDAN 18","TOHUDAN 19","TOHUDAN 20"];
+  const dutch_bucket = ["TOHUDAN 17","TOHUDAN 18"];
   return { drip, kolam, dutch_bucket };
 }
 
