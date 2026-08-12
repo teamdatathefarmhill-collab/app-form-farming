@@ -46,7 +46,7 @@ const TIPE_GH = [
     key: "kolam", label: "Kolam", icon: "🏊", color: "#00897B",
     pattern: (gh) => {
       const upper = gh.toUpperCase().trim();
-      if (upper === "SAWAHAN TUNNEL 1" || upper === "OPEN FIELD 1") return true;
+      if (upper === "SAWAHAN TUNNEL 1") return true;
       if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return (n >= 1 && n <= 11) || n === 13 || n === 22; }
       if (upper.startsWith("SAWAHAN")) { const n = parseInt(upper.replace("SAWAHAN","").trim()); return n >= 1 && n <= 4; }
       return false;
@@ -59,6 +59,10 @@ const TIPE_GH = [
       if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return n === 17 || n === 18; }
       return false;
     },
+  },
+  {
+    key: "rnd", label: "RnD", icon: "🧪", color: "#6D4C41",
+    pattern: (gh) => gh.toUpperCase().trim() === "OPEN FIELD 1",
   },
 ];
 

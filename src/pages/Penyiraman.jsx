@@ -19,10 +19,13 @@ const GH_PER_TIPE = {
     "TOHUDAN 14","TOHUDAN 15","TOHUDAN 16","TOHUDAN 19","TOHUDAN 20","TOHUDAN 21",
   ],
   "Kolam (Sawahan)": [
-    "SAWAHAN 1","SAWAHAN 2","SAWAHAN 3","SAWAHAN 4","SAWAHAN TUNNEL 1","OPEN FIELD 1"
+    "SAWAHAN 1","SAWAHAN 2","SAWAHAN 3","SAWAHAN 4","SAWAHAN TUNNEL 1"
   ],
   "Dutch Bucket": [
     "TOHUDAN 17","TOHUDAN 18",
+  ],
+  "RnD": [
+    "OPEN FIELD 1",
   ],
 };
 

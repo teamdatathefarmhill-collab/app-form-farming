@@ -37,7 +37,7 @@ const GH_NAMES = buildGHNames();
 // ─── Varian list ──────────────────────────────────────────────────────────────
 const VARIAN_LIST = [
   "Greeniegal","Sunray","Midori","Elysia","Aruni",
-  "Greenie Sweet","Sarasuka","Daegoji","Sagami","S7","Lainnya",
+  "Greenie Sweet","Sarasuka","Daegoji","Sagami","S7","Dalmatian","Lainnya",
 ];
 
 // ─── Checkpoint SO ────────────────────────────────────────────────────────────

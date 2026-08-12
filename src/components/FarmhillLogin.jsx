@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
-// Ganti dengan URL Google Sheets yang sudah di-publish as CSV
-// File > Share > Publish to web > Sheet1 > CSV > Publish
-const SHEET_CSV_URL = import.meta.env.VITE_SHEET_URL;
+// URL Web App GAS (gas/Login.js) — validasi kredensial dilakukan di server,
+// sheet ID & daftar user tidak pernah dikirim ke browser.
+const GAS_LOGIN_URL = import.meta.env.VITE_GAS_LOGIN_URL;
 
 // Nomor WA admin untuk "Lupa Password" (format internasional tanpa +)
 const WA_ADMIN_NUMBER = import.meta.env.VITE_WA_ADMIN;
@@ -11,18 +11,6 @@ const WA_MESSAGE = encodeURIComponent(
   "Halo Admin Farmhill, saya lupa password akun saya. Mohon bantuan ya 🙏"
 );
 const WA_URL = `https://wa.me/${WA_ADMIN_NUMBER}?text=${WA_MESSAGE}`;
-
-// ─── PARSE CSV ───────────────────────────────────────────────────────────────
-function parseCSV(text) {
-  const lines = text.trim().split("\n");
-  const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
-  return lines.slice(1).map((line) => {
-    const vals = line.split(",").map((v) => v.trim());
-    const obj = {};
-    headers.forEach((h, i) => (obj[h] = vals[i] ?? ""));
-    return obj;
-  });
-}
 
 // ─── STYLES ──────────────────────────────────────────────────────────────────
 const styles = {
@@ -105,10 +93,6 @@ const styles = {
 
 // ─── COMPONENT ───────────────────────────────────────────────────────────────
 export default function FarmhillLogin({ onLoginSuccess }) {
-  const [users, setUsers] = useState([]);
-  const [loadingSheet, setLoadingSheet] = useState(true);
-  const [sheetError, setSheetError] = useState(false);
-
   const [nama, setNama] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -120,48 +104,34 @@ export default function FarmhillLogin({ onLoginSuccess }) {
   const [focusPw, setFocusPw] = useState(false);
   const [loggedUser, setLoggedUser] = useState(null);
 
-  // Fetch user list from Google Sheets
-  useEffect(() => {
-    fetch(SHEET_CSV_URL)
-      .then((r) => r.text())
-      .then((text) => {
-        setUsers(parseCSV(text));
-        setLoadingSheet(false);
-      })
-      .catch(() => {
-        // Fallback demo data jika sheet belum dikonfigurasi
-        setUsers([
-          { id: "001", nama: "Budi",  sanitasi: "YES", hpt: "YES", gramasi: "NO" },
-          { id: "002", nama: "Siti",  sanitasi: "YES", hpt: "NO",  gramasi: "YES" },
-          { id: "003", nama: "Admin", sanitasi: "YES", hpt: "YES", gramasi: "YES" },
-        ]);
-        setLoadingSheet(false);
-        setSheetError(true);
-      });
-  }, []);
-
-  const handleLogin = () => {
+  const handleLogin = async () => {
     setAlert(null);
     if (!nama.trim() || !password.trim()) {
       setAlert({ type: "error", msg: "Nama dan password wajib diisi." });
       return;
     }
     setLoading(true);
-    setTimeout(() => {
-      const found = users.find(
-        (u) =>
-          u.nama?.toLowerCase() === nama.trim().toLowerCase() &&
-          parseInt(u.id) === parseInt(password.trim())
-      );
-      if (found) {
-        setLoggedUser(found);
-        setAlert({ type: "success", msg: `Selamat datang, ${found.nama}!` });
-        if (onLoginSuccess) onLoginSuccess(found);
+    try {
+      const res = await fetch(GAS_LOGIN_URL, {
+        method: "POST",
+        body: JSON.stringify({
+          action: "login",
+          nama: nama.trim(),
+          password: password.trim(),
+        }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        setLoggedUser(result.user);
+        setAlert({ type: "success", msg: `Selamat datang, ${result.user.nama}!` });
+        if (onLoginSuccess) onLoginSuccess(result.user);
       } else {
-        setAlert({ type: "error", msg: "Nama atau password salah. Coba lagi ya." });
+        setAlert({ type: "error", msg: result.error || "Nama atau password salah." });
       }
-      setLoading(false);
-    }, 1000);
+    } catch {
+      setAlert({ type: "error", msg: "Gagal menghubungi server. Coba lagi ya." });
+    }
+    setLoading(false);
   };
 
   const handleKeyDown = (e) => { if (e.key === "Enter") handleLogin(); };
@@ -186,8 +156,8 @@ export default function FarmhillLogin({ onLoginSuccess }) {
           </p>
           <div style={styles.accessBadges}>
             {modules.map((m) => (
-              <span key={m} style={styles.badge(loggedUser[m]?.toUpperCase() === "YES")}>
-                {m.toUpperCase()} {loggedUser[m]?.toUpperCase() === "YES" ? "✓" : "✗"}
+              <span key={m} style={styles.badge(!!loggedUser.access?.[m])}>
+                {m.toUpperCase()} {loggedUser.access?.[m] ? "✓" : "✗"}
               </span>
             ))}
           </div>
@@ -238,12 +208,6 @@ export default function FarmhillLogin({ onLoginSuccess }) {
           <div style={styles.logoSub}>Form Penginputan Data</div>
         </div>
 
-        {sheetError && (
-          <div style={{ ...styles.alert("error"), fontSize: 11, marginBottom: "0.8rem" }}>
-            ⚠ Mode demo — Google Sheets belum dikonfigurasi.
-          </div>
-        )}
-
         {alert && <div style={styles.alert(alert.type)}>{alert.msg}</div>}
 
         <div style={{ marginBottom: "1.2rem" }}>
@@ -257,8 +221,7 @@ export default function FarmhillLogin({ onLoginSuccess }) {
             onFocus={() => setFocusNama(true)}
             onBlur={() => setFocusNama(false)}
             onKeyDown={handleKeyDown}
-            disabled={loadingSheet}
-          />
+                      />
         </div>
 
         <div style={{ marginBottom: "0.5rem" }}>
@@ -273,8 +236,7 @@ export default function FarmhillLogin({ onLoginSuccess }) {
               onFocus={() => setFocusPw(true)}
               onBlur={() => setFocusPw(false)}
               onKeyDown={handleKeyDown}
-              disabled={loadingSheet}
-            />
+                          />
             <button style={styles.togglePw} onClick={() => setShowPw(!showPw)}>
               {showPw ? <EyeOffIcon /> : <EyeIcon />}
             </button>
@@ -293,11 +255,11 @@ export default function FarmhillLogin({ onLoginSuccess }) {
         </div>
 
         <button
-          style={{ ...styles.btnLogin, ...(loading || loadingSheet ? styles.btnDisabled : {}) }}
+          style={{ ...styles.btnLogin, ...(loading ? styles.btnDisabled : {}) }}
           onClick={handleLogin}
-          disabled={loading || loadingSheet}
+          disabled={loading}
         >
-          {loadingSheet ? "Memuat data..." : loading ? "Memeriksa..." : "Masuk"}
+          {loading ? "Memeriksa..." : "Masuk"}
         </button>
 
         <div style={styles.divider}>PT. Kebun Bumi Lestari</div>
