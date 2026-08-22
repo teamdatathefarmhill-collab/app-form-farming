@@ -1,14 +1,25 @@
-// ─── CONFIG ──────────────────────────────────────────────────────────────────
-// Ganti dengan Spreadsheet ID direktori user (yang sebelumnya di-publish as CSV)
-const SPREADSHEET_ID = 'GANTI_DENGAN_SPREADSHEET_ID_USER_DIRECTORY';
-const SHEET_NAME      = 'Users'; // ganti sesuai nama sheet/tab yang berisi data user
+// ============================================================
+//  FarmTrack Pro — Login (validasi kredensial di server)
+//  Google Apps Script (Code.gs)
+//
+//  Cara pasang:
+//  1. Buka Spreadsheet "REF OPERATOR":
+//     https://docs.google.com/spreadsheets/d/16DLPD-_Zsl1g4FJ4jFsWUYHVCdZvgonO9qf1b5qS3D4
+//  2. Extensions > Apps Script
+//  3. Hapus semua isi default, paste file ini
+//  4. Save → Deploy > New deployment > Web app
+//     - Execute as: Me
+//     - Who has access: Anyone
+//  5. Copy URL deploy → taruh di VITE_GAS_LOGIN_URL di Vercel
+// ============================================================
 
-// Kolom yang dianggap sebagai "akses modul" — tambahkan di sini kalau ada modul baru
-const MODULE_COLUMNS = ['sanitasi', 'hpt', 'gramasi'];
+// Spreadsheet "REF OPERATOR" — tab "REF" berisi daftar user & akses menu
+const SPREADSHEET_ID = '16DLPD-_Zsl1g4FJ4jFsWUYHVCdZvgonO9qf1b5qS3D4';
+const SHEET_NAME      = 'REF';
 
 // Batas percobaan login gagal per nama (anti brute-force sederhana)
-const MAX_ATTEMPTS   = 5;
-const LOCKOUT_MS     = 5 * 60 * 1000; // 5 menit
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS   = 5 * 60 * 1000; // 5 menit
 
 function doPost(e) {
   try {
@@ -18,6 +29,10 @@ function doPost(e) {
   } catch (err) {
     return jsonResponse({ success: false, error: err.message });
   }
+}
+
+function doGet() {
+  return jsonResponse({ status: 'ok', message: 'GAS Login aktif.' });
 }
 
 function jsonResponse(obj) {
@@ -47,9 +62,9 @@ function login(data) {
     });
   }
 
-  const rows = getUserRows();
+  const rows  = getUserRows();
   const found = rows.find(function (u) {
-    return u.nama.toLowerCase() === nama.toLowerCase() && String(u.id) === password;
+    return u.nama.toLowerCase() === nama.toLowerCase() && parseInt(u.id, 10) === parseInt(password, 10);
   });
 
   if (!found) {
@@ -60,18 +75,7 @@ function login(data) {
   // Login berhasil → reset counter gagal
   props.deleteProperty(lockKey);
 
-  const access = {};
-  MODULE_COLUMNS.forEach(function (m) {
-    access[m] = String(found[m] || '').toUpperCase() === 'YES';
-  });
-
-  return jsonResponse({
-    success: true,
-    user: {
-      nama: found.nama,
-      access: access,
-    },
-  });
+  return jsonResponse({ success: true, user: found });
 }
 
 function getLockState(props, lockKey) {
@@ -94,30 +98,31 @@ function recordFailedAttempt(props, lockKey, lock) {
   props.setProperty(lockKey, JSON.stringify(state));
 }
 
-// ─── Ambil data user dari sheet ───────────────────────────────────────────────
+// ─── Ambil data user dari sheet REF ────────────────────────────────────────────
+// Semua kolom di-lowercase jadi key object (id, nama, sanitasi, gramasi, hpt,
+// vigor, kesiapan, penyiraman, so, penyemprotan, cuaca, role, pemetaan) —
+// bentuknya sama persis dengan CSV lama supaya App.jsx tidak perlu diubah.
 function getUserRows() {
-  const ss      = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet   = ss.getSheetByName(SHEET_NAME);
+  const ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(SHEET_NAME);
   if (!sheet) throw new Error("Sheet '" + SHEET_NAME + "' tidak ditemukan");
 
   const data    = sheet.getDataRange().getValues();
   const headers = data[0].map(function (h) { return String(h).trim().toLowerCase(); });
 
-  const idxId   = headers.indexOf('id');
-  const idxNama = headers.indexOf('nama');
-
-  return data.slice(1).map(function (row) {
-    const obj = { id: row[idxId], nama: String(row[idxNama] || '') };
-    MODULE_COLUMNS.forEach(function (m) {
-      const idx = headers.indexOf(m);
-      obj[m] = idx >= 0 ? row[idx] : '';
+  return data.slice(1)
+    .filter(function (row) { return row.some(function (v) { return String(v).trim() !== ''; }); })
+    .map(function (row) {
+      const obj = {};
+      headers.forEach(function (h, i) {
+        obj[h] = row[i] === undefined || row[i] === null ? '' : String(row[i]).trim();
+      });
+      return obj;
     });
-    return obj;
-  });
 }
 
 // ─── TEST ──────────────────────────────────────────────────────────────────
 function testLogin() {
-  const result = login({ nama: 'Admin', password: '003' });
+  const result = login({ nama: 'Adit', password: '003' });
   Logger.log(result.getContent());
 }
