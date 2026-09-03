@@ -33,7 +33,7 @@ function emptyEntry() { return { varian: "", jumlah: "" }; }
 
 // ─── Daftar lengkap varian yang kita punya — dropdown pilih varian pakai ini,
 // bukan cuma varian yang kebetulan ada di referensi semai GH tsb. ──
-const ALL_VARIAN = ["Greenigal", "Elysia", "Midori", "Aruni", "Greenie sweet", "Daegoji", "S7", "Sagami", "Emeralda", "Sunray"];
+const ALL_VARIAN = ["Greeniegal", "Elysia", "Midori", "Aruni", "Greenie sweet", "Daegoji", "S7", "Sagami", "Emeralda", "Sunray"];
 
 // ─── Nama varian di sheet bisa punya suffix angka batch (mis. "Greeniegal 1") ──
 // Dropdown cukup tampilkan nama dasarnya; angkanya tetap dipakai apa adanya

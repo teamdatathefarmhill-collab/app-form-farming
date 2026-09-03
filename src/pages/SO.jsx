@@ -832,16 +832,26 @@ export default function SO() {
               </div>
             )}
 
-            {!allNormalFilled && normalRows.length > 0 && (
-              <div style={{ fontSize: 12, color: color.warning, background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
-                ⚠️ {normalRows.length - filledNormal} baris referensi belum diisi
-              </div>
-            )}
-            {soStatus.late && !keterangan.trim() && (
-              <div style={{ fontSize: 12, color: "#880e4f", background: "#fce4ec", border: "1px solid #f48fb1", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
-                ⏰ Alasan keterlambatan wajib diisi sebelum submit
-              </div>
-            )}
+            {!canSubmit && (() => {
+              const missing = [];
+              if (normalRows.length > 0 && !allNormalFilled) missing.push(`${normalRows.length - filledNormal} baris referensi belum diisi populasinya`);
+              if (!manualOK) {
+                const manualIdx = tableData.reduce((acc, r, i) => { if (r.isManual) acc.push(i); return acc; }, []);
+                const incomplete = manualRows.filter(r => !(r.baris.trim() && r.varian && r.populasi !== "")).length;
+                missing.push(`${incomplete} baris manual belum lengkap (baris/varian/populasi) — cek baris ke-${manualIdx.map(i => i + 1).join(", ")}`);
+              }
+              if (!operator.trim()) missing.push("Nama Operator belum diisi");
+              if (soStatus.late && !keterangan.trim()) missing.push("Alasan Keterlambatan belum diisi");
+              if (missing.length === 0) return null;
+              return (
+                <div style={{ fontSize: 12, color: "#880e4f", background: "#fce4ec", border: "1px solid #f48fb1", borderRadius: 8, padding: "10px 12px", marginBottom: 8 }}>
+                  <div style={{ fontWeight: 700, marginBottom: 4 }}>⚠️ Belum bisa submit — lengkapi dulu:</div>
+                  <ul style={{ margin: 0, paddingLeft: 18 }}>
+                    {missing.map((m, i) => <li key={i}>{m}</li>)}
+                  </ul>
+                </div>
+              );
+            })()}
             {submitError && (
               <div style={{ fontSize: 12, color: color.dangerDeep, background: color.dangerBg, border: `1px solid ${color.dangerBorder}`, borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
                 ⚠️ {submitError}

@@ -333,7 +333,7 @@ const SOP = {
       {
         step: 3,
         title: "Isi Realisasi per Baris",
-        detail: "Tiap baris = 1 kartu. Satu baris bisa diisi lebih dari satu varian (tekan \"+ Tambah varian\"). Dropdown varian menampilkan semua varian yang kita punya (Greenigal, Elysia, Midori, Aruni, Greenie sweet, Daegoji, S7, Sagami, Emeralda, Sunray), tidak cuma yang ada di referensi semai GH tsb. Baris \"Sulaman\" opsional dan tidak dihitung ke total tanaman utama. Kalau ada baris di luar data sumber, pakai tombol \"+ Tambah baris tidak terdaftar\".",
+        detail: "Tiap baris = 1 kartu. Satu baris bisa diisi lebih dari satu varian (tekan \"+ Tambah varian\"). Dropdown varian menampilkan semua varian yang kita punya (Greeniegal, Elysia, Midori, Aruni, Greenie sweet, Daegoji, S7, Sagami, Emeralda, Sunray), tidak cuma yang ada di referensi semai GH tsb. Baris \"Sulaman\" opsional dan tidak dihitung ke total tanaman utama. Kalau ada baris di luar data sumber, pakai tombol \"+ Tambah baris tidak terdaftar\".",
       },
       {
         step: 4,
