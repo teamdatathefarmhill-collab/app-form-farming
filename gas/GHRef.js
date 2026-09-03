@@ -32,11 +32,35 @@ const RESTART_SHEET = "GH Restart";
 const DAILY_TASK_SS_ID    = "16DLPD-_Zsl1g4FJ4jFsWUYHVCdZvgonO9qf1b5qS3D4";
 const DAILY_TASK_SHEET    = "DAILY TASK";
 
+// ─── Proteksi endpoint ────────────────────────────────────────────────────
+// Token disimpan di Script Properties (Project Settings > Script Properties),
+// BUKAN di kode ini — supaya tidak ikut ke-share/ke-commit ke git.
+// Klien kirim token yang sama (VITE_APP_TOKEN) di tiap request.
+// Kalau APP_TOKEN belum di-set di Script Properties, cek ini dilewati dulu
+// (supaya tidak lockout diri sendiri saat baru deploy kode ini).
+function checkAppToken(token) {
+  const expected = PropertiesService.getScriptProperties().getProperty('APP_TOKEN');
+  if (!expected) return true;
+  return token === expected;
+}
+
+// Rate limit sederhana — batasi ~60 request/menit per script (semua caller
+// digabung). Bukan proteksi kuat, tapi cukup untuk redam spam/bot otomatis.
+function checkRateLimit() {
+  const cache = CacheService.getScriptCache();
+  const key   = 'rl_' + Math.floor(Date.now() / 60000);
+  const count = Number(cache.get(key) || 0) + 1;
+  cache.put(key, String(count), 90);
+  return count <= 60;
+}
+
 // ============================================================
 // doGet
 // ============================================================
 function doGet(e) {
   const action = (e.parameter || {}).action;
+  if (!checkRateLimit()) return jsonResponse({ success: false, error: "Terlalu banyak request, coba lagi sebentar." });
+  if (!checkAppToken((e.parameter || {}).token)) return jsonResponse({ success: false, error: "Unauthorized" });
   if (action === "getGH")            return jsonResponse(getGHData());
   if (action === "getDailyTask")     return jsonResponse(getDailyTaskData(e));
   if (action === "getGHRestartLog")  return jsonResponse(getGHRestartLog());
@@ -49,6 +73,8 @@ function doGet(e) {
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
+    if (!checkRateLimit()) return jsonResponse({ success: false, error: "Terlalu banyak request, coba lagi sebentar." });
+    if (!checkAppToken(data.token)) return jsonResponse({ success: false, error: "Unauthorized" });
     if (data.action === "submitGHRestart") return jsonResponse(handleSubmitGHRestart(data));
     return jsonResponse({ success: false, error: "Action tidak dikenal: " + data.action });
   } catch (err) {

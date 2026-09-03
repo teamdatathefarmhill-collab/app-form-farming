@@ -58,14 +58,34 @@ export async function idbCount(dbName) {
   });
 }
 
-// ─── Fetch helper shared ──────────────────────────────────────────────────────
+// ─── Token endpoint GAS (dicek server-side, lihat gas/*.js checkAppToken) ────
+export const APP_TOKEN = import.meta.env.VITE_APP_TOKEN;
+
+function withToken(url) {
+  if (!APP_TOKEN) return url;
+  const sep = url.includes("?") ? "&" : "?";
+  return `${url}${sep}token=${encodeURIComponent(APP_TOKEN)}`;
+}
+
+// ─── Fetch helper shared (GET) ────────────────────────────────────────────────
 export async function gasFetch(url, timeoutMs = 30000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { signal: controller.signal, redirect: "follow" });
+    const res = await fetch(withToken(url), { signal: controller.signal, redirect: "follow" });
     return await res.json();
   } finally {
     clearTimeout(timer);
   }
+}
+
+// ─── Fetch helper shared (POST) — selipkan token ke body ─────────────────────
+export async function gasPost(url, payload) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: JSON.stringify({ ...payload, token: APP_TOKEN }),
+    redirect: "follow",
+  });
+  return await res.json();
 }

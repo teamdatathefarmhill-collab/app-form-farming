@@ -22,8 +22,32 @@ function makeResponse(data) {
 //  GET — ?action=getGH | ?action=getSubmittedToday&tanggal=20/05/2026
 //       | ?action=getLastGramasi&gh=TOHUDAN%201&tanggal=20/05/2026
 // ============================================================
+// ─── Proteksi endpoint ────────────────────────────────────────────────────
+// Token disimpan di Script Properties (Project Settings > Script Properties),
+// BUKAN di kode ini — supaya tidak ikut ke-share/ke-commit ke git.
+// Klien kirim token yang sama (VITE_APP_TOKEN) di tiap request.
+// Kalau APP_TOKEN belum di-set di Script Properties, cek ini dilewati dulu
+// (supaya tidak lockout diri sendiri saat baru deploy kode ini).
+function checkAppToken(token) {
+  const expected = PropertiesService.getScriptProperties().getProperty('APP_TOKEN');
+  if (!expected) return true;
+  return token === expected;
+}
+
+// Rate limit sederhana — batasi ~60 request/menit per script (semua caller
+// digabung). Bukan proteksi kuat, tapi cukup untuk redam spam/bot otomatis.
+function checkRateLimit() {
+  const cache = CacheService.getScriptCache();
+  const key   = 'rl_' + Math.floor(Date.now() / 60000);
+  const count = Number(cache.get(key) || 0) + 1;
+  cache.put(key, String(count), 90);
+  return count <= 60;
+}
+
 function doGet(e) {
   const action = e.parameter.action;
+  if (!checkRateLimit()) return makeResponse({ success: false, message: "Terlalu banyak request, coba lagi sebentar." });
+  if (!checkAppToken(e.parameter.token)) return makeResponse({ success: false, message: "Unauthorized" });
   if (action === "getGH")             return handleGetGH();
   // ✅ FIX: teruskan e supaya handleGetSubmittedToday bisa baca parameter tanggal
   if (action === "getSubmittedToday") return handleGetSubmittedToday(e);
@@ -37,6 +61,8 @@ function doGet(e) {
 function doPost(e) {
   try {
     const payload = JSON.parse(e.postData.contents);
+    if (!checkRateLimit()) return makeResponse({ success: false, message: "Terlalu banyak request, coba lagi sebentar." });
+    if (!checkAppToken(payload.token)) return makeResponse({ success: false, message: "Unauthorized" });
     if (payload.action === "submitGramasiBatch") return handleSubmitGramasiBatch(payload);
     if (payload.action === "submitGramasi")      return handleSubmitGramasi(payload);
     return makeResponse({ success: false, message: "Action tidak dikenal" });

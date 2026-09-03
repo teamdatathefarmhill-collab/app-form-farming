@@ -20,12 +20,38 @@ const HEADER_SEMAI = [
   'Keterangan', 'Foto URL', 'Timestamp', 'Operator', 'Selfie URL',
 ];
 
+// ─── Proteksi endpoint ────────────────────────────────────────────────────
+// Token disimpan di Script Properties (Project Settings > Script Properties),
+// BUKAN di kode ini — supaya tidak ikut ke-share/ke-commit ke git.
+// Klien kirim token yang sama (VITE_APP_TOKEN) di tiap request.
+// Kalau APP_TOKEN belum di-set di Script Properties, cek ini dilewati dulu
+// (supaya tidak lockout diri sendiri saat baru deploy kode ini).
+function checkAppToken(token) {
+  const expected = PropertiesService.getScriptProperties().getProperty('APP_TOKEN');
+  if (!expected) return true;
+  return token === expected;
+}
+
+// Rate limit sederhana — batasi ~60 request/menit per script (semua caller
+// digabung). Bukan proteksi kuat, tapi cukup untuk redam spam/bot otomatis.
+function checkRateLimit() {
+  const cache = CacheService.getScriptCache();
+  const key   = 'rl_' + Math.floor(Date.now() / 60000);
+  const count = Number(cache.get(key) || 0) + 1;
+  cache.put(key, String(count), 90);
+  return count <= 60;
+}
+
 function doGet(e) {
   const action     = e.parameter.action;
   const sessionKey = e.parameter.sessionKey || '';
 
   let result;
-  if (action === 'getGH')
+  if (!checkRateLimit())
+    result = { error: 'Terlalu banyak request, coba lagi sebentar.' };
+  else if (!checkAppToken(e.parameter.token))
+    result = { error: 'Unauthorized' };
+  else if (action === 'getGH')
     result = getGHData();
   else if (action === 'getSemaiRef')
     result = getSemaiRef();
@@ -42,6 +68,8 @@ function doGet(e) {
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
+    if (!checkRateLimit()) return jsonResponse({ error: 'Terlalu banyak request, coba lagi sebentar.' });
+    if (!checkAppToken(data.token)) return jsonResponse({ error: 'Unauthorized' });
     if (data.action === 'submitSanitasi') return submitSanitasi(data);
     if (data.action === 'uploadFoto')     return uploadFoto(data);
     return jsonResponse({ error: 'Invalid action' });

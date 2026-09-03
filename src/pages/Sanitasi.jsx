@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useDraft } from "../hooks/useDraft";
-import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
+import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch, gasPost } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
@@ -329,13 +329,7 @@ export default function Sanitasi() {
               base64Data: record.fotoBase64,
               sessionKey: record.sessionKey || sessionKey,
             };
-            const res = await fetch(SCRIPT_URL, {
-              method: "POST",
-              headers: { "Content-Type": "text/plain" },
-              body: JSON.stringify(uploadPayload),
-              redirect: "follow",
-            });
-            const result = await res.json();
+            const result = await gasPost(SCRIPT_URL, uploadPayload);
             resolvedFotoUrl = result.url || "";
           } catch {
             resolvedFotoUrl = "";
@@ -343,12 +337,7 @@ export default function Sanitasi() {
         }
 
         // Kirim satu payload berisi semua varian
-        await fetch(SCRIPT_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify({ ...record.payload, fotoUrl: resolvedFotoUrl }),
-          redirect: "follow",
-        });
+        await gasPost(SCRIPT_URL, { ...record.payload, fotoUrl: resolvedFotoUrl });
 
         await idbDelete(DB_NAME, record.id);
       } catch {
@@ -369,8 +358,7 @@ export default function Sanitasi() {
   const fetchSemaiRef = useCallback(async () => {
     setLoadingSemai(true);
     try {
-      const res  = await fetch(`${SCRIPT_URL}?action=getSemaiRef`);
-      const json = await res.json();
+      const json = await gasFetch(`${SCRIPT_URL}?action=getSemaiRef`);
       if (json?.semai) { setSemaiData(json.semai); saveSemaiCache(json.semai); }
       else throw new Error("kosong");
     } catch {
@@ -459,13 +447,7 @@ export default function Sanitasi() {
           sessionKey,
         };
         try {
-          const res = await fetch(SCRIPT_URL, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain" },
-            body: JSON.stringify(payload),
-            redirect: "follow",
-          });
-          const result = await res.json();
+          const result = await gasPost(SCRIPT_URL, payload);
           resolve(result.url || "");
         } catch {
           resolve("");
@@ -602,20 +584,14 @@ export default function Sanitasi() {
         sessionKey: sessionKey + "_selfie",
       };
       try {
-        const r = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(selfiePayload), redirect: "follow" });
-        const result = await r.json();
+        const result = await gasPost(SCRIPT_URL, selfiePayload);
         resolvedSelfieUrl = result.url || "";
         setSelfieUrl(resolvedSelfieUrl);
       } catch { resolvedSelfieUrl = ""; }
     }
 
     try {
-      await fetch(SCRIPT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ ...payload, fotoUrl: resolvedFotoUrl || "", selfieUrl: resolvedSelfieUrl || "" }),
-        redirect: "follow",
-      });
+      await gasPost(SCRIPT_URL, { ...payload, fotoUrl: resolvedFotoUrl || "", selfieUrl: resolvedSelfieUrl || "" });
       setSyncProgress({ done: 1, total: 1 });
     } catch {
       setSubmitError("Gagal mengirim data, cek koneksi");

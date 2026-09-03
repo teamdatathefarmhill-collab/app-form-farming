@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useDraft } from "../hooks/useDraft";
 import { useAuth } from "../hooks/useAuth";
-import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
+import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch, gasPost } from "../utils/idb";
 import html2canvas from "html2canvas";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
@@ -390,8 +390,7 @@ export default function KesiapanGH() {
     setIsSyncingPending(true);
     for (const record of all) {
       try {
-        const res  = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(record.payload), redirect: "follow" });
-        const json = await res.json();
+        const json = await gasPost(SCRIPT_URL, record.payload);
         if (json.success) { markSubmittedLocal(record.key); await idbDelete(DB_NAME, record.id); }
       } catch {}
     }
@@ -403,8 +402,7 @@ export default function KesiapanGH() {
     if (!selectedTipe) return;
     setLoadingSubmitted(true);
     try {
-      const res  = await fetch(`${SCRIPT_URL}?action=getSubmitted&tipe=${encodeURIComponent(selectedTipe)}&tanggal=${encodeURIComponent(todayISO)}`);
-      const json = await res.json();
+      const json = await gasFetch(`${SCRIPT_URL}?action=getSubmitted&tipe=${encodeURIComponent(selectedTipe)}&tanggal=${encodeURIComponent(todayISO)}`);
       if (json.success) {
         // Gabung dari GAS + localStorage sebagai fallback
         const fromGAS   = json.submitted.map(gh => `${selectedTipe}__${gh}`);
@@ -504,8 +502,7 @@ export default function KesiapanGH() {
     }
 
     try {
-      const res  = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload), redirect: "follow" });
-      const json = await res.json();
+      const json = await gasPost(SCRIPT_URL, payload);
       if (!json.success) throw new Error(json.error || "GAS error");
       markSubmittedLocal(submittedKey);
       setSubmittedToday(prev => [...new Set([...prev, submittedKey])]);

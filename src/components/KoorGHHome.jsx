@@ -19,6 +19,7 @@ import Sanitasi     from "../pages/Sanitasi";
 import HPT          from "../pages/HPT";
 import Cuaca        from "../pages/Cuaca";
 import { useGHData } from "../hooks/useGHData";
+import { gasFetch } from "../utils/idb";
 
 const GHREF_URL = import.meta.env.VITE_GAS_GHREF_URL;
 
@@ -114,8 +115,7 @@ export default function KoorGHHome({ user, logout }) {
 
   useEffect(() => {
     if (!GHREF_URL || !user?.nama) { setLoading(false); setLoadError(true); return; }
-    fetch(`${GHREF_URL}?action=getDailyTask&operator=${encodeURIComponent(user.nama)}`)
-      .then(r => r.json())
+    gasFetch(`${GHREF_URL}?action=getDailyTask&operator=${encodeURIComponent(user.nama)}`)
       .then(json => {
         if (json.success) setTasks(json.tasks || []);
         else setLoadError(true);

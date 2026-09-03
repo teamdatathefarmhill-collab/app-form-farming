@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { enqueue, flushQueue } from '../lib/offlineQueue';
+import { gasPost } from '../utils/idb';
 
 const GAS_URL = import.meta.env.VITE_GAS_SANITASI_URL;
 
@@ -18,12 +19,7 @@ export function useSubmitForm() {
     }
 
     try {
-      const res = await fetch(GAS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
+      const json = await gasPost(GAS_URL, payload);
       if (json.success) {
         setStatus('success');
         return { success: true };

@@ -1,3 +1,5 @@
+import { gasPost } from '../utils/idb';
+
 const DB_NAME = 'farmhill-offline';
 const DB_VERSION = 1;
 const STORE = 'submitQueue';
@@ -56,12 +58,7 @@ export async function flushQueue(gasUrl) {
   for (const item of items) {
     const { id, queuedAt, ...payload } = item;
     try {
-      const res = await fetch(gasUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
+      const json = await gasPost(gasUrl, payload);
       if (json.success) {
         await deleteById(id);
         flushed++;

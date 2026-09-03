@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useDraft } from "../hooks/useDraft";
-import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch } from "../utils/idb";
+import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch, gasPost } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList } from "../hooks/useGHBlockedList";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
@@ -144,12 +144,7 @@ export default function PemetaanGH() {
     setIsSyncingPending(true);
     for (const record of allPending) {
       try {
-        await fetch(SCRIPT_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify(record.payload),
-          redirect: "follow",
-        });
+        await gasPost(SCRIPT_URL, record.payload);
         await idbDelete(DB_NAME, record.id);
       } catch { /* coba lagi nanti */ }
     }
@@ -346,12 +341,7 @@ export default function PemetaanGH() {
 
     setSavedOffline(false);
     try {
-      await fetch(SCRIPT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify(payload),
-        redirect: "follow",
-      });
+      await gasPost(SCRIPT_URL, payload);
       clearDraft();
       setStep(4);
     } catch {

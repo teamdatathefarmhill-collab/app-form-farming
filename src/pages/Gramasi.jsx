@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useDraft } from "../hooks/useDraft";
-import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
+import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch, gasPost } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
@@ -145,8 +145,7 @@ export default function Gramasi() {
     setLoadingSubmitted(true);
     try {
       const url = `${SCRIPT_URL}?action=getSubmittedToday&tanggal=${encodeURIComponent(todayISO)}`;
-      const res = await fetch(url, { redirect: "follow" });
-      const data = await res.json();
+      const data = await gasFetch(url);
       if (Array.isArray(data.submitted)) {
         const serverDate = data.tanggal;
         if (!serverDate || serverDate === todayISO) {
@@ -194,8 +193,7 @@ export default function Gramasi() {
     if (!isOnline || isDemoMode || !gh) return;
     try {
       const url = `${SCRIPT_URL}?action=getLastGramasi&gh=${encodeURIComponent(gh)}&tanggal=${encodeURIComponent(todayISO)}`;
-      const res  = await fetch(url, { redirect: "follow" });
-      const data = await res.json();
+      const data = await gasFetch(url);
       if (data.success) setLastGramasi(data.data || {});
     } catch {
       // Gagal fetch — biarkan kosong, tidak ada warning ditampilkan
@@ -227,12 +225,7 @@ export default function Gramasi() {
     setIsSyncingPending(true);
     for (const record of allPending) {
       try {
-        await fetch(SCRIPT_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify({ action: "submitGramasiBatch", rows: record.payloads }),
-          redirect: "follow",
-        });
+        await gasPost(SCRIPT_URL, { action: "submitGramasiBatch", rows: record.payloads });
         markSubmitted(record.gh);
         setSubmittedToday(getSubmittedToday());
         await idbDelete(DB_NAME, record.id);
@@ -351,12 +344,7 @@ export default function Gramasi() {
     // ── Mode Online ──
     setSavedOffline(false);
     try {
-      await fetch(SCRIPT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ action: "submitGramasiBatch", rows: payloads }),
-        redirect: "follow",
-      });
+      await gasPost(SCRIPT_URL, { action: "submitGramasiBatch", rows: payloads });
       setSyncProgress({ done: payloads.length, total: payloads.length });
       markSubmitted(selectedGH);
       setSubmittedToday(getSubmittedToday());

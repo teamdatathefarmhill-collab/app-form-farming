@@ -287,10 +287,34 @@ function hitungBobotAspek(aspek, data) {
   }, 0);
 }
 
+// ─── Proteksi endpoint ────────────────────────────────────────────────────
+// Token disimpan di Script Properties (Project Settings > Script Properties),
+// BUKAN di kode ini — supaya tidak ikut ke-share/ke-commit ke git.
+// Klien kirim token yang sama (VITE_APP_TOKEN) di tiap request.
+// Kalau APP_TOKEN belum di-set di Script Properties, cek ini dilewati dulu
+// (supaya tidak lockout diri sendiri saat baru deploy kode ini).
+function checkAppToken(token) {
+  const expected = PropertiesService.getScriptProperties().getProperty('APP_TOKEN');
+  if (!expected) return true;
+  return token === expected;
+}
+
+// Rate limit sederhana — batasi ~60 request/menit per script (semua caller
+// digabung). Bukan proteksi kuat, tapi cukup untuk redam spam/bot otomatis.
+function checkRateLimit() {
+  const cache = CacheService.getScriptCache();
+  const key   = 'rl_' + Math.floor(Date.now() / 60000);
+  const count = Number(cache.get(key) || 0) + 1;
+  cache.put(key, String(count), 90);
+  return count <= 60;
+}
+
 // ── Entry point POST ─────────────────────────────────────────
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
+    if (!checkRateLimit()) return jsonError("Terlalu banyak request, coba lagi sebentar.");
+    if (!checkAppToken(data.token)) return jsonError("Unauthorized");
     if (data.action !== "submitKesiapan") return jsonError("Action tidak dikenal: " + data.action);
 
     const tipeConfig = MATRIKS[data.tipe];
@@ -340,7 +364,11 @@ function doPost(e) {
 // ── Entry point GET ──────────────────────────────────────────
 function doGet(e) {
   const action = e?.parameter?.action;
-  if (action === "getSubmitted") return handleGetSubmitted(e);
+  if (!checkRateLimit()) return jsonError("Terlalu banyak request, coba lagi sebentar.");
+  if (action === "getSubmitted") {
+    if (!checkAppToken(e?.parameter?.token)) return jsonError("Unauthorized");
+    return handleGetSubmitted(e);
+  }
   return ContentService
     .createTextOutput(JSON.stringify({ status: "ok", message: "GAS Kesiapan Tanam v2 aktif." }))
     .setMimeType(ContentService.MimeType.JSON);

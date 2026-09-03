@@ -12,7 +12,7 @@
 // Aksi darurat harus tahu pasti berhasil/gagal saat itu juga.
 
 import { useState, useCallback } from "react";
-import { gasFetch } from "../utils/idb";
+import { gasFetch, gasPost } from "../utils/idb";
 
 const GAS_URL = import.meta.env.VITE_GAS_GHREF_URL;
 
@@ -38,16 +38,11 @@ export function useGHEmergency() {
     if (!GAS_URL) return { success: false, error: "VITE_GAS_GHREF_URL belum dikonfigurasi" };
     setSubmitting(true);
     try {
-      const res = await fetch(GAS_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({
-          action: "submitGHRestart",
-          gh, periode, aksi, alasan,
-          client_timestamp: new Date().toISOString(),
-        }),
+      const json = await gasPost(GAS_URL, {
+        action: "submitGHRestart",
+        gh, periode, aksi, alasan,
+        client_timestamp: new Date().toISOString(),
       });
-      const json = await res.json();
       if (!json.success) throw new Error(json.error || "GAS returned error");
       return { success: true };
     } catch (err) {

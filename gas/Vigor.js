@@ -84,12 +84,47 @@ const HEADERS = [
 // ============================================================
 //  doPost — terima data dari Vigor.jsx
 // ============================================================
+// ─── Proteksi endpoint ────────────────────────────────────────────────────
+// Token disimpan di Script Properties (Project Settings > Script Properties),
+// BUKAN di kode ini — supaya tidak ikut ke-share/ke-commit ke git.
+// Klien kirim token yang sama (VITE_APP_TOKEN) di tiap request.
+// Kalau APP_TOKEN belum di-set di Script Properties, cek ini dilewati dulu
+// (supaya tidak lockout diri sendiri saat baru deploy kode ini).
+function checkAppToken(token) {
+  var expected = PropertiesService.getScriptProperties().getProperty('APP_TOKEN');
+  if (!expected) return true;
+  return token === expected;
+}
+
+// Rate limit sederhana — batasi ~60 request/menit per script (semua caller
+// digabung). Bukan proteksi kuat, tapi cukup untuk redam spam/bot otomatis.
+function checkRateLimit() {
+  var cache = CacheService.getScriptCache();
+  var key   = 'rl_' + Math.floor(Date.now() / 60000);
+  var count = Number(cache.get(key) || 0) + 1;
+  cache.put(key, String(count), 90);
+  return count <= 60;
+}
+
 function doPost(e) {
   try {
     var body = JSON.parse(e.postData.contents);
 
+    if (!checkRateLimit()) return jsonResponse({ success: false, error: "Terlalu banyak request, coba lagi sebentar." });
+    if (!checkAppToken(body.token)) return jsonResponse({ success: false, error: "Unauthorized" });
+
     if (body.action === "uploadFoto") {
       return jsonResponse(uploadFoto(body));
+    }
+
+    if (body.action === "submitVigorBatch") {
+      var sheetBatch = getSheet();
+      ensureHeaders(sheetBatch);
+      var rows = (body.rows || []).map(buildVigorRow);
+      if (rows.length === 0) return jsonResponse({ success: false, error: "Tidak ada data yang dikirim" });
+      var lastRowBatch = sheetBatch.getLastRow();
+      sheetBatch.getRange(lastRowBatch + 1, 1, rows.length, rows[0].length).setValues(rows);
+      return jsonResponse({ success: true, count: rows.length });
     }
 
     if (body.action !== "submitVigor") {
@@ -99,33 +134,7 @@ function doPost(e) {
     var sheet = getSheet();
     ensureHeaders(sheet);
 
-    // Pakai waktu submit operator jika ada (penting untuk data offline)
-    var tsDate = body.client_timestamp ? new Date(body.client_timestamp) : new Date();
-
-    var row = [
-      Utilities.formatDate(tsDate, "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss"), // A Timestamp
-      body.tanggal           || "",  // B
-      body.gh                || "",  // C
-      body.periode           || "",  // D
-      body.hst_aktual        || "",  // E
-      body.hst_checkpoint    || "",  // F
-      body.varian            || "",  // G
-      body.operator          || "",  // H
-      body.lebar_daun        || "",  // I
-      body.diameter_batang   || "",  // J
-      body.warna_daun        || "",  // K
-      body.warna_akar        || "",  // L
-      body.volume_akar       || "",  // M
-      body.simetri_buah      || "",  // N
-      body.cabang_buah       || "",  // O
-      body.buah_bajang       || "",  // P
-      body.panjang_tunas_air || "",  // Q
-      body.kesegaran         || "",  // R
-      body.netting_buah      || "",  // S
-      body.netting_50        || "",  // T
-      body.net_bercak_hitam  || "",  // U
-      body.selfie_url        || "",  // V
-    ];
+    var row = buildVigorRow(body);
 
     // setValues() ~30-50% lebih cepat dari appendRow()
     var lastRow = sheet.getLastRow();
@@ -136,6 +145,39 @@ function doPost(e) {
   } catch (err) {
     return jsonResponse({ success: false, error: err.message });
   }
+}
+
+// ============================================================
+//  buildVigorRow — bangun satu array row dari payload (dipakai
+//  submitVigor tunggal maupun tiap item di submitVigorBatch)
+// ============================================================
+function buildVigorRow(body) {
+  // Pakai waktu submit operator jika ada (penting untuk data offline)
+  var tsDate = body.client_timestamp ? new Date(body.client_timestamp) : new Date();
+  return [
+    Utilities.formatDate(tsDate, "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss"), // A Timestamp
+    body.tanggal           || "",  // B
+    body.gh                || "",  // C
+    body.periode           || "",  // D
+    body.hst_aktual        || "",  // E
+    body.hst_checkpoint    || "",  // F
+    body.varian            || "",  // G
+    body.operator          || "",  // H
+    body.lebar_daun        || "",  // I
+    body.diameter_batang   || "",  // J
+    body.warna_daun        || "",  // K
+    body.warna_akar        || "",  // L
+    body.volume_akar       || "",  // M
+    body.simetri_buah      || "",  // N
+    body.cabang_buah       || "",  // O
+    body.buah_bajang       || "",  // P
+    body.panjang_tunas_air || "",  // Q
+    body.kesegaran         || "",  // R
+    body.netting_buah      || "",  // S
+    body.netting_50        || "",  // T
+    body.net_bercak_hitam  || "",  // U
+    body.selfie_url        || "",  // V
+  ];
 }
 
 // ============================================================

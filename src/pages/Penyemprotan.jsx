@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useDraft } from "../hooks/useDraft";
-import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
+import { idbAdd, idbGetAll, idbDelete, idbCount, gasPost } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
@@ -235,7 +235,7 @@ export default function Penyemprotan() {
     setIsSyncingPending(true);
     for (const rec of all) {
       try {
-        await fetch(SCRIPT_URL, { method:"POST", headers:{"Content-Type":"text/plain"}, body:JSON.stringify(rec.payload), redirect:"follow" });
+        await gasPost(SCRIPT_URL, rec.payload);
         await idbDelete(DB_NAME, rec.id);
       } catch { /* coba lagi nanti */ }
     }
@@ -300,7 +300,7 @@ export default function Penyemprotan() {
       navigateTo("sukses"); setSyncing(false); return;
     }
     try {
-      await fetch(SCRIPT_URL, { method:"POST", headers:{"Content-Type":"text/plain"}, body:JSON.stringify(payload), redirect:"follow" });
+      await gasPost(SCRIPT_URL, payload);
     } catch { setSubmitError("Gagal mengirim, cek koneksi."); setSyncing(false); return; }
     navigateTo("sukses"); setSyncing(false);
   };

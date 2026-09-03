@@ -3,6 +3,7 @@ import { useDraft } from "../hooks/useDraft";
 import { useAuth } from "../hooks/useAuth";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 import { useGHBlockedList } from "../hooks/useGHBlockedList";
+import { gasFetch, gasPost } from "../utils/idb";
 import { color } from "../styles/tokens";
 
 const SCRIPT_URL = import.meta.env.VITE_GAS_PENYIRAMAN_URL;
@@ -144,8 +145,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
   const [dbData, setDbData]     = useState(_draft?.dbData || { ecTandon: "", ecBucket: "", phTandon: "", phBucket: "", doTandon: "", doBucket: "", suhu: "", rh: "", volNutrisi: "" });
 
   useEffect(() => {
-    fetch(`${SCRIPT_URL}?action=getREF`)
-      .then(r => r.json())
+    gasFetch(`${SCRIPT_URL}?action=getREF`)
       .then(json => { if (json.success) { setRefData(json.data); setRefDataRnd(json.dataRnd || {}); } })
       .catch(() => {})
       .finally(() => setLoadingRef(false));
@@ -332,12 +332,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
     const payloads = buildPayloads();
     setSubmitProgress({ done: 0, total: payloads.length });
     try {
-      const res  = await fetch(SCRIPT_URL, {
-        method: "POST", headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ action: "submitPenyiramanBatch", rows: payloads }),
-        redirect: "follow",
-      });
-      const json = await res.json();
+      const json = await gasPost(SCRIPT_URL, { action: "submitPenyiramanBatch", rows: payloads });
       if (!json.success) throw new Error(json.error || "GAS error");
       setSubmitProgress({ done: payloads.length, total: payloads.length });
       clearDraft(); setStep(4);

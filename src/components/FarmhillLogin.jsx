@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { gasPost } from "../utils/idb";
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 // URL Web App GAS (gas/Login.js) — validasi kredensial dilakukan di server,
@@ -112,15 +113,11 @@ export default function FarmhillLogin({ onLoginSuccess }) {
     }
     setLoading(true);
     try {
-      const res = await fetch(GAS_LOGIN_URL, {
-        method: "POST",
-        body: JSON.stringify({
-          action: "login",
-          nama: nama.trim(),
-          password: password.trim(),
-        }),
+      const result = await gasPost(GAS_LOGIN_URL, {
+        action: "login",
+        nama: nama.trim(),
+        password: password.trim(),
       });
-      const result = await res.json();
       if (result.success) {
         setLoggedUser(result.user);
         setAlert({ type: "success", msg: `Selamat datang, ${result.user.nama}!` });

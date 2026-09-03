@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useDraft } from "../hooks/useDraft";
-import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
+import { idbAdd, idbGetAll, idbDelete, idbCount, gasPost } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 import { useSOHistory, hasCompletedCheckpoint } from "../hooks/useSOHistory";
@@ -214,12 +214,7 @@ export default function SO() {
     setIsSyncingPending(true);
     for (const record of allPending) {
       try {
-        await fetch(SCRIPT_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify({ action: "submitSOBatch", rows: record.payloads }),
-          redirect: "follow",
-        });
+        await gasPost(SCRIPT_URL, { action: "submitSOBatch", rows: record.payloads });
         markSubmitted(record.gh);
         setSubmittedToday(getSubmittedToday());
         await idbDelete(DB_NAME, record.id);
@@ -399,12 +394,7 @@ export default function SO() {
     setSavedOffline(false);
     try {
       setSyncProgress({ done: 0, total: payloads.length });
-      await fetch(SCRIPT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ action: "submitSOBatch", rows: payloads }),
-        redirect: "follow",
-      });
+      await gasPost(SCRIPT_URL, { action: "submitSOBatch", rows: payloads });
       setSyncProgress({ done: payloads.length, total: payloads.length });
       markSubmitted(selectedGH);
       setSubmittedToday(getSubmittedToday());

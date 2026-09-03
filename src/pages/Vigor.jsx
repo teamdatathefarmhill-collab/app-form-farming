@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useDraft } from "../hooks/useDraft";
-import { idbAdd, idbGetAll, idbDelete, idbCount } from "../utils/idb";
+import { idbAdd, idbGetAll, idbDelete, idbCount, gasPost } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
@@ -313,13 +313,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
     setIsSyncingPending(true);
     for (const record of all) {
       try {
-        const res  = await fetch(SCRIPT_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify({ action: "submitVigorBatch", rows: record.payloads }),
-          redirect: "follow",
-        });
-        const json = await res.json();
+        const json = await gasPost(SCRIPT_URL, { action: "submitVigorBatch", rows: record.payloads });
         if (json.success) {
           markSubmitted(record.gh);
           setSubmittedToday(getSubmittedToday());
@@ -484,24 +478,17 @@ export default function Vigor({ initialGH, onDone } = {}) {
           sessionKey: "vigor_selfie_" + Date.now(),
         };
         try {
-          const r      = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(selfiePayload), redirect: "follow" });
-          const result = await r.json();
+          const result = await gasPost(SCRIPT_URL, selfiePayload);
           resolvedSelfieUrl = result.url || "";
           setSelfieUrl(resolvedSelfieUrl);
         } catch { resolvedSelfieUrl = ""; }
       }
 
       // Kirim semua varian sekaligus dalam satu request batch
-      const res  = await fetch(SCRIPT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({
-          action: "submitVigorBatch",
-          rows: payloads.map(p => ({ ...p, selfie_url: resolvedSelfieUrl })),
-        }),
-        redirect: "follow",
+      const json = await gasPost(SCRIPT_URL, {
+        action: "submitVigorBatch",
+        rows: payloads.map(p => ({ ...p, selfie_url: resolvedSelfieUrl })),
       });
-      const json = await res.json();
       if (!json.success) throw new Error(json.error || "Gagal menyimpan");
 
       markSubmitted(selectedGH); setSubmittedToday(getSubmittedToday());
