@@ -29,7 +29,7 @@ function fmtNum(n) {
   return (n || 0).toLocaleString("id-ID");
 }
 
-function emptyEntry() { return { varian: "", jumlah: "", kualitas: "" }; }
+function emptyEntry() { return { varian: "", jumlah: "" }; }
 
 // ─── Pilihan kualitas bibit per varian — Baik/Sedang/Buruk berdampingan ──────
 const KUALITAS_OPTIONS = ["Baik", "Sedang", "Buruk"];
@@ -86,9 +86,9 @@ function buildBarisRows(produksiInfo) {
     const label = barisDisplayLabel(b.baris) || b.baris;
     if (groupIdx[label] === undefined) {
       groupIdx[label] = reguler.length;
-      reguler.push({ baris: label, isSulaman: false, entries: [{ varian: b.varian || "", jumlah: "", kualitas: "" }] });
+      reguler.push({ baris: label, isSulaman: false, entries: [{ varian: b.varian || "", jumlah: "" }] });
     } else {
-      reguler[groupIdx[label]].entries.push({ varian: b.varian || "", jumlah: "", kualitas: "" });
+      reguler[groupIdx[label]].entries.push({ varian: b.varian || "", jumlah: "" });
     }
   });
   return [
@@ -137,6 +137,7 @@ export default function PemetaanGH() {
   const [barisRows, setBarisRows]   = useState(_draft?.barisRows  || []);
   const [operator, setOperator]     = useState(_draft?.operator   || "");
   const [keteranganSelisih, setKeteranganSelisih] = useState(_draft?.keteranganSelisih || {});
+  const [kualitasVarian, setKualitasVarian] = useState(_draft?.kualitasVarian || {});
 
   const [syncing, setSyncing]         = useState(false);
   const [submitError, setSubmitError] = useState(null);
@@ -157,8 +158,8 @@ export default function PemetaanGH() {
 
   useEffect(() => {
     if (step === 4) return;
-    saveDraft({ step, selectedGH, barisRows, operator, keteranganSelisih });
-  }, [step, selectedGH, barisRows, operator, keteranganSelisih]);
+    saveDraft({ step, selectedGH, barisRows, operator, keteranganSelisih, kualitasVarian });
+  }, [step, selectedGH, barisRows, operator, keteranganSelisih, kualitasVarian]);
 
   const refreshPendingCount = useCallback(async () => {
     try { setPendingCount(await idbCount(DB_NAME)); } catch { setPendingCount(0); }
@@ -190,6 +191,7 @@ export default function PemetaanGH() {
     const produksiInfo = findProduksiInfo(produksiData, gh);
     setBarisRows(buildBarisRows(produksiInfo));
     setKeteranganSelisih({});
+    setKualitasVarian({});
     setStep(2);
   };
 
@@ -326,9 +328,12 @@ export default function PemetaanGH() {
           baris: r.baris,
           isSulaman: r.isSulaman,
           text: `${r.baris} ${validEntries.map((e) => `${e.varian} ${e.jumlah}`).join(", ")}`,
-          entries: validEntries.map((e) => ({ varian: e.varian, jumlah: parseInt(e.jumlah) || 0, kualitas: e.kualitas || "" })),
+          entries: validEntries.map((e) => ({ varian: e.varian, jumlah: parseInt(e.jumlah) || 0 })),
         };
       }),
+    kualitasBibit: varianList
+      .filter((v) => kualitasVarian[v])
+      .map((v) => ({ varian: v, kualitas: kualitasVarian[v] })),
     selisih: mismatches.map((v) => ({
       varian: v,
       referensi: referensiMap[v] || 0,
@@ -381,7 +386,7 @@ export default function PemetaanGH() {
   const resetForm = () => {
     clearDraft();
     setStep(1); setSelectedGH(""); setBarisRows([]); setOperator("");
-    setKeteranganSelisih({}); setSyncing(false); setSubmitError(null);
+    setKeteranganSelisih({}); setKualitasVarian({}); setSyncing(false); setSubmitError(null);
     setSavedOffline(false); setCopyDone(false);
   };
 
@@ -523,24 +528,17 @@ export default function PemetaanGH() {
                     </div>
                     <div style={{ padding: "9px 10px 10px", display: "flex", flexDirection: "column", gap: 7 }}>
                       {row.entries.map((entry, entryIdx) => (
-                        <div key={entryIdx} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                            <select value={entry.varian} onChange={(e) => updateEntry(rowIdx, entryIdx, "varian", e.target.value)}
-                              style={{ flex: 1, padding: "8px 9px", borderRadius: 8, border: `1.5px solid ${color.border}`, background: "#fafafa", fontSize: 12.5, fontWeight: 600, color: color.text }}>
-                              <option value="">Pilih varian</option>
-                              {dropdownVarianOptions.map((v) => <option key={v} value={v}>{varianDisplayName(v)}</option>)}
-                            </select>
-                            <input type="number" inputMode="numeric" value={entry.jumlah}
-                              onChange={(e) => updateEntry(rowIdx, entryIdx, "jumlah", e.target.value)}
-                              placeholder="0"
-                              style={{ width: 64, padding: "8px 9px", borderRadius: 8, border: `1.5px solid ${color.border}`, background: "#fafafa", fontSize: 12.5, fontWeight: 700, textAlign: "center", color: color.text }} />
-                            <button onClick={() => removeEntry(rowIdx, entryIdx)} style={{ background: "none", border: "none", color: color.danger, fontSize: 17, cursor: "pointer", width: 22 }}>×</button>
-                          </div>
-                          {entry.varian && (
-                            <div style={{ paddingRight: 29 }}>
-                              <KualitasPills value={entry.kualitas} onChange={(val) => updateEntry(rowIdx, entryIdx, "kualitas", val)} />
-                            </div>
-                          )}
+                        <div key={entryIdx} style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                          <select value={entry.varian} onChange={(e) => updateEntry(rowIdx, entryIdx, "varian", e.target.value)}
+                            style={{ flex: 1, padding: "8px 9px", borderRadius: 8, border: `1.5px solid ${color.border}`, background: "#fafafa", fontSize: 12.5, fontWeight: 600, color: color.text }}>
+                            <option value="">Pilih varian</option>
+                            {dropdownVarianOptions.map((v) => <option key={v} value={v}>{varianDisplayName(v)}</option>)}
+                          </select>
+                          <input type="number" inputMode="numeric" value={entry.jumlah}
+                            onChange={(e) => updateEntry(rowIdx, entryIdx, "jumlah", e.target.value)}
+                            placeholder="0"
+                            style={{ width: 64, padding: "8px 9px", borderRadius: 8, border: `1.5px solid ${color.border}`, background: "#fafafa", fontSize: 12.5, fontWeight: 700, textAlign: "center", color: color.text }} />
+                          <button onClick={() => removeEntry(rowIdx, entryIdx)} style={{ background: "none", border: "none", color: color.danger, fontSize: 17, cursor: "pointer", width: 22 }}>×</button>
                         </div>
                       ))}
                       <button onClick={() => addEntry(rowIdx)}
@@ -603,6 +601,22 @@ export default function PemetaanGH() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* ── Kualitas bibit per varian — opsional, diisi sekali per varian sebelum submit ── */}
+            {varianList.length > 0 && (
+              <div style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: 13, padding: "12px 13px", marginBottom: 14 }}>
+                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase", color: color.brand900, marginBottom: 2 }}>🌱 Kualitas Bibit per Varian</div>
+                <div style={{ fontSize: 10.5, color: color.textFaint, marginBottom: 10 }}>Opsional — penilaian umum kondisi bibit tiap varian saat pindah tanam.</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {varianList.map((v) => (
+                    <div key={v}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: color.text, marginBottom: 5 }}>{v}</div>
+                      <KualitasPills value={kualitasVarian[v] || ""} onChange={(val) => setKualitasVarian((prev) => ({ ...prev, [v]: val }))} />
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
