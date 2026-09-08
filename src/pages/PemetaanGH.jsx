@@ -29,7 +29,34 @@ function fmtNum(n) {
   return (n || 0).toLocaleString("id-ID");
 }
 
-function emptyEntry() { return { varian: "", jumlah: "" }; }
+function emptyEntry() { return { varian: "", jumlah: "", kualitas: "" }; }
+
+// ─── Pilihan kualitas bibit per varian — Baik/Sedang/Buruk berdampingan ──────
+const KUALITAS_OPTIONS = ["Baik", "Sedang", "Buruk"];
+const KUALITAS_COLOR = { Baik: "#2e7d32", Sedang: "#f57f17", Buruk: "#c62828" };
+
+function KualitasPills({ value, onChange }) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 5 }}>
+      {KUALITAS_OPTIONS.map((opt) => {
+        const active = value === opt;
+        const c = KUALITAS_COLOR[opt];
+        return (
+          <button key={opt} type="button" onClick={() => onChange(active ? "" : opt)}
+            style={{
+              padding: "5px 4px", borderRadius: 7, cursor: "pointer", textAlign: "center",
+              border: `1.5px solid ${active ? c : color.border}`,
+              background: active ? `${c}14` : "#fafafa",
+              color: active ? c : color.textSoft,
+              fontSize: 10.5, fontWeight: active ? 800 : 600,
+            }}>
+            {opt}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 // ─── Daftar lengkap varian yang kita punya — dropdown pilih varian pakai ini,
 // bukan cuma varian yang kebetulan ada di referensi semai GH tsb. ──
@@ -59,9 +86,9 @@ function buildBarisRows(produksiInfo) {
     const label = barisDisplayLabel(b.baris) || b.baris;
     if (groupIdx[label] === undefined) {
       groupIdx[label] = reguler.length;
-      reguler.push({ baris: label, isSulaman: false, entries: [{ varian: b.varian || "", jumlah: "" }] });
+      reguler.push({ baris: label, isSulaman: false, entries: [{ varian: b.varian || "", jumlah: "", kualitas: "" }] });
     } else {
-      reguler[groupIdx[label]].entries.push({ varian: b.varian || "", jumlah: "" });
+      reguler[groupIdx[label]].entries.push({ varian: b.varian || "", jumlah: "", kualitas: "" });
     }
   });
   return [
@@ -299,7 +326,7 @@ export default function PemetaanGH() {
           baris: r.baris,
           isSulaman: r.isSulaman,
           text: `${r.baris} ${validEntries.map((e) => `${e.varian} ${e.jumlah}`).join(", ")}`,
-          entries: validEntries.map((e) => ({ varian: e.varian, jumlah: parseInt(e.jumlah) || 0 })),
+          entries: validEntries.map((e) => ({ varian: e.varian, jumlah: parseInt(e.jumlah) || 0, kualitas: e.kualitas || "" })),
         };
       }),
     selisih: mismatches.map((v) => ({
@@ -496,17 +523,24 @@ export default function PemetaanGH() {
                     </div>
                     <div style={{ padding: "9px 10px 10px", display: "flex", flexDirection: "column", gap: 7 }}>
                       {row.entries.map((entry, entryIdx) => (
-                        <div key={entryIdx} style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                          <select value={entry.varian} onChange={(e) => updateEntry(rowIdx, entryIdx, "varian", e.target.value)}
-                            style={{ flex: 1, padding: "8px 9px", borderRadius: 8, border: `1.5px solid ${color.border}`, background: "#fafafa", fontSize: 12.5, fontWeight: 600, color: color.text }}>
-                            <option value="">Pilih varian</option>
-                            {dropdownVarianOptions.map((v) => <option key={v} value={v}>{varianDisplayName(v)}</option>)}
-                          </select>
-                          <input type="number" inputMode="numeric" value={entry.jumlah}
-                            onChange={(e) => updateEntry(rowIdx, entryIdx, "jumlah", e.target.value)}
-                            placeholder="0"
-                            style={{ width: 64, padding: "8px 9px", borderRadius: 8, border: `1.5px solid ${color.border}`, background: "#fafafa", fontSize: 12.5, fontWeight: 700, textAlign: "center", color: color.text }} />
-                          <button onClick={() => removeEntry(rowIdx, entryIdx)} style={{ background: "none", border: "none", color: color.danger, fontSize: 17, cursor: "pointer", width: 22 }}>×</button>
+                        <div key={entryIdx} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                            <select value={entry.varian} onChange={(e) => updateEntry(rowIdx, entryIdx, "varian", e.target.value)}
+                              style={{ flex: 1, padding: "8px 9px", borderRadius: 8, border: `1.5px solid ${color.border}`, background: "#fafafa", fontSize: 12.5, fontWeight: 600, color: color.text }}>
+                              <option value="">Pilih varian</option>
+                              {dropdownVarianOptions.map((v) => <option key={v} value={v}>{varianDisplayName(v)}</option>)}
+                            </select>
+                            <input type="number" inputMode="numeric" value={entry.jumlah}
+                              onChange={(e) => updateEntry(rowIdx, entryIdx, "jumlah", e.target.value)}
+                              placeholder="0"
+                              style={{ width: 64, padding: "8px 9px", borderRadius: 8, border: `1.5px solid ${color.border}`, background: "#fafafa", fontSize: 12.5, fontWeight: 700, textAlign: "center", color: color.text }} />
+                            <button onClick={() => removeEntry(rowIdx, entryIdx)} style={{ background: "none", border: "none", color: color.danger, fontSize: 17, cursor: "pointer", width: 22 }}>×</button>
+                          </div>
+                          {entry.varian && (
+                            <div style={{ paddingRight: 29 }}>
+                              <KualitasPills value={entry.kualitas} onChange={(val) => updateEntry(rowIdx, entryIdx, "kualitas", val)} />
+                            </div>
+                          )}
                         </div>
                       ))}
                       <button onClick={() => addEntry(rowIdx)}
