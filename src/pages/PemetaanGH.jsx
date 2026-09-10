@@ -31,11 +31,28 @@ function fmtNum(n) {
 
 function emptyEntry() { return { varian: "", jumlah: "" }; }
 
-// ─── Pilihan kualitas bibit per varian — Baik/Sedang/Buruk berdampingan ──────
+// ─── Pilihan kualitas bibit per varian — dipecah 3 aspek (Akar/Daun/Batang),
+// tiap aspek dinilai Buruk/Sedang/Baik lalu diakumulasi jadi 1 total poin per
+// varian. Poin: Buruk=0, Sedang=2, Baik=4 (maks 12 kalau ketiga aspek diisi). ──
 const KUALITAS_OPTIONS = ["Baik", "Sedang", "Buruk"];
 const KUALITAS_COLOR = { Baik: "#2e7d32", Sedang: "#f57f17", Buruk: "#c62828" };
+const KUALITAS_POIN  = { Baik: 4, Sedang: 2, Buruk: 0 };
+const KUALITAS_ASPEK = [
+  { key: "akar",   label: "Akar" },
+  { key: "daun",   label: "Daun" },
+  { key: "batang", label: "Batang" },
+];
 
-function KualitasPills({ value, onChange }) {
+// ── Total poin kualitas 1 varian = jumlah poin aspek yang sudah diisi (null kalau belum ada satupun) ──
+function hitungTotalKualitas(k) {
+  if (!k) return null;
+  const vals = KUALITAS_ASPEK.map((a) => k[a.key]).filter(Boolean);
+  if (vals.length === 0) return null;
+  return vals.reduce((s, v) => s + (KUALITAS_POIN[v] || 0), 0);
+}
+
+function KualitasPills({ value, onChange, size = "normal" }) {
+  const small = size === "small";
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 5 }}>
       {KUALITAS_OPTIONS.map((opt) => {
@@ -44,11 +61,11 @@ function KualitasPills({ value, onChange }) {
         return (
           <button key={opt} type="button" onClick={() => onChange(active ? "" : opt)}
             style={{
-              padding: "5px 4px", borderRadius: 7, cursor: "pointer", textAlign: "center",
+              padding: small ? "4px 3px" : "5px 4px", borderRadius: 7, cursor: "pointer", textAlign: "center",
               border: `1.5px solid ${active ? c : color.border}`,
               background: active ? `${c}14` : "#fafafa",
               color: active ? c : color.textSoft,
-              fontSize: 10.5, fontWeight: active ? 800 : 600,
+              fontSize: small ? 9.5 : 10.5, fontWeight: active ? 800 : 600,
             }}>
             {opt}
           </button>
@@ -332,8 +349,17 @@ export default function PemetaanGH() {
         };
       }),
     kualitasBibit: varianList
-      .filter((v) => kualitasVarian[v])
-      .map((v) => ({ varian: v, kualitas: kualitasVarian[v] })),
+      .filter((v) => hitungTotalKualitas(kualitasVarian[v]) !== null)
+      .map((v) => {
+        const k = kualitasVarian[v] || {};
+        return {
+          varian: v,
+          akar: k.akar || "",
+          daun: k.daun || "",
+          batang: k.batang || "",
+          totalPoin: hitungTotalKualitas(k) || 0,
+        };
+      }),
     selisih: mismatches.map((v) => ({
       varian: v,
       referensi: referensiMap[v] || 0,
@@ -604,18 +630,36 @@ export default function PemetaanGH() {
               </div>
             )}
 
-            {/* ── Kualitas bibit per varian — opsional, diisi sekali per varian sebelum submit ── */}
+            {/* ── Kualitas bibit per varian — opsional, dipecah 3 aspek (Akar/Daun/Batang),
+                 diakumulasi jadi 1 total poin per varian sebelum submit ── */}
             {varianList.length > 0 && (
               <div style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: 13, padding: "12px 13px", marginBottom: 14 }}>
                 <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase", color: color.brand900, marginBottom: 2 }}>🌱 Kualitas Bibit per Varian</div>
-                <div style={{ fontSize: 10.5, color: color.textFaint, marginBottom: 10 }}>Opsional — penilaian umum kondisi bibit tiap varian saat pindah tanam.</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {varianList.map((v) => (
-                    <div key={v}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: color.text, marginBottom: 5 }}>{v}</div>
-                      <KualitasPills value={kualitasVarian[v] || ""} onChange={(val) => setKualitasVarian((prev) => ({ ...prev, [v]: val }))} />
-                    </div>
-                  ))}
+                <div style={{ fontSize: 10.5, color: color.textFaint, marginBottom: 10 }}>Opsional — nilai Akar, Daun, Batang tiap varian. Poin: Buruk 0 · Sedang 2 · Baik 4.</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {varianList.map((v) => {
+                    const k = kualitasVarian[v] || {};
+                    const total = hitungTotalKualitas(k);
+                    return (
+                      <div key={v} style={{ border: `1px solid ${color.border}`, borderRadius: 10, padding: "9px 10px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 7 }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: color.text }}>{v}</span>
+                          <span style={{ fontSize: 11, fontWeight: 800, color: total !== null ? color.brand700 : color.textGhost }}>
+                            {total !== null ? `${total}/12` : "—/12"}
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          {KUALITAS_ASPEK.map((aspek) => (
+                            <div key={aspek.key} style={{ display: "grid", gridTemplateColumns: "50px 1fr", gap: 8, alignItems: "center" }}>
+                              <span style={{ fontSize: 10.5, color: color.textSoft, fontWeight: 600 }}>{aspek.label}</span>
+                              <KualitasPills size="small" value={k[aspek.key] || ""}
+                                onChange={(val) => setKualitasVarian((prev) => ({ ...prev, [v]: { ...prev[v], [aspek.key]: val } }))} />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

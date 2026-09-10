@@ -16,7 +16,7 @@
 //   GET  ?action=getSemaiRef   → { semai: { [ghTujuan]: { periode, tanam, varian:[{nama,populasi}] } } }
 //   POST { action:"submitPemetaan", tanggal, gh, periode, operator,
 //          rows:[{baris,isSulaman,text,entries:[{varian,jumlah}]}],
-//          kualitasBibit:[{varian,kualitas}],
+//          kualitasBibit:[{varian,akar,daun,batang,totalPoin}],
 //          selisih:[{varian,referensi,realisasi,selisih,keterangan}] }
 // ============================================================
 
@@ -34,7 +34,7 @@ const HEADER_DATA     = ['Tanggal Tanam', 'GH', 'Periode', 'Text', 'Operator'];
 const HEADER_REKAP    = ['Tanggal Tanam', 'GH', 'Periode', 'Baris', 'Varian', 'Total'];
 const HEADER_SULAMAN  = ['Tanggal Tanam', 'GH', 'Periode', 'Varian', 'Jumlah', 'Operator'];
 const HEADER_SELISIH  = ['Tanggal', 'GH', 'Periode', 'Varian', 'Referensi', 'Realisasi', 'Selisih', 'Keterangan', 'Operator'];
-const HEADER_KUALITAS = ['Tanggal', 'GH', 'Periode', 'Varian', 'Kualitas', 'Operator'];
+const HEADER_KUALITAS = ['Tanggal', 'GH', 'Periode', 'Varian', 'Akar', 'Daun', 'Batang', 'Total Poin', 'Operator'];
 
 const SS_SEMAI_ID   = '1WPHh2-wVLgMBFmV847jSmg-syJgfY_YPTbC5b0Rniuo'; // Data sprout (New)
 const SHEET_SEMAI    = 'Data sprout (New)';
@@ -220,13 +220,19 @@ function submitPemetaan(data) {
     });
   }
 
-  // Kualitas bibit — satu baris per varian per submit (opsional, bukan per baris)
+  // Kualitas bibit — satu baris per varian per submit (opsional, bukan per baris).
+  // Akar/Daun/Batang dinilai terpisah lalu diakumulasi jadi Total Poin
+  // (Buruk=0, Sedang=2, Baik=4 per aspek — sudah dihitung di sisi client).
   const kualitasBibit = data.kualitasBibit || [];
   if (kualitasBibit.length > 0) {
     const sheetKualitas = getOrCreateSheet(ss, SHEET_KUALITAS, HEADER_KUALITAS);
     kualitasBibit.forEach(function (k) {
-      if (!k.kualitas) return;
-      sheetKualitas.appendRow([tglDate, ghUpper, periode, k.varian || '', k.kualitas, operator]);
+      if (!k.akar && !k.daun && !k.batang) return;
+      sheetKualitas.appendRow([
+        tglDate, ghUpper, periode, k.varian || '',
+        k.akar || '', k.daun || '', k.batang || '', k.totalPoin || 0,
+        operator,
+      ]);
     });
   }
 
@@ -272,9 +278,9 @@ function testSubmitPemetaan() {
       { baris: 'Sulaman', isSulaman: true, text: 'Sulaman Midori 121, Greeniegal 64', entries: [{ varian: 'Midori', jumlah: 121 }, { varian: 'Greeniegal', jumlah: 64 }] },
     ],
     kualitasBibit: [
-      { varian: 'Greeniegal', kualitas: 'Baik' },
-      { varian: 'Sunray', kualitas: 'Sedang' },
-      { varian: 'Midori', kualitas: 'Buruk' },
+      { varian: 'Greeniegal', akar: 'Baik', daun: 'Baik', batang: 'Sedang', totalPoin: 10 },
+      { varian: 'Sunray', akar: 'Sedang', daun: 'Sedang', batang: 'Sedang', totalPoin: 6 },
+      { varian: 'Midori', akar: 'Buruk', daun: 'Sedang', batang: 'Buruk', totalPoin: 2 },
     ],
     selisih: [
       { varian: 'S7', referensi: 210, realisasi: 200, selisih: -10, keterangan: 'Test dari GAS - boleh dihapus' },
