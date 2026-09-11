@@ -16,8 +16,15 @@
 //   GET  ?action=getSemaiRef   → { semai: { [ghTujuan]: { periode, tanam, varian:[{nama,populasi}] } } }
 //   POST { action:"submitPemetaan", tanggal, gh, periode, operator,
 //          rows:[{baris,isSulaman,text,entries:[{varian,jumlah}]}],
-//          kualitasBibit:[{varian,akar,daun,batang,totalPoin}],
+//          kualitasBibit:[{varian,akarSkor,akarDeskripsi,batangSkor,batangDeskripsi,
+//                          daunSkor,daunDeskripsi,totalPoin,kategori}],
 //          selisih:[{varian,referensi,realisasi,selisih,keterangan}] }
+//
+// Kualitas bibit: tiap aspek (Akar/Batang/Daun) dinilai pakai kriteria
+// deskriptif (bukan cuma label), skor tetap 4/2/0 per kriteria. Kategori
+// akhir (Baik 10-12 / Sedang 6-8 / Buruk 0-4) dihitung di client dari total
+// skor, dikirim apa adanya supaya sheet langsung berisi bentuk final —
+// tidak perlu dihitung ulang di sisi GAS/spreadsheet.
 // ============================================================
 
 const SS_OUTPUT_ID  = '1BdmHTbxtzEu3PKRJ607Tm4fDJehKAPw1Pbo5mEEqNi8';
@@ -34,7 +41,13 @@ const HEADER_DATA     = ['Tanggal Tanam', 'GH', 'Periode', 'Text', 'Operator'];
 const HEADER_REKAP    = ['Tanggal Tanam', 'GH', 'Periode', 'Baris', 'Varian', 'Total'];
 const HEADER_SULAMAN  = ['Tanggal Tanam', 'GH', 'Periode', 'Varian', 'Jumlah', 'Operator'];
 const HEADER_SELISIH  = ['Tanggal', 'GH', 'Periode', 'Varian', 'Referensi', 'Realisasi', 'Selisih', 'Keterangan', 'Operator'];
-const HEADER_KUALITAS = ['Tanggal', 'GH', 'Periode', 'Varian', 'Akar', 'Daun', 'Batang', 'Total Poin', 'Operator'];
+const HEADER_KUALITAS = [
+  'Tanggal', 'GH', 'Periode', 'Varian',
+  'Skor Akar', 'Deskripsi Akar',
+  'Skor Batang', 'Deskripsi Batang',
+  'Skor Daun', 'Deskripsi Daun',
+  'Total Poin', 'Kategori', 'Operator',
+];
 
 const SS_SEMAI_ID   = '1WPHh2-wVLgMBFmV847jSmg-syJgfY_YPTbC5b0Rniuo'; // Data sprout (New)
 const SHEET_SEMAI    = 'Data sprout (New)';
@@ -221,16 +234,19 @@ function submitPemetaan(data) {
   }
 
   // Kualitas bibit — satu baris per varian per submit (opsional, bukan per baris).
-  // Akar/Daun/Batang dinilai terpisah lalu diakumulasi jadi Total Poin
-  // (Buruk=0, Sedang=2, Baik=4 per aspek — sudah dihitung di sisi client).
+  // Skor & deskripsi tiap aspek (Akar/Batang/Daun) + Total Poin + Kategori
+  // final (Baik/Sedang/Buruk) sudah dihitung di sisi client, GAS tinggal simpan apa adanya.
   const kualitasBibit = data.kualitasBibit || [];
   if (kualitasBibit.length > 0) {
     const sheetKualitas = getOrCreateSheet(ss, SHEET_KUALITAS, HEADER_KUALITAS);
     kualitasBibit.forEach(function (k) {
-      if (!k.akar && !k.daun && !k.batang) return;
+      if (!k.kategori) return; // skip kalau belum lengkap ketiga aspeknya
       sheetKualitas.appendRow([
         tglDate, ghUpper, periode, k.varian || '',
-        k.akar || '', k.daun || '', k.batang || '', k.totalPoin || 0,
+        k.akarSkor, k.akarDeskripsi || '',
+        k.batangSkor, k.batangDeskripsi || '',
+        k.daunSkor, k.daunDeskripsi || '',
+        k.totalPoin, k.kategori,
         operator,
       ]);
     });
@@ -278,9 +294,27 @@ function testSubmitPemetaan() {
       { baris: 'Sulaman', isSulaman: true, text: 'Sulaman Midori 121, Greeniegal 64', entries: [{ varian: 'Midori', jumlah: 121 }, { varian: 'Greeniegal', jumlah: 64 }] },
     ],
     kualitasBibit: [
-      { varian: 'Greeniegal', akar: 'Baik', daun: 'Baik', batang: 'Sedang', totalPoin: 10 },
-      { varian: 'Sunray', akar: 'Sedang', daun: 'Sedang', batang: 'Sedang', totalPoin: 6 },
-      { varian: 'Midori', akar: 'Buruk', daun: 'Sedang', batang: 'Buruk', totalPoin: 2 },
+      {
+        varian: 'Greeniegal',
+        akarSkor: 4, akarDeskripsi: 'Akar serabut lebat & merata, media terikat penuh (>90%)',
+        batangSkor: 2, batangDeskripsi: 'Diameter batang agak kurus (etiolasi ringan)',
+        daunSkor: 4, daunDeskripsi: 'Warna hijau segar, jumlah daun ≥ 3',
+        totalPoin: 10, kategori: 'Baik',
+      },
+      {
+        varian: 'Sunray',
+        akarSkor: 2, akarDeskripsi: 'Akar serabut cukup, media terikat sebagian (60-90%)',
+        batangSkor: 2, batangDeskripsi: 'Diameter batang agak kurus (etiolasi ringan)',
+        daunSkor: 2, daunDeskripsi: 'Warna hijau pucat, jumlah daun < 3',
+        totalPoin: 6, kategori: 'Sedang',
+      },
+      {
+        varian: 'Midori',
+        akarSkor: 0, akarDeskripsi: 'Akar sedikit/rusak, media tidak terikat (<60%)',
+        batangSkor: 0, batangDeskripsi: 'Batang rebah, etiolasi (kurus & memanjang)',
+        daunSkor: 2, daunDeskripsi: 'Warna hijau pucat, jumlah daun < 3',
+        totalPoin: 2, kategori: 'Buruk',
+      },
     ],
     selisih: [
       { varian: 'S7', referensi: 210, realisasi: 200, selisih: -10, keterangan: 'Test dari GAS - boleh dihapus' },

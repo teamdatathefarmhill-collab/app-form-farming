@@ -31,43 +31,72 @@ function fmtNum(n) {
 
 function emptyEntry() { return { varian: "", jumlah: "" }; }
 
-// ─── Pilihan kualitas bibit per varian — dipecah 3 aspek (Akar/Daun/Batang),
-// tiap aspek dinilai Buruk/Sedang/Baik lalu diakumulasi jadi 1 total poin per
-// varian. Poin: Buruk=0, Sedang=2, Baik=4 (maks 12 kalau ketiga aspek diisi). ──
-const KUALITAS_OPTIONS = ["Baik", "Sedang", "Buruk"];
-const KUALITAS_COLOR = { Baik: "#2e7d32", Sedang: "#f57f17", Buruk: "#c62828" };
-const KUALITAS_POIN  = { Baik: 4, Sedang: 2, Buruk: 0 };
+// ─── Kualitas bibit per varian — dipecah 3 aspek (Akar/Batang/Daun), tiap
+// aspek dinilai lewat 1 dari 3 kriteria deskriptif (bukan cuma label generik),
+// masing-masing punya skor tetap (4/2/0). Total skor (maks 12) lalu dipetakan
+// jadi kategori akhir: 10-12 Baik, 6-8 Sedang, 0-4 Buruk. Sum 3 nilai dari
+// {0,2,4} selalu genap, jadi 3 rentang ini otomatis menutup semua kemungkinan. ──
+const KUALITAS_ASPEK_OPTIONS = {
+  akar: [
+    { skor: 4, deskripsi: "Akar serabut lebat & merata, media terikat penuh (>90%)" },
+    { skor: 2, deskripsi: "Akar serabut cukup, media terikat sebagian (60-90%)" },
+    { skor: 0, deskripsi: "Akar sedikit/rusak, media tidak terikat (<60%)" },
+  ],
+  batang: [
+    { skor: 4, deskripsi: "Diameter besar, batang tegak" },
+    { skor: 2, deskripsi: "Diameter batang agak kurus (etiolasi ringan)" },
+    { skor: 0, deskripsi: "Batang rebah, etiolasi (kurus & memanjang)" },
+  ],
+  daun: [
+    { skor: 4, deskripsi: "Warna hijau segar, jumlah daun ≥ 3" },
+    { skor: 2, deskripsi: "Warna hijau pucat, jumlah daun < 3" },
+    { skor: 0, deskripsi: "Daun klorosis (menguning), jumlah daun < 3" },
+  ],
+};
 const KUALITAS_ASPEK = [
   { key: "akar",   label: "Akar" },
-  { key: "daun",   label: "Daun" },
   { key: "batang", label: "Batang" },
+  { key: "daun",   label: "Daun" },
 ];
+const KUALITAS_SKOR_COLOR = { 4: "#2e7d32", 2: "#f57f17", 0: "#c62828" };
 
-// ── Total poin kualitas 1 varian = jumlah poin aspek yang sudah diisi (null kalau belum ada satupun) ──
+// ── Total skor 1 varian = jumlah skor Akar+Batang+Daun. Kategori (Baik/Sedang/
+// Buruk) cuma valid kalau ketiganya sudah dinilai, jadi total di sini juga
+// null kalau salah satu aspek masih kosong (biar tidak misleading). ──
 function hitungTotalKualitas(k) {
   if (!k) return null;
-  const vals = KUALITAS_ASPEK.map((a) => k[a.key]).filter(Boolean);
-  if (vals.length === 0) return null;
-  return vals.reduce((s, v) => s + (KUALITAS_POIN[v] || 0), 0);
+  const vals = KUALITAS_ASPEK.map((a) => k[a.key]).filter((v) => v !== undefined && v !== "" && v !== null);
+  if (vals.length < KUALITAS_ASPEK.length) return null;
+  return vals.reduce((s, v) => s + Number(v), 0);
 }
 
-function KualitasPills({ value, onChange, size = "normal" }) {
-  const small = size === "small";
+// ── Kategori akhir dari total skor (hanya valid & tampil kalau ketiga aspek sudah diisi) ──
+function kategoriKualitas(total) {
+  if (total === null) return null;
+  if (total >= 10) return "Baik";
+  if (total >= 6) return "Sedang";
+  return "Buruk";
+}
+
+// ── Pilihan deskriptif 1 aspek — list vertikal (bukan pil sejajar) karena teksnya panjang ──
+function AspekOptionList({ aspekKey, value, onChange }) {
+  const options = KUALITAS_ASPEK_OPTIONS[aspekKey];
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 5 }}>
-      {KUALITAS_OPTIONS.map((opt) => {
-        const active = value === opt;
-        const c = KUALITAS_COLOR[opt];
+    <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+      {options.map((opt) => {
+        const active = value === opt.skor;
+        const c = KUALITAS_SKOR_COLOR[opt.skor];
         return (
-          <button key={opt} type="button" onClick={() => onChange(active ? "" : opt)}
+          <button key={opt.skor} type="button" onClick={() => onChange(active ? "" : opt.skor)}
             style={{
-              padding: small ? "4px 3px" : "5px 4px", borderRadius: 7, cursor: "pointer", textAlign: "center",
+              display: "flex", alignItems: "flex-start", gap: 6, textAlign: "left", padding: "6px 8px", borderRadius: 8, cursor: "pointer",
               border: `1.5px solid ${active ? c : color.border}`,
-              background: active ? `${c}14` : "#fafafa",
+              background: active ? `${c}12` : "#fafafa",
               color: active ? c : color.textSoft,
-              fontSize: small ? 9.5 : 10.5, fontWeight: active ? 800 : 600,
+              fontSize: 10.5, fontWeight: active ? 700 : 500, lineHeight: 1.35,
             }}>
-            {opt}
+            <span style={{ flexShrink: 0, marginTop: 1 }}>{active ? "●" : "○"}</span>
+            <span>{opt.deskripsi} <span style={{ opacity: 0.7, fontWeight: 700 }}>({opt.skor})</span></span>
           </button>
         );
       })}
@@ -352,12 +381,15 @@ export default function PemetaanGH() {
       .filter((v) => hitungTotalKualitas(kualitasVarian[v]) !== null)
       .map((v) => {
         const k = kualitasVarian[v] || {};
+        const total = hitungTotalKualitas(k);
+        const deskripsi = (aspekKey) => (KUALITAS_ASPEK_OPTIONS[aspekKey].find((o) => o.skor === k[aspekKey]) || {}).deskripsi || "";
         return {
           varian: v,
-          akar: k.akar || "",
-          daun: k.daun || "",
-          batang: k.batang || "",
-          totalPoin: hitungTotalKualitas(k) || 0,
+          akarSkor: k.akar, akarDeskripsi: deskripsi("akar"),
+          batangSkor: k.batang, batangDeskripsi: deskripsi("batang"),
+          daunSkor: k.daun, daunDeskripsi: deskripsi("daun"),
+          totalPoin: total,
+          kategori: kategoriKualitas(total),
         };
       }),
     selisih: mismatches.map((v) => ({
@@ -635,24 +667,25 @@ export default function PemetaanGH() {
             {varianList.length > 0 && (
               <div style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: 13, padding: "12px 13px", marginBottom: 14 }}>
                 <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase", color: color.brand900, marginBottom: 2 }}>🌱 Kualitas Bibit per Varian</div>
-                <div style={{ fontSize: 10.5, color: color.textFaint, marginBottom: 10 }}>Opsional — nilai Akar, Daun, Batang tiap varian. Poin: Buruk 0 · Sedang 2 · Baik 4.</div>
+                <div style={{ fontSize: 10.5, color: color.textFaint, marginBottom: 10 }}>Opsional — nilai Akar, Batang, Daun tiap varian sesuai kondisi yang paling cocok. Total skor menentukan kategori akhir.</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {varianList.map((v) => {
                     const k = kualitasVarian[v] || {};
                     const total = hitungTotalKualitas(k);
+                    const kategori = kategoriKualitas(total);
                     return (
                       <div key={v} style={{ border: `1px solid ${color.border}`, borderRadius: 10, padding: "9px 10px" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 7 }}>
                           <span style={{ fontSize: 12, fontWeight: 700, color: color.text }}>{v}</span>
-                          <span style={{ fontSize: 11, fontWeight: 800, color: total !== null ? color.brand700 : color.textGhost }}>
-                            {total !== null ? `${total}/12` : "—/12"}
+                          <span style={{ fontSize: 11, fontWeight: 800, color: total !== null ? KUALITAS_SKOR_COLOR[kategori === "Baik" ? 4 : kategori === "Sedang" ? 2 : 0] : color.textGhost }}>
+                            {total !== null ? `${total}/12 · ${kategori}` : "Belum lengkap"}
                           </span>
                         </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
                           {KUALITAS_ASPEK.map((aspek) => (
-                            <div key={aspek.key} style={{ display: "grid", gridTemplateColumns: "50px 1fr", gap: 8, alignItems: "center" }}>
-                              <span style={{ fontSize: 10.5, color: color.textSoft, fontWeight: 600 }}>{aspek.label}</span>
-                              <KualitasPills size="small" value={k[aspek.key] || ""}
+                            <div key={aspek.key}>
+                              <div style={{ fontSize: 10.5, color: color.textSoft, fontWeight: 700, marginBottom: 4 }}>{aspek.label}</div>
+                              <AspekOptionList aspekKey={aspek.key} value={k[aspek.key] === undefined ? "" : k[aspek.key]}
                                 onChange={(val) => setKualitasVarian((prev) => ({ ...prev, [v]: { ...prev[v], [aspek.key]: val } }))} />
                             </div>
                           ))}
