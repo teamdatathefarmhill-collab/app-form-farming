@@ -29,10 +29,11 @@ const GH_PER_TIPE = {
 
 const TIPE_LIST = Object.keys(GH_PER_TIPE);
 const isMultiSuhuRH = (gh) => gh === "SAWAHAN 3" || gh === "SAWAHAN 4";
-// GH yang fisiknya masih pakai instalasi Dutch Bucket (walau tipe form-nya sekarang "Drip") —
-// field yang diisi tetap field Tandon/Bucket, diulang sesuai jumlah instalasi fisiknya.
-const DB_GH_ROWS = { "TOHUDAN 18": 2 };
-const isDbGH = (gh) => Object.prototype.hasOwnProperty.call(DB_GH_ROWS, gh);
+// GH yang fisiknya punya instalasi Dutch Bucket TAMBAHAN di samping Drip biasa (walau tipe
+// form-nya sekarang "Drip") — form untuk GH ini isi field varian Drip SEKALIGUS field
+// Tandon/Bucket, disubmit jadi baris-baris terpisah (per varian + 1 baris Dutch Bucket).
+const DB_GH_LIST = ["TOHUDAN 18"];
+const isDbGH = (gh) => DB_GH_LIST.includes(gh);
 const RND_REF_GH_LIST = ["SAWAHAN TUNNEL 1", "TOHUDAN 22", "OPEN FIELD 1"];
 const isRndRefGH = (gh) => RND_REF_GH_LIST.includes((gh || "").toUpperCase().trim());
 
@@ -150,7 +151,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
   const [loadingRef, setLoadingRef] = useState(true);
   const [varianData, setVarianData] = useState(_draft?.varianData || {});
   const [nutrisi, setNutrisi]       = useState(_draft?.nutrisi || "");
-  const [dbDataArr, setDbDataArr] = useState(_draft?.dbDataArr || [initDbData()]);
+  const [dbData, setDbData]         = useState(_draft?.dbData || initDbData());
 
   useEffect(() => {
     gasFetch(`${SCRIPT_URL}?action=getREF`)
@@ -161,21 +162,21 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
 
   useEffect(() => {
     if (step === 4) return;
-    saveDraft({ step, tipe, gh, operator, varianData, dbDataArr, nutrisi });
-  }, [step, tipe, gh, operator, varianData, dbDataArr, nutrisi]);
+    saveDraft({ step, tipe, gh, operator, varianData, dbData, nutrisi });
+  }, [step, tipe, gh, operator, varianData, dbData, nutrisi]);
 
+  // GH18: isian Drip (per varian) DAN Dutch Bucket (Tandon/Bucket) sekaligus, bukan salah satu.
   const isDB        = isDbGH(gh);
   const multiSuhuRH = isMultiSuhuRH(gh);
   const refSource   = isRndRefGH(gh) ? refDataRnd : refData;
-  const varianList  = !isDB && gh ? (refSource[gh]?.varian?.length > 0 ? refSource[gh].varian : ["Elysia", "Greeniegal"]) : [];
+  const varianList  = gh ? (refSource[gh]?.varian?.length > 0 ? refSource[gh].varian : ["Elysia", "Greeniegal"]) : [];
 
   const hst = refSource[gh]?.hst ?? null;
   const allVarianErrors = {};
-  if (!isDB) varianList.forEach(v => { allVarianErrors[v] = getVarianErrors(varianData[v] || initVarianData()); });
-  const dbErrorsArr = isDB ? dbDataArr.map(getDbErrors) : [];
-  const hasValidationError = isDB
-    ? dbErrorsArr.some(e => Object.keys(e).length > 0)
-    : Object.values(allVarianErrors).some(e => Object.keys(e).length > 0);
+  varianList.forEach(v => { allVarianErrors[v] = getVarianErrors(varianData[v] || initVarianData()); });
+  const dbErrors = isDB ? getDbErrors(dbData) : {};
+  const hasValidationError = Object.values(allVarianErrors).some(e => Object.keys(e).length > 0)
+    || Object.keys(dbErrors).length > 0;
 
   const handleSelectGH = (g) => {
     // Menu Penyiraman: GH Shutdown/Restart tetap bisa dipilih & diisi (tidak diblokir)
@@ -185,8 +186,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
     vList.forEach(v => { init[v] = initVarianData(); });
     setVarianData(init);
     setNutrisi(refSource[g]?.nutrisi || "");
-    const rows = DB_GH_ROWS[g] || 1;
-    setDbDataArr(Array.from({ length: rows }, () => initDbData()));
+    setDbData(initDbData());
   };
 
   // ── Auto-pilih tipe+GH dari jadwal harian (Home Koor GH) — tidak mengubah alur normal ──
@@ -211,7 +211,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
   const updateVarian  = (v, key, val) => setVarianData(prev => ({ ...prev, [v]: { ...prev[v], [key]: val } }));
   const updateSuhuArr = (v, idx, val) => setVarianData(prev => { const a = [...(prev[v]?.suhuArr||["","","",""])]; a[idx]=val; return { ...prev, [v]: { ...prev[v], suhuArr: a } }; });
   const updateRhArr   = (v, idx, val) => setVarianData(prev => { const a = [...(prev[v]?.rhArr  ||["","","",""])]; a[idx]=val; return { ...prev, [v]: { ...prev[v], rhArr:   a } }; });
-  const updateDb      = (idx, key, val) => setDbDataArr(prev => { const next = [...prev]; next[idx] = { ...next[idx], [key]: val }; return next; });
+  const updateDb      = (key, val)    => setDbData(prev => ({ ...prev, [key]: val }));
 
   // Auto-fill: varian pertama sebar ke semua varian lain setelah berhenti ketik 400ms
   // Varian lain bebas diedit sendiri tanpa mempengaruhi siapapun
@@ -281,7 +281,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
     clearDraft();
     setStep(1); setTipe(""); setGh(""); setSubmitError(null); setOperator("");
     setVarianData({}); setSubmitProgress({ done: 0, total: 0 }); setNutrisi("");
-    setDbDataArr([initDbData()]);
+    setDbData(initDbData());
   };
 
   const canNext = () => {
@@ -289,14 +289,15 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
     if (step === 2) {
       if (operator.trim().length < 2) return false;
       if (hasValidationError) return false;
-      if (isDB) return dbDataArr.every(d => Object.values(d).every(v => v !== ""));
-      return varianList.every(v => {
+      const varianOk = varianList.every(v => {
         const d = varianData[v];
         if (!d) return false;
         const base = d.ecIn !== "" && d.ecOut !== "" && d.phIn !== "" && d.phOut !== "" && d.volume !== "" && d.volNutrisi !== "";
         if (multiSuhuRH) return base && d.suhuArr.every(x => x !== "") && d.rhArr.every(x => x !== "");
         return base && d.suhu !== "" && d.rh !== "";
       });
+      const dbOk = isDB ? Object.values(dbData).every(v => v !== "") : true;
+      return varianOk && dbOk;
     }
     if (step === 3) return true;
     return true;
@@ -304,21 +305,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
 
   const buildPayloads = () => {
     const client_timestamp = new Date().toISOString();
-    if (isDB) {
-      return dbDataArr.map((d, idx) => ({
-        action: "submitPenyiraman",
-        client_timestamp,
-        tanggal: todayISO, operator: operator || user?.nama || "", tipe, gh,
-        varian: dbDataArr.length > 1 ? `Baris ${idx + 1}` : "",
-        ecIn: "", ecOut: "", phIn: "", phOut: "", volume: "",
-        volNutrisi: d.volNutrisi || "0", suhu: d.suhu || "0", rh: d.rh || "0",
-        ecTandon: d.ecTandon || "0", ecBucket: d.ecBucket || "0",
-        phTandon: d.phTandon || "0", phBucket: d.phBucket || "0",
-        doTandon: d.doTandon || "0", doBucket: d.doBucket || "0",
-        nutrisi: nutrisi || "",
-      }));
-    }
-    return varianList.map(v => {
+    const varianPayloads = varianList.map(v => {
       const d = varianData[v] || initVarianData();
       const suhuVal = multiSuhuRH ? d.suhuArr.join(", ") : (d.suhu || "0");
       const rhVal   = multiSuhuRH ? d.rhArr.join(", ")   : (d.rh   || "0");
@@ -334,6 +321,20 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
         nutrisi: nutrisi || "",
       };
     });
+    if (!isDB) return varianPayloads;
+    // GH dengan instalasi Dutch Bucket tambahan — kirim 1 baris ekstra di luar varian drip
+    const dbPayload = {
+      action: "submitPenyiraman",
+      client_timestamp,
+      tanggal: todayISO, operator: operator || user?.nama || "", tipe, gh, varian: "Dutch Bucket",
+      ecIn: "", ecOut: "", phIn: "", phOut: "", volume: "",
+      volNutrisi: dbData.volNutrisi || "0", suhu: dbData.suhu || "0", rh: dbData.rh || "0",
+      ecTandon: dbData.ecTandon || "0", ecBucket: dbData.ecBucket || "0",
+      phTandon: dbData.phTandon || "0", phBucket: dbData.phBucket || "0",
+      doTandon: dbData.doTandon || "0", doBucket: dbData.doBucket || "0",
+      nutrisi: nutrisi || "",
+    };
+    return [...varianPayloads, dbPayload];
   };
 
   const handleSubmit = async () => {
@@ -440,7 +441,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
                   })}
                 </div>
 
-                {gh && !isDB && varianList.length > 0 && (
+                {gh && varianList.length > 0 && (
                   <div style={{ marginTop: 14, background: color.brandBg, border: `1px solid ${color.brand300}`, borderRadius: 10, padding: "10px 14px" }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: color.brand700, marginBottom: 6 }}>🌱 Varian yang akan diisi ({varianList.length})</div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -448,6 +449,11 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
                         <span key={v} style={{ fontSize: 12, background: color.card, border: `1px solid ${color.brand300}`, borderRadius: 20, padding: "3px 10px", color: color.brand700, fontWeight: 600 }}>{v}</span>
                       ))}
                     </div>
+                  </div>
+                )}
+                {gh && isDB && (
+                  <div style={{ marginTop: 10, background: "#fff3e0", border: "1px solid #ffcc80", borderRadius: 10, padding: "8px 14px" }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#e65100" }}>💧 GH ini juga punya instalasi Dutch Bucket — nanti isi field Tandon/Bucket tambahan</div>
                   </div>
                 )}
               </div>
@@ -508,35 +514,28 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
               />
             </div>
 
-            {/* Dutch Bucket — diulang per instalasi fisik (mis. TOHUDAN 18 = 2 baris) */}
+            {/* Dutch Bucket — instalasi tambahan di samping Drip (mis. TOHUDAN 18) */}
             {isDB && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {dbDataArr.map((d, idx) => {
-                  const errs = dbErrorsArr[idx] || {};
-                  return (
-                    <div key={idx} style={{ background: color.card, borderRadius: 12, border: `1.5px solid ${color.border}`, padding: 14 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#0277bd", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>
-                        💧 Data Tandon & Bucket{dbDataArr.length > 1 ? ` — Baris ${idx + 1}` : ""}
-                      </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                        <Field label="EC Tandon"  value={d.ecTandon}  onChange={v => updateDb(idx, "ecTandon",  v)} satuan="mS/cm" error={errs.ecTandon} />
-                        <Field label="EC Bucket"  value={d.ecBucket}  onChange={v => updateDb(idx, "ecBucket",  v)} satuan="mS/cm" error={errs.ecBucket} />
-                        <Field label="pH Tandon"  value={d.phTandon}  onChange={v => updateDb(idx, "phTandon",  v)} error={errs.phTandon} />
-                        <Field label="pH Bucket"  value={d.phBucket}  onChange={v => updateDb(idx, "phBucket",  v)} error={errs.phBucket} />
-                        <Field label="DO Tandon"  value={d.doTandon}  onChange={v => updateDb(idx, "doTandon",  v)} satuan="mg/L" />
-                        <Field label="DO Bucket"  value={d.doBucket}  onChange={v => updateDb(idx, "doBucket",  v)} satuan="mg/L" />
-                        <Field label="Suhu"       value={d.suhu}      onChange={v => updateDb(idx, "suhu",      v)} satuan="°C" />
-                        <Field label="RH"         value={d.rh}        onChange={v => updateDb(idx, "rh",        v)} satuan="%" />
-                      </div>
-                      <Field label="Volume Nutrisi" value={d.volNutrisi} onChange={v => updateDb(idx, "volNutrisi", v)} satuan="L" />
-                    </div>
-                  );
-                })}
+              <div style={{ background: color.card, borderRadius: 12, border: `1.5px solid ${color.border}`, padding: 14, marginBottom: 14 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#e65100", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>
+                  💧 Data Tandon & Bucket (Dutch Bucket)
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <Field label="EC Tandon"  value={dbData.ecTandon}  onChange={v => updateDb("ecTandon",  v)} satuan="mS/cm" error={dbErrors.ecTandon} />
+                  <Field label="EC Bucket"  value={dbData.ecBucket}  onChange={v => updateDb("ecBucket",  v)} satuan="mS/cm" error={dbErrors.ecBucket} />
+                  <Field label="pH Tandon"  value={dbData.phTandon}  onChange={v => updateDb("phTandon",  v)} error={dbErrors.phTandon} />
+                  <Field label="pH Bucket"  value={dbData.phBucket}  onChange={v => updateDb("phBucket",  v)} error={dbErrors.phBucket} />
+                  <Field label="DO Tandon"  value={dbData.doTandon}  onChange={v => updateDb("doTandon",  v)} satuan="mg/L" />
+                  <Field label="DO Bucket"  value={dbData.doBucket}  onChange={v => updateDb("doBucket",  v)} satuan="mg/L" />
+                  <Field label="Suhu"       value={dbData.suhu}      onChange={v => updateDb("suhu",      v)} satuan="°C" />
+                  <Field label="RH"         value={dbData.rh}        onChange={v => updateDb("rh",        v)} satuan="%" />
+                </div>
+                <Field label="Volume Nutrisi" value={dbData.volNutrisi} onChange={v => updateDb("volNutrisi", v)} satuan="L" />
               </div>
             )}
 
-            {/* Multi varian */}
-            {!isDB && (
+            {/* Multi varian (Drip) */}
+            {varianList.length > 0 && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {varianList.map(v => {
               const d    = varianData[v] || initVarianData();
@@ -606,10 +605,10 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
               <RekapRow label="Tipe GH"  value={tipe} />
               <RekapRow label="GH"       value={gh} />
               <RekapRow label="Nutrisi"  value={nutrisi} />
-              {!isDB && <RekapRow label="Jumlah Varian" value={`${varianList.length} varian`} />}
+              {varianList.length > 0 && <RekapRow label="Jumlah Varian" value={`${varianList.length} varian`} />}
             </div>
 
-            {!isDB && varianList.map(v => {
+            {varianList.map(v => {
               const d = varianData[v] || initVarianData();
               return (
                 <div key={v} style={{ background: color.card, borderRadius: 14, padding: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 10 }}>
@@ -635,22 +634,22 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
               );
             })}
 
-            {isDB && dbDataArr.map((d, idx) => (
-              <div key={idx} style={{ background: color.card, borderRadius: 14, padding: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 10 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#0277bd", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
-                  💧 Data Tandon & Bucket{dbDataArr.length > 1 ? ` — Baris ${idx + 1}` : ""}
+            {isDB && (
+              <div style={{ background: color.card, borderRadius: 14, padding: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 10 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#e65100", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+                  💧 Data Tandon & Bucket (Dutch Bucket)
                 </div>
-                <RekapRow label="EC Tandon"      value={d.ecTandon}   satuan="mS/cm" />
-                <RekapRow label="EC Bucket"      value={d.ecBucket}   satuan="mS/cm" />
-                <RekapRow label="pH Tandon"      value={d.phTandon} />
-                <RekapRow label="pH Bucket"      value={d.phBucket} />
-                <RekapRow label="DO Tandon"      value={d.doTandon}   satuan="mg/L" />
-                <RekapRow label="DO Bucket"      value={d.doBucket}   satuan="mg/L" />
-                <RekapRow label="Suhu"           value={d.suhu}       satuan="°C" />
-                <RekapRow label="RH"             value={d.rh}         satuan="%" />
-                <RekapRow label="Volume Nutrisi" value={d.volNutrisi} satuan="L" />
+                <RekapRow label="EC Tandon"      value={dbData.ecTandon}   satuan="mS/cm" />
+                <RekapRow label="EC Bucket"      value={dbData.ecBucket}   satuan="mS/cm" />
+                <RekapRow label="pH Tandon"      value={dbData.phTandon} />
+                <RekapRow label="pH Bucket"      value={dbData.phBucket} />
+                <RekapRow label="DO Tandon"      value={dbData.doTandon}   satuan="mg/L" />
+                <RekapRow label="DO Bucket"      value={dbData.doBucket}   satuan="mg/L" />
+                <RekapRow label="Suhu"           value={dbData.suhu}       satuan="°C" />
+                <RekapRow label="RH"             value={dbData.rh}         satuan="%" />
+                <RekapRow label="Volume Nutrisi" value={dbData.volNutrisi} satuan="L" />
               </div>
-            ))}
+            )}
 
 
 
@@ -674,17 +673,18 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
             <div style={{ fontSize: 60, marginBottom: 12 }}>✅</div>
             <div style={{ fontSize: 21, fontWeight: 800, color: "#0277bd", marginBottom: 6 }}>Data Tersimpan!</div>
             <div style={{ fontSize: 13, color: color.textSoft, marginBottom: 20 }}>
-              {isDB ? `Data Dutch Bucket (${dbDataArr.length} baris)` : `${varianList.length} varian`} berhasil dikirim ke Google Sheets
+              {varianList.length} varian{isDB ? " + Data Dutch Bucket" : ""} berhasil dikirim ke Google Sheets
             </div>
             <div style={{ background: "#e1f5fe", border: "1px solid #81d4fa", borderRadius: 14, padding: 16, textAlign: "left", marginBottom: 20 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "#0277bd" }}>{gh} · {tipe}</div>
-              {!isDB && (
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-                  {varianList.map(v => (
-                    <span key={v} style={{ fontSize: 11, background: color.brandBg, border: `1px solid ${color.brand300}`, borderRadius: 20, padding: "2px 10px", color: color.brand700, fontWeight: 600 }}>🌱 {v}</span>
-                  ))}
-                </div>
-              )}
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+                {varianList.map(v => (
+                  <span key={v} style={{ fontSize: 11, background: color.brandBg, border: `1px solid ${color.brand300}`, borderRadius: 20, padding: "2px 10px", color: color.brand700, fontWeight: 600 }}>🌱 {v}</span>
+                ))}
+                {isDB && (
+                  <span style={{ fontSize: 11, background: "#fff3e0", border: "1px solid #ffcc80", borderRadius: 20, padding: "2px 10px", color: "#e65100", fontWeight: 600 }}>💧 Dutch Bucket</span>
+                )}
+              </div>
               <div style={{ fontSize: 13, color: color.textMuted, marginTop: 8 }}>Operator: {operator || user?.nama} · {todayISO}</div>
             </div>
             {onDone ? (
@@ -726,7 +726,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
           {step === 3 && (
             <button onClick={() => setConfirmOpen(true)} disabled={submitting}
               style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: submitting ? color.border : "linear-gradient(135deg,#0277bd,#0288d1)", color: submitting ? color.textGhost : color.card, fontSize: 15, fontWeight: 700, cursor: submitting ? "not-allowed" : "pointer" }}>
-              {submitting ? `⏳ Mengirim...` : `Submit ${isDB ? dbDataArr.length + " Baris" : varianList.length + " Varian"} ✓`}
+              {submitting ? `⏳ Mengirim...` : `Submit ${varianList.length} Varian${isDB ? " + DB" : ""} ✓`}
             </button>
           )}
         </div>
@@ -743,7 +743,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
           { label: "GH",       value: gh },
           { label: "Tipe",     value: tipe },
           { label: "Nutrisi",  value: nutrisi },
-          { label: "Varian",   value: isDB ? `Dutch Bucket (${dbDataArr.length} baris)` : `${varianList.length} varian` },
+          { label: "Varian",   value: `${varianList.length} varian${isDB ? " + Dutch Bucket" : ""}` },
           { label: "Operator", value: operator || user?.nama || "" },
         ]}
       />

@@ -16,10 +16,11 @@
 const SHEET_PENYIRAMAN = "Form Penyiraman";
 const SS_REF_ID        = "1tIJzuTBXcM7Wks03pgsyVicJUCtDs9Ak0N89K9GlKe4"; // Spreadsheet REF
 
-// GH yang fisiknya masih pakai instalasi Dutch Bucket (walau tipe form-nya sekarang "Drip") —
-// harus sinkron dengan DB_GH_ROWS di src/pages/Penyiraman.jsx
-const DB_GH_LIST = ["TOHUDAN 18"];
-function isDbRow(d) { return DB_GH_LIST.includes(String(d.gh || "").toUpperCase().trim()); }
+// GH tertentu (mis. TOHUDAN 18) kirim isian Drip per varian SEKALIGUS 1 baris Dutch Bucket
+// tambahan — baris DB ditandai lewat kolom varian, bukan lewat GH/tipe (keduanya sama
+// dengan baris varian drip di GH yang sama). Harus sinkron dengan buildPayloads() di
+// src/pages/Penyiraman.jsx.
+function isDbRow(d) { return String(d.varian || "").trim() === "Dutch Bucket"; }
 
 // ── Cache global (hidup selama instance GAS warm) ────────────
 let _ss     = null;
@@ -401,34 +402,47 @@ function testInsertPenyiraman() {
   Logger.log("✅ Test insert Penyiraman berhasil.");
 }
 
-// TOHUDAN 18 secara fisik masih instalasi Dutch Bucket (2 baris), walau tipe form-nya "Drip"
+// TOHUDAN 18: instalasi Drip biasa (per varian) DITAMBAH 1 instalasi Dutch Bucket —
+// baris drip dan baris DB dikirim sekaligus dalam satu submit, dibedakan via kolom varian.
 function testInsertDB() {
   const ss    = getSS();
   let sheet   = ss.getSheetByName(SHEET_PENYIRAMAN);
   if (!sheet) { sheet = ss.insertSheet(SHEET_PENYIRAMAN); setupHeaderPenyiraman(sheet); }
   if (sheet.getLastRow() === 0) setupHeaderPenyiraman(sheet);
 
-  const baseDummy = {
+  const common = {
     action: "submitPenyiraman",
     tanggal: "08/04/2026",
     operator: "Dedy",
     tipe: "Drip (Tohudan/Bergas)",
     gh: "TOHUDAN 18",
+    nutrisi: "AB Mix",
+    client_timestamp: new Date().toISOString(),
+  };
+
+  const dripRow = {
+    ...common,
+    varian: "Elysia",
+    ecIn: "2.1", ecOut: "3.2", phIn: "6.1", phOut: "6.5",
+    volume: "250", volNutrisi: "100", suhu: "28.5", rh: "75",
+    ecTandon: "", ecBucket: "", phTandon: "", phBucket: "", doTandon: "", doBucket: "",
+  };
+  const dbRow = {
+    ...common,
+    varian: "Dutch Bucket",
     ecIn: "", ecOut: "", phIn: "", phOut: "", volume: "",
     volNutrisi: "50", suhu: "29.0", rh: "72",
     ecTandon: "2.5", ecBucket: "2.8",
     phTandon: "6.0", phBucket: "6.3",
     doTandon: "7.1", doBucket: "6.9",
-    client_timestamp: new Date().toISOString(),
   };
 
-  [1, 2].forEach(baris => {
-    const dummy = { ...baseDummy, varian: `Baris ${baris}` };
+  [dripRow, dbRow].forEach(dummy => {
     const row = buildRowPenyiraman(dummy);
     sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setValues([row]);
     formatLastRowPenyiraman(sheet, dummy);
   });
-  Logger.log("✅ Test insert Dutch Bucket (TOHUDAN 18, 2 baris) berhasil.");
+  Logger.log("✅ Test insert TOHUDAN 18 (Drip + Dutch Bucket) berhasil.");
 }
 
 function testInsertSawahan() {
