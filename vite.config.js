@@ -32,7 +32,11 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: "autoUpdate",
+      // "prompt" (bukan "autoUpdate") — SW baru menunggu user, tidak reload
+      // diam-diam di background. autoUpdate pernah bikin app reload sendiri
+      // di tengah render React (mis. sambil isi tabel Gramasi) → crash
+      // "insertBefore" karena DOM dibongkar browser saat React masih nyisipin node.
+      registerType: "prompt",
       includeAssets: ["favicon.ico", "icons/*.png"],
       manifest: {
         name: "Farmhill Field App",
