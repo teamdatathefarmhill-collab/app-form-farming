@@ -267,10 +267,14 @@ export default function KesiapanGH() {
   const _draft = getDraft();
 
   const { blockedMap } = useGHBlockedList();
-  const [step, setStep]           = useState(_draft?.step   || 1);
-  const [tipe, setTipe]           = useState(_draft?.tipe   || "");
-  const [gh, setGh]               = useState(_draft?.gh     || "");
-  const [scores, setScores]       = useState(_draft?.scores || {});
+  // Draft lama bisa nyimpen tipe yang sudah tidak ada lagi (mis. "Dutch Bucket" yang
+  // sekarang dihapus) — kalau dipakai apa adanya, GH_PER_TIPE[tipe] jadi undefined dan crash.
+  const draftTipeValid = _draft?.tipe && Object.prototype.hasOwnProperty.call(GH_PER_TIPE, _draft.tipe);
+
+  const [step, setStep]           = useState(draftTipeValid ? (_draft?.step || 1) : 1);
+  const [tipe, setTipe]           = useState(draftTipeValid ? _draft.tipe : "");
+  const [gh, setGh]               = useState(draftTipeValid ? (_draft?.gh || "") : "");
+  const [scores, setScores]       = useState(draftTipeValid ? (_draft?.scores || {}) : {});
   const [activeAspek, setActiveAspek] = useState("");
   const [submitting, setSubmitting]   = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -592,7 +596,7 @@ export default function KesiapanGH() {
                   {loadingSubmitted && <span style={{ fontSize: 10, fontWeight: 400, color: color.textGhost, marginLeft: 8 }}>memeriksa data...</span>}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  {GH_PER_TIPE[tipe].map(g => {
+                  {(GH_PER_TIPE[tipe] || []).map(g => {
                     const sudahIsi = submittedToday.includes(`${tipe}__${g}`);
                     const sel = gh === g;
                     return (

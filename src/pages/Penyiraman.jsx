@@ -131,9 +131,13 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
   const { getDraft, saveDraft, clearDraft } = useDraft("penyiraman");
   const _draft = getDraft();
 
-  const [step, setStep]         = useState(_draft?.step     || 1);
-  const [tipe, setTipe]         = useState(_draft?.tipe     || "");
-  const [gh, setGh]             = useState(_draft?.gh       || "");
+  // Draft lama bisa nyimpen tipe yang sudah tidak ada lagi (mis. "Dutch Bucket" yang
+  // sekarang dihapus) — kalau dipakai apa adanya, GH_PER_TIPE[tipe] jadi undefined dan crash.
+  const draftTipeValid = _draft?.tipe && Object.prototype.hasOwnProperty.call(GH_PER_TIPE, _draft.tipe);
+
+  const [step, setStep]         = useState(draftTipeValid ? (_draft?.step || 1) : 1);
+  const [tipe, setTipe]         = useState(draftTipeValid ? _draft.tipe : "");
+  const [gh, setGh]             = useState(draftTipeValid ? (_draft?.gh || "") : "");
   const [operator, setOperator]     = useState(_draft?.operator || "");
   const [submitting, setSubmitting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -407,7 +411,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
                   {loadingRef && <span style={{ fontSize: 10, fontWeight: 400, color: color.textGhost, marginLeft: 8 }}>memuat...</span>}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  {GH_PER_TIPE[tipe].filter(g => refSource[g]).map(g => {
+                  {(GH_PER_TIPE[tipe] || []).filter(g => refSource[g]).map(g => {
                     const info = refSource[g];
                     const hst  = info?.hst ?? null;
                     const c    = hstColor(hst);
