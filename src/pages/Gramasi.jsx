@@ -588,7 +588,7 @@ export default function Gramasi() {
                               {["s1","s2","s3"].map(s => (
                                 <td key={s} style={{ padding: "4px 3px", textAlign: "center" }}>
                                   <input
-                                    type="number" inputMode="decimal"
+                                    type="text" inputMode="decimal"
                                     value={row[s]}
                                     onChange={e => updateCell(i, s, e.target.value)}
                                     placeholder="—"
