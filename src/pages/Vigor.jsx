@@ -38,7 +38,7 @@ const TIPE_GH = [
       const upper = gh.toUpperCase();
       if (upper.startsWith("BERGAS"))   { const n = parseInt(upper.replace("BERGAS","").trim());   return n >= 1 && n <= 8 && n !== 6; }
       if (upper.startsWith("COLOMADU")) { const n = parseInt(upper.replace("COLOMADU","").trim()); return n >= 1 && n <= 4; }
-      if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim());  return n === 12 || n === 14 || n === 15 || n === 16 || n === 17 || n === 19 || n === 20 || n === 21; }
+      if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim());  return n === 12 || n === 14 || n === 15 || n === 16 || n === 17 || n === 18 || n === 19 || n === 20 || n === 21; }
       return false;
     },
   },
@@ -49,14 +49,6 @@ const TIPE_GH = [
       if (upper === "SAWAHAN TUNNEL 1") return true;
       if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return (n >= 1 && n <= 11) || n === 13 || n === 22; }
       if (upper.startsWith("SAWAHAN")) { const n = parseInt(upper.replace("SAWAHAN","").trim()); return n >= 1 && n <= 4; }
-      return false;
-    },
-  },
-  {
-    key: "dutch", label: "Dutch Bucket", icon: "🪣", color: "#FB8C00",
-    pattern: (gh) => {
-      const upper = gh.toUpperCase();
-      if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return n === 18; }
       return false;
     },
   },

@@ -115,7 +115,7 @@ const TIPE_GH = [
       }
       if (upper.startsWith("TOHUDAN")) {
         const num = parseInt(upper.replace("TOHUDAN", "").trim());
-        return num === 14 || num === 15 || num === 16 || num === 17 || num === 19 || num === 20 || num === 21;
+        return num === 14 || num === 15 || num === 16 || num === 17 || num === 18 || num === 19 || num === 20 || num === 21;
       }
       return false;
     },
@@ -134,20 +134,6 @@ const TIPE_GH = [
       if (upper.startsWith("SAWAHAN")) {
         const num = parseInt(upper.replace("SAWAHAN", "").trim());
         return num >= 1 && num <= 4;
-      }
-      return false;
-    },
-  },
-  {
-    key: "dutch",
-    label: "Dutch Bucket",
-    icon: "🪣",
-    color: "#FB8C00",
-    pattern: (gh) => {
-      const upper = gh.toUpperCase();
-      if (upper.startsWith("TOHUDAN")) {
-        const num = parseInt(upper.replace("TOHUDAN", "").trim());
-        return num === 18;
       }
       return false;
     },

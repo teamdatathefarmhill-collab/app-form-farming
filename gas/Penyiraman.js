@@ -16,6 +16,11 @@
 const SHEET_PENYIRAMAN = "Form Penyiraman";
 const SS_REF_ID        = "1tIJzuTBXcM7Wks03pgsyVicJUCtDs9Ak0N89K9GlKe4"; // Spreadsheet REF
 
+// GH yang fisiknya masih pakai instalasi Dutch Bucket (walau tipe form-nya sekarang "Drip") —
+// harus sinkron dengan DB_GH_ROWS di src/pages/Penyiraman.jsx
+const DB_GH_LIST = ["TOHUDAN 18"];
+function isDbRow(d) { return DB_GH_LIST.includes(String(d.gh || "").toUpperCase().trim()); }
+
 // ── Cache global (hidup selama instance GAS warm) ────────────
 let _ss     = null;
 let _ssRef  = null;
@@ -222,7 +227,7 @@ function handlePenyiraman(data) {
   const row     = buildRowPenyiraman(data);
   const lastRow = sheet.getLastRow();
   sheet.getRange(lastRow + 1, 1, 1, row.length).setValues([row]);
-  formatLastRowPenyiraman(sheet, data.tipe);
+  formatLastRowPenyiraman(sheet, data);
 
   return jsonOk();
 }
@@ -244,9 +249,7 @@ function handlePenyiramanBatch(data) {
   const lastRow   = sheet.getLastRow();
   sheet.getRange(lastRow + 1, 1, builtRows.length, builtRows[0].length).setValues(builtRows);
 
-  for (let i = 0; i < builtRows.length; i++) {
-    formatLastRowPenyiraman(sheet, rows[i].tipe, lastRow + 1 + i);
-  }
+  formatBatchPenyiraman(sheet, rows, lastRow + 1, builtRows[0].length);
 
   return ContentService
     .createTextOutput(JSON.stringify({ success: true, count: builtRows.length }))
@@ -257,14 +260,14 @@ function handlePenyiramanBatch(data) {
 function buildRowPenyiraman(d) {
   // Pakai waktu submit operator jika ada (penting untuk data offline)
   const tsDate = d.client_timestamp ? new Date(d.client_timestamp) : new Date();
-  const isDB = d.tipe === "Dutch Bucket";
+  const isDB = isDbRow(d);
   return [
     Utilities.formatDate(tsDate, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss"),
     d.tanggal   || "",
     d.operator  || "",
     d.tipe      || "",
     d.gh        || "",
-    isDB ? "" : (d.varian || ""),
+    d.varian || "",
 
     // Drip / Kolam
     isDB ? "" : (d.ecIn      || ""),
@@ -316,8 +319,36 @@ function setupHeaderPenyiraman(sheet) {
   for (let c = 6; c <= 21; c++) sheet.setColumnWidth(c, 110);
 }
 
+// ── Format banyak baris sekaligus (batch) — hindari getRange per baris ──
+// Dulu format 5 varian = 10 panggilan Range API (lambat, ~200-500ms/panggilan
+// di Apps Script). Sekarang cuma 2 panggilan berapapun jumlah barisnya.
+function formatBatchPenyiraman(sheet, rows, startRow, numCols) {
+  const n = rows.length;
+
+  const bgArr = [];
+  const sizeArr = [];
+  for (let i = 0; i < n; i++) {
+    const rowBg = (startRow + i) % 2 === 0 ? "#e1f5fe" : "#ffffff";
+    bgArr.push(new Array(numCols).fill(rowBg));
+    sizeArr.push(new Array(numCols).fill(10));
+  }
+  sheet.getRange(startRow, 1, n, numCols).setBackgrounds(bgArr).setFontSizes(sizeArr);
+
+  const tipeBg = [], tipeColor = [], tipeWeight = [];
+  for (let i = 0; i < n; i++) {
+    if (isDbRow(rows[i])) {
+      tipeBg.push(["#fff3e0"]); tipeColor.push(["#e65100"]); tipeWeight.push(["bold"]);
+    } else if (rows[i].tipe === "Kolam (Sawahan)") {
+      tipeBg.push(["#e8f5e9"]); tipeColor.push(["#2e7d32"]); tipeWeight.push(["bold"]);
+    } else {
+      tipeBg.push(["#e3f2fd"]); tipeColor.push(["#0D47A1"]); tipeWeight.push(["bold"]);
+    }
+  }
+  sheet.getRange(startRow, 4, n, 1).setBackgrounds(tipeBg).setFontColors(tipeColor).setFontWeights(tipeWeight);
+}
+
 // ── Format baris baru ─────────────────────────────────────────
-function formatLastRowPenyiraman(sheet, tipe, rowNum) {
+function formatLastRowPenyiraman(sheet, d, rowNum) {
   const lastRow = rowNum || sheet.getLastRow();
   const numCols = sheet.getLastColumn();
 
@@ -325,9 +356,9 @@ function formatLastRowPenyiraman(sheet, tipe, rowNum) {
   sheet.getRange(lastRow, 1, 1, numCols).setBackground(bg).setFontSize(10);
 
   const tipeCell = sheet.getRange(lastRow, 4);
-  if (tipe === "Dutch Bucket") {
+  if (isDbRow(d)) {
     tipeCell.setBackground("#fff3e0").setFontColor("#e65100").setFontWeight("bold");
-  } else if (tipe === "Kolam (Sawahan)") {
+  } else if (d.tipe === "Kolam (Sawahan)") {
     tipeCell.setBackground("#e8f5e9").setFontColor("#2e7d32").setFontWeight("bold");
   } else {
     tipeCell.setBackground("#e3f2fd").setFontColor("#0D47A1").setFontWeight("bold");
@@ -366,17 +397,23 @@ function testInsertPenyiraman() {
   if (sheet.getLastRow() === 0) setupHeaderPenyiraman(sheet);
   const row = buildRowPenyiraman(dummy);
   sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setValues([row]);
-  formatLastRowPenyiraman(sheet, dummy.tipe);
+  formatLastRowPenyiraman(sheet, dummy);
   Logger.log("✅ Test insert Penyiraman berhasil.");
 }
 
+// TOHUDAN 18 secara fisik masih instalasi Dutch Bucket (2 baris), walau tipe form-nya "Drip"
 function testInsertDB() {
-  const dummy = {
+  const ss    = getSS();
+  let sheet   = ss.getSheetByName(SHEET_PENYIRAMAN);
+  if (!sheet) { sheet = ss.insertSheet(SHEET_PENYIRAMAN); setupHeaderPenyiraman(sheet); }
+  if (sheet.getLastRow() === 0) setupHeaderPenyiraman(sheet);
+
+  const baseDummy = {
     action: "submitPenyiraman",
     tanggal: "08/04/2026",
     operator: "Dedy",
-    tipe: "Dutch Bucket",
-    gh: "TOHUDAN 13",
+    tipe: "Drip (Tohudan/Bergas)",
+    gh: "TOHUDAN 18",
     ecIn: "", ecOut: "", phIn: "", phOut: "", volume: "",
     volNutrisi: "50", suhu: "29.0", rh: "72",
     ecTandon: "2.5", ecBucket: "2.8",
@@ -384,14 +421,14 @@ function testInsertDB() {
     doTandon: "7.1", doBucket: "6.9",
     client_timestamp: new Date().toISOString(),
   };
-  const ss    = getSS();
-  let sheet   = ss.getSheetByName(SHEET_PENYIRAMAN);
-  if (!sheet) { sheet = ss.insertSheet(SHEET_PENYIRAMAN); setupHeaderPenyiraman(sheet); }
-  if (sheet.getLastRow() === 0) setupHeaderPenyiraman(sheet);
-  const row = buildRowPenyiraman(dummy);
-  sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setValues([row]);
-  formatLastRowPenyiraman(sheet, dummy.tipe);
-  Logger.log("✅ Test insert Dutch Bucket berhasil.");
+
+  [1, 2].forEach(baris => {
+    const dummy = { ...baseDummy, varian: `Baris ${baris}` };
+    const row = buildRowPenyiraman(dummy);
+    sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setValues([row]);
+    formatLastRowPenyiraman(sheet, dummy);
+  });
+  Logger.log("✅ Test insert Dutch Bucket (TOHUDAN 18, 2 baris) berhasil.");
 }
 
 function testInsertSawahan() {
@@ -413,6 +450,6 @@ function testInsertSawahan() {
   if (sheet.getLastRow() === 0) setupHeaderPenyiraman(sheet);
   const row = buildRowPenyiraman(dummy);
   sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setValues([row]);
-  formatLastRowPenyiraman(sheet, dummy.tipe);
+  formatLastRowPenyiraman(sheet, dummy);
   Logger.log("✅ Test insert Sawahan berhasil.");
 }

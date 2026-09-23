@@ -15,8 +15,7 @@ const todayLabel = new Date().toLocaleDateString("id-ID", { weekday: "long", day
 
 // ─── Data GH per Tipe ────────────────────────────────────────
 const GH_PER_TIPE = {
-  "Dutch Bucket": ["TOHUDAN 18"],
-  "Drip":         ["BERGAS 1","BERGAS 2","BERGAS 3","BERGAS 4","BERGAS 5","BERGAS 7","BERGAS 8","COLOMADU 1","COLOMADU 2","COLOMADU 3","COLOMADU 4","TOHUDAN 14","TOHUDAN 15","TOHUDAN 16","TOHUDAN 17","TOHUDAN 19","TOHUDAN 20","TOHUDAN 21"],
+  "Drip":         ["BERGAS 1","BERGAS 2","BERGAS 3","BERGAS 4","BERGAS 5","BERGAS 7","BERGAS 8","COLOMADU 1","COLOMADU 2","COLOMADU 3","COLOMADU 4","TOHUDAN 14","TOHUDAN 15","TOHUDAN 16","TOHUDAN 17","TOHUDAN 18","TOHUDAN 19","TOHUDAN 20","TOHUDAN 21"],
   "Kolam P1":     ["TOHUDAN 1","TOHUDAN 2","TOHUDAN 3","TOHUDAN 4","TOHUDAN 5","TOHUDAN 6","TOHUDAN 7","TOHUDAN 8","TOHUDAN 9","TOHUDAN 10","TOHUDAN 11","TOHUDAN 12","TOHUDAN 13","TOHUDAN 22","SAWAHAN TUNNEL 1"],
   "Kolam P2":     ["TOHUDAN 1","TOHUDAN 2","TOHUDAN 3","TOHUDAN 4","TOHUDAN 5","TOHUDAN 6","TOHUDAN 7","TOHUDAN 8","TOHUDAN 9","TOHUDAN 10","TOHUDAN 11","TOHUDAN 12","TOHUDAN 13"],
 };
@@ -25,69 +24,6 @@ const TIPE_LIST = Object.keys(GH_PER_TIPE);
 
 // ─── Matriks Aspek per Tipe GH ───────────────────────────────
 const MATRIKS = {
-  "Dutch Bucket": [
-    {
-      key: "tandon", label: "Tandon", bobotAspek: 20,
-      items: [
-        { code: "DB_T1",  label: "Tandon dalam keadaan bersih",              bobotVariabel: 3  },
-        { code: "DB_T2",  label: "Tidak ada kebocoran tandon",               bobotVariabel: 10 },
-        { code: "DB_T3",  label: "Pompa utama berfungsi normal",             bobotVariabel: 15 },
-        { code: "DB_T4",  label: "Pressure gauge berfungsi normal",          bobotVariabel: 5  },
-        { code: "DB_T5",  label: "Filter air berfungsi normal",              bobotVariabel: 5  },
-        { code: "DB_T6",  label: "Filter air dalam kondisi bersih",          bobotVariabel: 5  },
-        { code: "DB_T7",  label: "Pompa DO berfungsi normal",                bobotVariabel: 15 },
-        { code: "DB_T8",  label: "Nilai DO tandon >5 mg/L",                  bobotVariabel: 15 },
-        { code: "DB_T9",  label: "Jumlah lampu UV sesuai (1 lampu)",         bobotVariabel: 2  },
-        { code: "DB_T10", label: "Lampu UV menyala normal",                  bobotVariabel: 10 },
-        { code: "DB_T11", label: "Instalasi kelistrikan berjalan normal",    bobotVariabel: 15 },
-      ],
-    },
-    {
-      key: "inst_input", label: "Instalasi Input", bobotAspek: 20,
-      items: [
-        { code: "DB_II1",  label: "Stop kran input berfungsi normal",                    bobotVariabel: 5  },
-        { code: "DB_II2",  label: "Tidak ada sumbatan dan kebocoran pipa input",         bobotVariabel: 10 },
-        { code: "DB_II3",  label: "Tekanan air yang mengalir sesuai standar (1.2 bar)",  bobotVariabel: 10 },
-        { code: "DB_II4",  label: "Stop kran PE 16 mm berfungsi normal",                 bobotVariabel: 10 },
-        { code: "DB_II5",  label: "Tidak ada kebocoran stop kran PE 16 mm",              bobotVariabel: 5  },
-        { code: "DB_II6",  label: "Tidak ada kebocoran selang PE 16 mm",                 bobotVariabel: 10 },
-        { code: "DB_II7",  label: "Tekanan air pada pipa PE 16 mm sesuai (≥ 0.3 bar)",  bobotVariabel: 10 },
-        { code: "DB_II8",  label: "Seluruh PCJ berfungsi normal (8 L/H)",                bobotVariabel: 15 },
-        { code: "DB_II9",  label: "Selang PE 5 mm berfungsi normal",                     bobotVariabel: 15 },
-        { code: "DB_II10", label: "Debit input yang masuk ke dalam bucket rata",         bobotVariabel: 10 },
-      ],
-    },
-    {
-      key: "inst_penyiraman", label: "Instalasi Penyiraman", bobotAspek: 20,
-      items: [
-        { code: "DB_IP1", label: "Bucket dalam kondisi layak pakai",              bobotVariabel: 25 },
-        { code: "DB_IP2", label: "Tutup bucket dalam kondisi layak pakai",        bobotVariabel: 20 },
-        { code: "DB_IP3", label: "Elbow berfungsi normal tidak ada kebocoran",    bobotVariabel: 25 },
-        { code: "DB_IP4", label: "Nilai DO bucket >5 mg/L",                       bobotVariabel: 30 },
-      ],
-    },
-    {
-      key: "inst_output", label: "Instalasi Output", bobotAspek: 20,
-      items: [
-        { code: "DB_IO1", label: "Pipa output 2 inch tidak ada kerusakan/kebocoran",    bobotVariabel: 25 },
-        { code: "DB_IO2", label: "Aliran output berjalan normal/tidak ada luapan",      bobotVariabel: 25 },
-        { code: "DB_IO3", label: "Pipa output 3 inch tidak ada kerusakan/kebocoran",    bobotVariabel: 25 },
-        { code: "DB_IO4", label: "Stop kran output berfungsi normal",                   bobotVariabel: 25 },
-      ],
-    },
-    {
-      key: "inst_gh", label: "Instalasi Greenhouse", bobotAspek: 20,
-      items: [
-        { code: "DB_IG1", label: "Bangunan GH dalam kondisi baik",            bobotVariabel: 15 },
-        { code: "DB_IG2", label: "Plastik UV & insectnet dalam kondisi baik", bobotVariabel: 20 },
-        { code: "DB_IG3", label: "Tidak ada kebocoran talang",                bobotVariabel: 20 },
-        { code: "DB_IG4", label: "Weedmat dalam kondisi baik",                bobotVariabel: 15 },
-        { code: "DB_IG5", label: "Jumlah tali rambat sesuai kebutuhan",       bobotVariabel: 15 },
-        { code: "DB_IG6", label: "Kawat seling dalam kondisi baik",           bobotVariabel: 15 },
-      ],
-    },
-  ],
-
   "Drip": [
     {
       key: "tandon", label: "Tandon", bobotAspek: 25,

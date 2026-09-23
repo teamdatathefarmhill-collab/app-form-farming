@@ -80,12 +80,30 @@ export async function gasFetch(url, timeoutMs = 30000) {
 }
 
 // ─── Fetch helper shared (POST) — selipkan token ke body ─────────────────────
-export async function gasPost(url, payload) {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain" },
-    body: JSON.stringify({ ...payload, token: APP_TOKEN }),
-    redirect: "follow",
-  });
-  return await res.json();
+// Tidak auto-retry di sini: ini nulis data (submit), retry otomatis berisiko
+// dobel-input kalau request pertama sebenarnya sudah sukses di server tapi
+// balasannya yang gagal diterima. Biarkan user yang putuskan submit ulang.
+export async function gasPost(url, payload, timeoutMs = 45000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ ...payload, token: APP_TOKEN }),
+      redirect: "follow",
+      signal: controller.signal,
+    });
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error("Server GAS sedang sibuk/timeout (balasan bukan JSON, bukan error di aplikasi). Cek dulu apakah data sudah masuk ke Sheet sebelum submit ulang.");
+    }
+  } catch (err) {
+    if (err.name === "AbortError") throw new Error(`Timeout — server GAS tidak merespons dalam ${timeoutMs / 1000}s. Cek dulu apakah data sudah masuk ke Sheet sebelum submit ulang.`);
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 }
