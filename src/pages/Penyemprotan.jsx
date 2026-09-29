@@ -145,6 +145,44 @@ function GHPicker({ value, onChange, groups }) {
   );
 }
 
+// ─── Komponen: Isian Gas (Nomor Gas / Gas Baru? / Peruntukan) ─────────────────
+function GasFields({ data, setData, accentColor = "#64B5F6" }) {
+  return (
+    <>
+      <div style={{ marginBottom:14 }}>
+        <FieldLabel color={accentColor}>Nomor Gas</FieldLabel>
+        <input type="text" value={data.nomorGas} onChange={e => setData(d => ({...d, nomorGas:e.target.value}))}
+          placeholder="contoh: G-01"
+          style={{ width:"100%", marginTop:8, padding:"11px 14px", background:"rgba(255,255,255,0.06)", border:`1px solid ${data.nomorGas ? `${accentColor}66` : "rgba(255,255,255,0.12)"}`, borderRadius:10, color:color.card, fontSize:14, outline:"none", boxSizing:"border-box", fontFamily:"inherit" }} />
+      </div>
+
+      <div style={{ marginBottom:14 }}>
+        <FieldLabel color={accentColor}>Apakah Gas Baru?</FieldLabel>
+        <div style={{ display:"flex", gap:10, marginTop:10 }}>
+          {[{v:true,l:"Ya"},{v:false,l:"Tidak"}].map(opt => (
+            <button key={String(opt.v)} onClick={() => setData(d => ({...d, gasBaru: d.gasBaru===opt.v ? null : opt.v}))}
+              style={{ flex:1, padding:"12px 0", borderRadius:12, border: data.gasBaru===opt.v ? `2px solid ${accentColor}` : "1px solid rgba(255,255,255,0.14)", background: data.gasBaru===opt.v ? `${accentColor}30` : "rgba(255,255,255,0.04)", color: data.gasBaru===opt.v ? accentColor : "rgba(255,255,255,0.65)", fontSize:14, fontWeight: data.gasBaru===opt.v ? 700 : 500, cursor:"pointer" }}>
+              {opt.l}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ marginBottom:14 }}>
+        <FieldLabel color={accentColor}>Peruntukan</FieldLabel>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginTop:10 }}>
+          {PERUNTUKAN_LIST.map(p => (
+            <button key={p} onClick={() => setData(d => ({...d, peruntukan: d.peruntukan===p ? "" : p}))}
+              style={{ padding:"8px 14px", borderRadius:20, border: data.peruntukan===p ? `2px solid ${accentColor}` : "1px solid rgba(255,255,255,0.14)", background: data.peruntukan===p ? `${accentColor}30` : "rgba(255,255,255,0.04)", color: data.peruntukan===p ? accentColor : "rgba(255,255,255,0.65)", fontSize:12, fontWeight: data.peruntukan===p ? 700 : 500, cursor:"pointer", transition:"all 0.15s" }}>
+              {p}
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Komponen: Field label ────────────────────────────────────────────────────
 function FieldLabel({ children, required, color = "#64B5F6" }) {
   return (
@@ -586,39 +624,8 @@ export default function Penyemprotan() {
                 style={inp(ambil.varianTidakDisemprot)} />
             </div>
 
-            {/* Nomor Gas */}
-            <div style={{ marginBottom:14 }}>
-              <FieldLabel>Nomor Gas</FieldLabel>
-              <input type="text" value={ambil.nomorGas} onChange={e => setAmbil(d => ({...d, nomorGas:e.target.value}))}
-                placeholder="contoh: G-01"
-                style={inp(ambil.nomorGas)} />
-            </div>
-
-            {/* Apakah Gas Baru? */}
-            <div style={{ marginBottom:14 }}>
-              <FieldLabel>Apakah Gas Baru?</FieldLabel>
-              <div style={{ display:"flex", gap:10, marginTop:10 }}>
-                {[{v:true,l:"Ya"},{v:false,l:"Tidak"}].map(opt => (
-                  <button key={String(opt.v)} onClick={() => setAmbil(d => ({...d, gasBaru: d.gasBaru===opt.v ? null : opt.v}))}
-                    style={{ flex:1, padding:"12px 0", borderRadius:12, border: ambil.gasBaru===opt.v ? "2px solid #64B5F6" : "1px solid rgba(255,255,255,0.14)", background: ambil.gasBaru===opt.v ? "rgba(100,181,246,0.18)" : "rgba(255,255,255,0.04)", color: ambil.gasBaru===opt.v ? "#64B5F6" : "rgba(255,255,255,0.65)", fontSize:14, fontWeight: ambil.gasBaru===opt.v ? 700 : 500, cursor:"pointer" }}>
-                    {opt.l}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Peruntukan */}
-            <div style={{ marginBottom:14 }}>
-              <FieldLabel>Peruntukan</FieldLabel>
-              <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginTop:10 }}>
-                {PERUNTUKAN_LIST.map(p => (
-                  <button key={p} onClick={() => setAmbil(d => ({...d, peruntukan: d.peruntukan===p ? "" : p}))}
-                    style={{ padding:"8px 14px", borderRadius:20, border: ambil.peruntukan===p ? "2px solid #64B5F6" : "1px solid rgba(255,255,255,0.14)", background: ambil.peruntukan===p ? "rgba(100,181,246,0.18)" : "rgba(255,255,255,0.04)", color: ambil.peruntukan===p ? "#64B5F6" : "rgba(255,255,255,0.65)", fontSize:12, fontWeight: ambil.peruntukan===p ? 700 : 500, cursor:"pointer", transition:"all 0.15s" }}>
-                    {p}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* Nomor Gas / Gas Baru / Peruntukan */}
+            <GasFields data={ambil} setData={setAmbil} />
 
             {/* 10. Keterangan */}
             <div style={{ marginBottom:8 }}>
@@ -669,7 +676,7 @@ export default function Penyemprotan() {
             </div>
 
             {/* 4. Sterilisasi */}
-            <div style={{ marginBottom:8 }}>
+            <div style={{ marginBottom:14 }}>
               <FieldLabel>Sterilisasi</FieldLabel>
               <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginTop:10 }}>
                 {STERILISASI_LIST.map(s => (
@@ -680,6 +687,9 @@ export default function Penyemprotan() {
                 ))}
               </div>
             </div>
+
+            {/* Nomor Gas / Gas Baru / Peruntukan — hanya saat tidak ada pengambilan (sudah diisi di step Pengambilan jika ada) */}
+            {!adaPengambilan && <GasFields data={ambil} setData={setAmbil} />}
           </div>
         )}
 
@@ -785,11 +795,11 @@ export default function Penyemprotan() {
                   ...(ambil.waktuMulai ? [{ label:"Waktu Mulai",   value: ambil.waktuMulai }] : []),
                   ...(ambil.waktuSelesai?[{ label:"Waktu Selesai", value: ambil.waktuSelesai }] : []),
                   ...(ambil.varianTidakDisemprot ? [{ label:"Skip Varian", value: ambil.varianTidakDisemprot }] : []),
-                  ...(ambil.nomorGas   ? [{ label:"Nomor Gas",     value: ambil.nomorGas }] : []),
-                  ...(ambil.gasBaru !== null ? [{ label:"Gas Baru",value: ambil.gasBaru ? "Ya" : "Tidak" }] : []),
-                  ...(ambil.peruntukan ? [{ label:"Peruntukan",    value: ambil.peruntukan }] : []),
                   ...(ambil.keterangan? [{ label:"Keterangan",    value: ambil.keterangan }] : []),
                 ] : []),
+                ...(ambil.nomorGas   ? [{ label:"Nomor Gas",     value: ambil.nomorGas }] : []),
+                ...(ambil.gasBaru !== null ? [{ label:"Gas Baru",value: ambil.gasBaru ? "Ya" : "Tidak" }] : []),
+                ...(ambil.peruntukan ? [{ label:"Peruntukan",    value: ambil.peruntukan }] : []),
               ]} />
             )}
 

@@ -156,8 +156,10 @@ function processSubmission(data) {
   if (data.type === "penggunaan_ambil") {
     const written = [];
 
-    // Tulis ke sheet Pengambilan jika ada pengambilan
-    if (data.ada_pengambilan) {
+    // Tulis ke sheet Pengambilan jika ada pengambilan pestisida, ATAU jika hanya
+    // isian gas (nomor/gas baru/peruntukan) yang diisi meski tidak ada pengambilan
+    const adaGas = data.ambil_nomor_gas || data.ambil_peruntukan || typeof data.ambil_gas_baru === "boolean";
+    if (data.ada_pengambilan || adaGas) {
       appendRowFast(ss, "PENGAMBILAN", [
         ts,
         data.tanggal                || "",
