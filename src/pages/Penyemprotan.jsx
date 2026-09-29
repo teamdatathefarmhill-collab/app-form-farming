@@ -63,6 +63,9 @@ const STERILISASI_LIST = ["Steril Ke-1","Steril Ke-2","Steril Ke-3","Steril Ke-4
 const PESTISIDA_GSB   = ["Spring","Copcide","Ridomil","Dhitane","Kupraxot","Nordox","Daconil"];
 const KONSENTRASI_GSB = ["50 g/L","100 g/L"];
 
+// ─── Peruntukan Gas (shared) ──────────────────────────────────────────────────
+const PERUNTUKAN_LIST = ["Kocor Media","Cuci Insecnet","Penyemprotan Pestisida","Penyemprotan Air Baku"];
+
 const todayISO   = new Date().toLocaleDateString("id-ID",{day:"2-digit",month:"2-digit",year:"numeric"});
 const todayLabel = new Date().toLocaleDateString("id-ID",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
 
@@ -187,11 +190,17 @@ export default function Penyemprotan() {
     namaPestisida: "", jumlah: "",
     suhuMulai: "", rhMulai: "", suhuSelesai: "", rhSelesai: "",
     varianTidakDisemprot: "", waktuMulai: "", waktuSelesai: "", keterangan: "",
+    nomorGas: "", gasBaru: null, peruntukan: "",
   });
 
   // ── Penggunaan Pestisida ──
   const [guna, setGuna] = useState({
     namaPestisida: "", konsentrasi: "", jumlahPemakaian: "", sterilisasi: "",
+  });
+
+  // ── Pemakaian Gas ──
+  const [gas, setGas] = useState({
+    waktuMulai: "", waktuSelesai: "", nomorGas: "", gasBaru: null, peruntukan: "",
   });
 
   // ── Offline ──
@@ -262,6 +271,16 @@ export default function Penyemprotan() {
     if (activity === "oles_gsb") {
       return { ...base, pestisida:pestisidaGSB, konsentrasi:konsentrasiGSB, penggunaan_gram:penggunaanGram };
     }
+    if (activity === "pemakaian_gas") {
+      return {
+        ...base,
+        gas_waktu_mulai:   gas.waktuMulai,
+        gas_waktu_selesai: gas.waktuSelesai,
+        gas_nomor:         gas.nomorGas,
+        gas_baru:          gas.gasBaru,
+        gas_peruntukan:    gas.peruntukan,
+      };
+    }
     return {
       ...base,
       ada_pengambilan: adaPengambilan,
@@ -276,6 +295,9 @@ export default function Penyemprotan() {
       ambil_waktu_mulai:          ambil.waktuMulai,
       ambil_waktu_selesai:        ambil.waktuSelesai,
       ambil_keterangan:           ambil.keterangan,
+      ambil_nomor_gas:            ambil.nomorGas,
+      ambil_gas_baru:             ambil.gasBaru,
+      ambil_peruntukan:           ambil.peruntukan,
       // Penggunaan
       guna_nama_pestisida:        guna.namaPestisida,
       guna_konsentrasi:           guna.konsentrasi,
@@ -311,8 +333,9 @@ export default function Penyemprotan() {
     setActivity(""); setSelectedGH(""); setOperator("");
     setPestisidaGSB(""); setKonsentrasiGSB(""); setPenggunaanGram("");
     setAdaPengambilan(null);
-    setAmbil({ namaPestisida:"", jumlah:"", suhuMulai:"", rhMulai:"", suhuSelesai:"", rhSelesai:"", varianTidakDisemprot:"", waktuMulai:"", waktuSelesai:"", keterangan:"" });
+    setAmbil({ namaPestisida:"", jumlah:"", suhuMulai:"", rhMulai:"", suhuSelesai:"", rhSelesai:"", varianTidakDisemprot:"", waktuMulai:"", waktuSelesai:"", keterangan:"", nomorGas:"", gasBaru:null, peruntukan:"" });
     setGuna({ namaPestisida:"", konsentrasi:"", jumlahPemakaian:"", sterilisasi:"" });
+    setGas({ waktuMulai:"", waktuSelesai:"", nomorGas:"", gasBaru:null, peruntukan:"" });
     setSyncing(false); setSubmitError(null); setSavedOffline(false);
   };
 
@@ -321,10 +344,11 @@ export default function Penyemprotan() {
   const canOlesGSB = pestisidaGSB !== "" && konsentrasiGSB !== "" && penggunaanGram !== "";
   const canAmbil   = adaPengambilan === true ? (ambil.namaPestisida !== "" && ambil.jumlah !== "") : true;
   const canGuna    = guna.namaPestisida !== "" && guna.konsentrasi !== "" && guna.jumlahPemakaian !== "";
+  const canGas     = operator.trim() !== "" && gas.nomorGas.trim() !== "" && gas.gasBaru !== null && gas.peruntukan !== "";
   const canSubmit  = operator.trim() !== "";
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const actColor = activity === "oles_gsb" ? "#FF7043" : "#1E88E5";
+  const actColor = activity === "oles_gsb" ? "#FF7043" : activity === "pemakaian_gas" ? "#8E24AA" : "#1E88E5";
   const ghGroup  = ghGroups.find(g => selectedGH.startsWith(g.area));
   const ghColor  = ghGroup?.color || "#64B5F6";
 
@@ -379,7 +403,7 @@ export default function Penyemprotan() {
             )}
             {activity && step !== "start" && (
               <div style={{ fontSize:11, background:`${actColor}22`, border:`1px solid ${actColor}55`, borderRadius:20, padding:"2px 9px", color:actColor, fontWeight:600 }}>
-                {activity === "oles_gsb" ? "🖌️ Oles GSB" : "💊 Penggunaan & Pengambilan"}
+                {activity === "oles_gsb" ? "🖌️ Oles GSB" : activity === "pemakaian_gas" ? "🛢️ Pemakaian Gas" : "💊 Penggunaan & Pengambilan"}
               </div>
             )}
           </div>
@@ -422,6 +446,7 @@ export default function Penyemprotan() {
               {[
                 { key:"penggunaan_ambil", icon:"💊", color:"#1E88E5", label:"Penggunaan & Pengambilan Obat Baru", desc:"Catat pengambilan stok dan/atau penggunaan pestisida" },
                 { key:"oles_gsb",         icon:"🖌️", color:"#FF7043", label:"Oles GSB",                            desc:"Pengolesan pestisida untuk pengendalian GSB" },
+                { key:"pemakaian_gas",    icon:"🛢️", color:"#8E24AA", label:"Pemakaian Gas",                       desc:"Catat penggunaan tabung gas untuk kegiatan penyemprotan" },
               ].map(opt => (
                 <button key={opt.key} onClick={() => { setActivity(opt.key); setSelectedGH(""); }}
                   style={{ padding:"14px 16px", borderRadius:14, cursor:"pointer", textAlign:"left", border: activity === opt.key ? `2px solid ${opt.color}` : "1px solid rgba(255,255,255,0.09)", background: activity === opt.key ? `${opt.color}1a` : "rgba(255,255,255,0.03)", transition:"all 0.2s", display:"flex", alignItems:"center", gap:12 }}>
@@ -561,6 +586,40 @@ export default function Penyemprotan() {
                 style={inp(ambil.varianTidakDisemprot)} />
             </div>
 
+            {/* Nomor Gas */}
+            <div style={{ marginBottom:14 }}>
+              <FieldLabel>Nomor Gas</FieldLabel>
+              <input type="text" value={ambil.nomorGas} onChange={e => setAmbil(d => ({...d, nomorGas:e.target.value}))}
+                placeholder="contoh: G-01"
+                style={inp(ambil.nomorGas)} />
+            </div>
+
+            {/* Apakah Gas Baru? */}
+            <div style={{ marginBottom:14 }}>
+              <FieldLabel>Apakah Gas Baru?</FieldLabel>
+              <div style={{ display:"flex", gap:10, marginTop:10 }}>
+                {[{v:true,l:"Ya"},{v:false,l:"Tidak"}].map(opt => (
+                  <button key={String(opt.v)} onClick={() => setAmbil(d => ({...d, gasBaru: d.gasBaru===opt.v ? null : opt.v}))}
+                    style={{ flex:1, padding:"12px 0", borderRadius:12, border: ambil.gasBaru===opt.v ? "2px solid #64B5F6" : "1px solid rgba(255,255,255,0.14)", background: ambil.gasBaru===opt.v ? "rgba(100,181,246,0.18)" : "rgba(255,255,255,0.04)", color: ambil.gasBaru===opt.v ? "#64B5F6" : "rgba(255,255,255,0.65)", fontSize:14, fontWeight: ambil.gasBaru===opt.v ? 700 : 500, cursor:"pointer" }}>
+                    {opt.l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Peruntukan */}
+            <div style={{ marginBottom:14 }}>
+              <FieldLabel>Peruntukan</FieldLabel>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginTop:10 }}>
+                {PERUNTUKAN_LIST.map(p => (
+                  <button key={p} onClick={() => setAmbil(d => ({...d, peruntukan: d.peruntukan===p ? "" : p}))}
+                    style={{ padding:"8px 14px", borderRadius:20, border: ambil.peruntukan===p ? "2px solid #64B5F6" : "1px solid rgba(255,255,255,0.14)", background: ambil.peruntukan===p ? "rgba(100,181,246,0.18)" : "rgba(255,255,255,0.04)", color: ambil.peruntukan===p ? "#64B5F6" : "rgba(255,255,255,0.65)", fontSize:12, fontWeight: ambil.peruntukan===p ? 700 : 500, cursor:"pointer", transition:"all 0.15s" }}>
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* 10. Keterangan */}
             <div style={{ marginBottom:8 }}>
               <FieldLabel>Keterangan</FieldLabel>
@@ -624,6 +683,69 @@ export default function Penyemprotan() {
           </div>
         )}
 
+        {/* ══ FORM PEMAKAIAN GAS ═════════════════════════════════════════════════ */}
+        {step === "form_gas" && (
+          <div>
+            <h2 style={{ fontSize:20, fontWeight:700, margin:"0 0 20px", color:color.card }}>Isian Pemakaian Gas</h2>
+
+            {/* Operator */}
+            <div style={{ marginBottom:14 }}>
+              <FieldLabel required color="#8E24AA">Nama Operator</FieldLabel>
+              <input type="text" value={operator} onChange={e => setOperator(e.target.value)}
+                placeholder="Tulis nama lengkap..."
+                style={inp(operator.trim())} />
+            </div>
+
+            {/* Waktu Mulai & Selesai */}
+            <div style={twoCol}>
+              <div>
+                <FieldLabel color="#8E24AA">Waktu Mulai</FieldLabel>
+                <input type="time" value={gas.waktuMulai} onChange={e => setGas(d => ({...d, waktuMulai:e.target.value}))}
+                  style={{ ...inp(gas.waktuMulai), marginTop:8, colorScheme:"dark" }} />
+              </div>
+              <div>
+                <FieldLabel color="#8E24AA">Waktu Selesai</FieldLabel>
+                <input type="time" value={gas.waktuSelesai} onChange={e => setGas(d => ({...d, waktuSelesai:e.target.value}))}
+                  style={{ ...inp(gas.waktuSelesai), marginTop:8, colorScheme:"dark" }} />
+              </div>
+            </div>
+
+            {/* Nomor Gas */}
+            <div style={{ marginBottom:14 }}>
+              <FieldLabel required color="#8E24AA">Nomor Gas</FieldLabel>
+              <input type="text" value={gas.nomorGas} onChange={e => setGas(d => ({...d, nomorGas:e.target.value}))}
+                placeholder="contoh: G-01"
+                style={inp(gas.nomorGas)} />
+            </div>
+
+            {/* Apakah Gas Baru? */}
+            <div style={{ marginBottom:14 }}>
+              <FieldLabel required color="#8E24AA">Apakah Gas Baru?</FieldLabel>
+              <div style={{ display:"flex", gap:10, marginTop:10 }}>
+                {[{v:true,l:"Ya"},{v:false,l:"Tidak"}].map(opt => (
+                  <button key={String(opt.v)} onClick={() => setGas(d => ({...d, gasBaru: d.gasBaru===opt.v ? null : opt.v}))}
+                    style={{ flex:1, padding:"12px 0", borderRadius:12, border: gas.gasBaru===opt.v ? "2px solid #8E24AA" : "1px solid rgba(255,255,255,0.14)", background: gas.gasBaru===opt.v ? "rgba(142,36,170,0.2)" : "rgba(255,255,255,0.04)", color: gas.gasBaru===opt.v ? "#CE93D8" : "rgba(255,255,255,0.65)", fontSize:14, fontWeight: gas.gasBaru===opt.v ? 700 : 500, cursor:"pointer" }}>
+                    {opt.l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Peruntukan */}
+            <div style={{ marginBottom:8 }}>
+              <FieldLabel required color="#8E24AA">Peruntukan</FieldLabel>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginTop:10 }}>
+                {PERUNTUKAN_LIST.map(p => (
+                  <button key={p} onClick={() => setGas(d => ({...d, peruntukan: d.peruntukan===p ? "" : p}))}
+                    style={{ padding:"8px 14px", borderRadius:20, border: gas.peruntukan===p ? "2px solid #8E24AA" : "1px solid rgba(255,255,255,0.14)", background: gas.peruntukan===p ? "rgba(142,36,170,0.2)" : "rgba(255,255,255,0.04)", color: gas.peruntukan===p ? "#CE93D8" : "rgba(255,255,255,0.65)", fontSize:12, fontWeight: gas.peruntukan===p ? 700 : 500, cursor:"pointer", transition:"all 0.15s" }}>
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ══ REKAP ══════════════════════════════════════════════════════════════ */}
         {step === "rekap" && (
           <div>
@@ -637,7 +759,7 @@ export default function Penyemprotan() {
             <RekapSection title="Umum" color="#64B5F6" rows={[
               { label:"Tanggal",  value: todayISO },
               { label:"GH",       value: selectedGH },
-              { label:"Kegiatan", value: activity === "oles_gsb" ? "🖌️ Oles GSB" : "💊 Penggunaan & Pengambilan" },
+              { label:"Kegiatan", value: activity === "oles_gsb" ? "🖌️ Oles GSB" : activity === "pemakaian_gas" ? "🛢️ Pemakaian Gas" : "💊 Penggunaan & Pengambilan" },
             ]} />
 
             {/* Oles GSB */}
@@ -663,8 +785,22 @@ export default function Penyemprotan() {
                   ...(ambil.waktuMulai ? [{ label:"Waktu Mulai",   value: ambil.waktuMulai }] : []),
                   ...(ambil.waktuSelesai?[{ label:"Waktu Selesai", value: ambil.waktuSelesai }] : []),
                   ...(ambil.varianTidakDisemprot ? [{ label:"Skip Varian", value: ambil.varianTidakDisemprot }] : []),
+                  ...(ambil.nomorGas   ? [{ label:"Nomor Gas",     value: ambil.nomorGas }] : []),
+                  ...(ambil.gasBaru !== null ? [{ label:"Gas Baru",value: ambil.gasBaru ? "Ya" : "Tidak" }] : []),
+                  ...(ambil.peruntukan ? [{ label:"Peruntukan",    value: ambil.peruntukan }] : []),
                   ...(ambil.keterangan? [{ label:"Keterangan",    value: ambil.keterangan }] : []),
                 ] : []),
+              ]} />
+            )}
+
+            {/* Pemakaian Gas */}
+            {activity === "pemakaian_gas" && (
+              <RekapSection title="Pemakaian Gas" color="#8E24AA" rows={[
+                ...(gas.waktuMulai   ? [{ label:"Waktu Mulai",   value: gas.waktuMulai }] : []),
+                ...(gas.waktuSelesai ? [{ label:"Waktu Selesai", value: gas.waktuSelesai }] : []),
+                { label:"Nomor Gas",  value: gas.nomorGas },
+                { label:"Gas Baru",   value: gas.gasBaru ? "Ya" : "Tidak" },
+                { label:"Peruntukan", value: gas.peruntukan },
               ]} />
             )}
 
@@ -715,6 +851,8 @@ export default function Penyemprotan() {
               <div style={{ fontSize:13, color:"rgba(255,255,255,0.5)", marginTop:4 }}>
                 {activity === "oles_gsb"
                   ? `🖌️ ${pestisidaGSB} · ${konsentrasiGSB} · ${penggunaanGram}g`
+                  : activity === "pemakaian_gas"
+                  ? `🛢️ Gas ${gas.nomorGas} · ${gas.peruntukan}`
                   : `💊 ${guna.namaPestisida} ${guna.konsentrasi} ${guna.jumlahPemakaian}`}
               </div>
               <div style={{ fontSize:13, color:"rgba(255,255,255,0.45)", marginTop:2 }}>Operator: {operator}</div>
@@ -738,7 +876,7 @@ export default function Penyemprotan() {
           )}
 
           {step === "start" && (
-            <button onClick={() => navigateTo(activity === "oles_gsb" ? "form_oles" : "form_ambil")}
+            <button onClick={() => navigateTo(activity === "oles_gsb" ? "form_oles" : activity === "pemakaian_gas" ? "form_gas" : "form_ambil")}
               disabled={!canStart}
               style={{ flex:2, padding:"14px", border:"none", borderRadius:12, background: canStart ? `linear-gradient(135deg,${actColor}cc,${actColor})` : "rgba(255,255,255,0.06)", color: canStart ? color.card : "rgba(255,255,255,0.3)", fontSize:15, fontWeight:700, cursor: canStart ? "pointer" : "not-allowed" }}>
               Lanjut →
@@ -772,6 +910,13 @@ export default function Penyemprotan() {
             </button>
           )}
 
+          {step === "form_gas" && (
+            <button onClick={() => navigateTo("rekap")} disabled={!canGas}
+              style={{ flex:2, padding:"14px", border:"none", borderRadius:12, background: canGas ? "linear-gradient(135deg,#6A1B9A,#8E24AA)" : "rgba(255,255,255,0.06)", color: canGas ? color.card : "rgba(255,255,255,0.3)", fontSize:15, fontWeight:700, cursor: canGas ? "pointer" : "not-allowed" }}>
+              Review Data →
+            </button>
+          )}
+
           {step === "rekap" && (
             <button onClick={() => setConfirmOpen(true)} disabled={syncing || !canSubmit}
               style={{ flex:2, padding:"14px", border:"none", borderRadius:12, background: syncing ? "rgba(30,136,229,0.3)" : !canSubmit ? "rgba(255,255,255,0.06)" : isDemoMode ? "linear-gradient(135deg,#5d4037,#795548)" : !isOnline ? `linear-gradient(135deg,${color.info},#1976D2)` : `linear-gradient(135deg,${color.infoDark},${color.info})`, color: canSubmit ? color.card : "rgba(255,255,255,0.3)", fontSize:15, fontWeight:700, cursor: syncing || !canSubmit ? "not-allowed" : "pointer" }}>
@@ -791,8 +936,10 @@ export default function Penyemprotan() {
         summary={[
           { label: "Tanggal",   value: todayISO },
           { label: "GH",        value: selectedGH },
-          { label: "Kegiatan",  value: activity === "oles_gsb" ? "Oles GSB" : "Penggunaan & Pengambilan" },
-          { label: "Pestisida", value: activity === "oles_gsb" ? pestisidaGSB : guna.namaPestisida },
+          { label: "Kegiatan",  value: activity === "oles_gsb" ? "Oles GSB" : activity === "pemakaian_gas" ? "Pemakaian Gas" : "Penggunaan & Pengambilan" },
+          ...(activity === "pemakaian_gas"
+            ? [{ label: "Nomor Gas", value: gas.nomorGas }]
+            : [{ label: "Pestisida", value: activity === "oles_gsb" ? pestisidaGSB : guna.namaPestisida }]),
           { label: "Operator",  value: operator },
         ]}
       />

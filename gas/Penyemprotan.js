@@ -36,6 +36,7 @@ const SHEET = {
   OLES_GSB:    "Penyemprotan_OlesGSB",
   PENGAMBILAN: "Penyemprotan_Pengambilan",
   PENGGUNAAN:  "Penyemprotan_Penggunaan",
+  PEMAKAIAN_GAS: "Penyemprotan_PemakaianGas",
 };
 
 // ── Header kolom per sheet ────────────────────────────────────
@@ -50,20 +51,26 @@ const HEADER = {
     "Nama Pestisida", "Jumlah",
     "Suhu Mulai (°C)", "RH Mulai (%)", "Suhu Selesai (°C)", "RH Selesai (%)",
     "Waktu Mulai", "Waktu Selesai",
-    "Varian Tidak Disemprot", "Keterangan", "Operator",
+    "Varian Tidak Disemprot", "Nomor Gas", "Gas Baru", "Peruntukan", "Keterangan", "Operator",
   ],
 
   PENGGUNAAN: [
     "Timestamp", "Tanggal", "GH",
     "Nama Pestisida", "Konsentrasi", "Jumlah Pemakaian", "Sterilisasi", "Operator",
   ],
+
+  PEMAKAIAN_GAS: [
+    "Timestamp", "Tanggal", "GH",
+    "Waktu Mulai", "Waktu Selesai", "Nomor Gas", "Gas Baru", "Peruntukan", "Operator",
+  ],
 };
 
 // ── Warna header per sheet ────────────────────────────────────
 const HEADER_COLOR = {
-  OLES_GSB:    "#BF360C", // merah tua (Oles GSB orange theme)
-  PENGAMBILAN: "#0D47A1", // biru tua (Pengambilan)
-  PENGGUNAAN:  "#1B5E20", // hijau tua (Penggunaan)
+  OLES_GSB:      "#BF360C", // merah tua (Oles GSB orange theme)
+  PENGAMBILAN:   "#0D47A1", // biru tua (Pengambilan)
+  PENGGUNAAN:    "#1B5E20", // hijau tua (Penggunaan)
+  PEMAKAIAN_GAS: "#6A1B9A", // ungu tua (Pemakaian Gas)
 };
 
 // ============================================================
@@ -164,6 +171,9 @@ function processSubmission(data) {
         data.ambil_waktu_mulai      || "",
         data.ambil_waktu_selesai    || "",
         data.ambil_varian_skip      || "",
+        data.ambil_nomor_gas        || "",
+        typeof data.ambil_gas_baru === "boolean" ? (data.ambil_gas_baru ? "Ya" : "Tidak") : "",
+        data.ambil_peruntukan       || "",
         data.ambil_keterangan       || "",
         data.operator               || "",
       ]);
@@ -186,6 +196,22 @@ function processSubmission(data) {
     }
 
     return { success: true, sheets: written, timestamp: ts };
+  }
+
+  // ── PEMAKAIAN GAS ──────────────────────────────────────────
+  if (data.type === "pemakaian_gas") {
+    appendRowFast(ss, "PEMAKAIAN_GAS", [
+      ts,
+      data.tanggal          || "",
+      data.gh               || "",
+      data.gas_waktu_mulai   || "",
+      data.gas_waktu_selesai || "",
+      data.gas_nomor         || "",
+      typeof data.gas_baru === "boolean" ? (data.gas_baru ? "Ya" : "Tidak") : "",
+      data.gas_peruntukan    || "",
+      data.operator          || "",
+    ]);
+    return { success: true, sheet: SHEET.PEMAKAIAN_GAS, timestamp: ts };
   }
 
   throw new Error("Unknown type: " + data.type);
@@ -268,7 +294,8 @@ function initSheets() {
   SpreadsheetApp.getUi().alert("Sheet berhasil dibuat!\n\n" +
     "• " + SHEET.OLES_GSB + "\n" +
     "• " + SHEET.PENGAMBILAN + "\n" +
-    "• " + SHEET.PENGGUNAAN
+    "• " + SHEET.PENGGUNAAN + "\n" +
+    "• " + SHEET.PEMAKAIAN_GAS
   );
 }
 
@@ -315,6 +342,9 @@ function testSubmitPenggunaan() {
         ambil_waktu_mulai: "07:00",
         ambil_waktu_selesai: "09:30",
         ambil_varian_skip: "",
+        ambil_nomor_gas: "G-01",
+        ambil_gas_baru: true,
+        ambil_peruntukan: "Penyemprotan Pestisida",
         ambil_keterangan: "Test pengambilan",
         guna_nama_pestisida: "ENDURE",
         guna_konsentrasi: "0.5 Gr/L",
@@ -326,6 +356,30 @@ function testSubmitPenggunaan() {
   };
   const result = JSON.parse(doPost(fakePost).getContent());
   Logger.log("Test PenggunaanAmbil: " + JSON.stringify(result));
+}
+
+// ============================================================
+// testSubmitPemakaianGas — test dari editor (jalankan manual)
+// ============================================================
+function testSubmitPemakaianGas() {
+  const fakePost = {
+    postData: {
+      contents: JSON.stringify({
+        action: "submitPenyemprotan",
+        type: "pemakaian_gas",
+        tanggal: "11/04/2026",
+        gh: "SAWAHAN 1",
+        gas_waktu_mulai: "07:00",
+        gas_waktu_selesai: "08:00",
+        gas_nomor: "G-02",
+        gas_baru: false,
+        gas_peruntukan: "Kocor Media",
+        operator: "Test Operator",
+      }),
+    },
+  };
+  const result = JSON.parse(doPost(fakePost).getContent());
+  Logger.log("Test PemakaianGas: " + JSON.stringify(result));
 }
 
 // ── Helper ────────────────────────────────────────────────────
