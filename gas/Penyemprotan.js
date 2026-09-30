@@ -50,13 +50,13 @@ const HEADER = {
     "Timestamp", "Tanggal", "GH",
     "Nama Pestisida", "Jumlah",
     "Suhu Mulai (°C)", "RH Mulai (%)", "Suhu Selesai (°C)", "RH Selesai (%)",
-    "Waktu Mulai", "Waktu Selesai",
+    "Waktu Mulai", "Waktu Selesai", "Waktu (Periode)",
     "Varian Tidak Disemprot", "Nomor Gas", "Gas Baru", "Peruntukan", "Keterangan", "Operator",
   ],
 
   PENGGUNAAN: [
     "Timestamp", "Tanggal", "GH",
-    "Nama Pestisida", "Konsentrasi", "Jumlah Pemakaian", "Sterilisasi", "Operator",
+    "Nama Pestisida", "Konsentrasi", "Jumlah Pemakaian", "Waktu (Periode)", "Sterilisasi", "Operator",
   ],
 
   PEMAKAIAN_GAS: [
@@ -172,6 +172,7 @@ function processSubmission(data) {
         data.ambil_rh_selesai       || "",
         data.ambil_waktu_mulai      || "",
         data.ambil_waktu_selesai    || "",
+        data.ambil_waktu_periode    || "",
         data.ambil_varian_skip      || "",
         data.ambil_nomor_gas        || "",
         typeof data.ambil_gas_baru === "boolean" ? (data.ambil_gas_baru ? "Ya" : "Tidak") : "",
@@ -191,6 +192,7 @@ function processSubmission(data) {
         data.guna_nama_pestisida     || "",
         data.guna_konsentrasi        || "",
         data.guna_jumlah_pemakaian   || "",
+        data.guna_waktu_periode      || "",
         data.guna_sterilisasi        || "",
         data.operator                || "",
       ]);
@@ -343,6 +345,7 @@ function testSubmitPenggunaan() {
         ambil_rh_selesai: "72",
         ambil_waktu_mulai: "07:00",
         ambil_waktu_selesai: "09:30",
+        ambil_waktu_periode: "Pagi",
         ambil_varian_skip: "",
         ambil_nomor_gas: "G-01",
         ambil_gas_baru: true,
@@ -351,6 +354,7 @@ function testSubmitPenggunaan() {
         guna_nama_pestisida: "ENDURE",
         guna_konsentrasi: "0.5 Gr/L",
         guna_jumlah_pemakaian: "100 L",
+        guna_waktu_periode: "Siang",
         guna_sterilisasi: "Steril Ke-1",
         operator: "Test Operator",
       }),

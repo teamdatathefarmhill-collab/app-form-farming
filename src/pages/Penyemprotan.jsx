@@ -48,13 +48,17 @@ const PESTISIDA_LIST = [
   "ATONIK 250 ML","NEEM OIL","AMINOFOL 500 ML","SCORE","FETRILON 25 GR",
   "CURACRON","ENDURE 100 ML","ENDURE 200 ML","SUNLIGHT","APPLAUD","ZK",
   "ORONDIS OPTI","MANOHARA","KING BOSS","TSUBAME 250 ML",
+  "DACONIL","JIMMY HANTU","MGS","PENTACURE","SORE","SPRING","VELUM","ZEEWA","ANDAVIT",
 ];
 
 // ─── Konsentrasi ──────────────────────────────────────────────────────────────
 const KONSENTRASI_LIST = [
-  "0.25 Gr/L","0.5 Gr/L","0.75 Gr/L","1 Gr/L","2 Gr/L","3 Gr/L","1 Gr/6L","1/12 Gr/L",
-  "0.15 ml/L","0.25 ml/L","0.50 ml/L","0.75 ml/L","1 ml/L",
+  "0.25 Gr/L","0.5 Gr/L","0.75 Gr/L","1 Gr/L","2 Gr/L","3 Gr/L","1 Gr/6L","1/12 Gr/L","5 Gr/16L",
+  "0.15 ml/L","0.20 ml/L","0.25 ml/L","0.50 ml/L","0.75 ml/L","1 ml/L","1.5 ml/L","2 ml/L",
 ];
+
+// ─── Waktu (periode) ──────────────────────────────────────────────────────────
+const WAKTU_PERIODE_LIST = ["Pagi","Siang","Sore"];
 
 // ─── Sterilisasi ──────────────────────────────────────────────────────────────
 const STERILISASI_LIST = ["Steril Ke-1","Steril Ke-2","Steril Ke-3","Steril Ke-4","Steril","Tidak ada"];
@@ -69,14 +73,33 @@ const PERUNTUKAN_LIST = ["Kocor Media","Cuci Insecnet","Penyemprotan Pestisida",
 const todayISO   = new Date().toLocaleDateString("id-ID",{day:"2-digit",month:"2-digit",year:"numeric"});
 const todayLabel = new Date().toLocaleDateString("id-ID",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
 
-// ─── Komponen: Searchable Pestisida Picker ────────────────────────────────────
+// ─── Komponen: Searchable Pestisida Picker (dengan opsi "Lainnya" manual) ────
 function PestisidaPicker({ value, onChange, accentColor = "#64B5F6" }) {
   const [search, setSearch] = useState("");
   const [open, setOpen]     = useState(false);
+  const [manual, setManual] = useState(() => value !== "" && !PESTISIDA_LIST.includes(value));
 
   const filtered = search.trim().length > 0
     ? PESTISIDA_LIST.filter(p => p.toLowerCase().includes(search.toLowerCase()))
     : PESTISIDA_LIST;
+
+  const isCustom = manual || (value !== "" && !PESTISIDA_LIST.includes(value));
+
+  if (isCustom) {
+    return (
+      <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:8 }}>
+        <input
+          type="text" value={value} onChange={e => onChange(e.target.value)} autoFocus
+          placeholder="Tulis nama pestisida..."
+          style={{ flex:1, padding:"11px 14px", background:"rgba(255,255,255,0.06)", border:`1px solid ${accentColor}66`, borderRadius:10, color:color.card, fontSize:14, outline:"none", boxSizing:"border-box", fontFamily:"inherit" }}
+        />
+        <button onClick={() => { onChange(""); setManual(false); }}
+          style={{ width:36, height:36, borderRadius:8, border:"1px solid rgba(255,255,255,0.15)", background:"rgba(255,255,255,0.06)", color:"rgba(255,255,255,0.5)", fontSize:16, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+          ✕
+        </button>
+      </div>
+    );
+  }
 
   if (value) {
     return (
@@ -102,7 +125,7 @@ function PestisidaPicker({ value, onChange, accentColor = "#64B5F6" }) {
         placeholder="Ketik nama pestisida..."
         style={{ width:"100%", padding:"11px 14px", background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.14)", borderRadius:10, color:color.card, fontSize:14, outline:"none", boxSizing:"border-box", fontFamily:"inherit" }}
       />
-      {open && filtered.length > 0 && (
+      {open && (
         <div style={{ position:"absolute", top:"100%", left:0, right:0, zIndex:30, background:"#0d2d45", border:"1px solid rgba(255,255,255,0.15)", borderTop:"none", borderRadius:"0 0 12px 12px", maxHeight:220, overflowY:"auto" }}>
           {filtered.map(p => (
             <button key={p} onMouseDown={() => { onChange(p); setSearch(""); setOpen(false); }}
@@ -112,7 +135,40 @@ function PestisidaPicker({ value, onChange, accentColor = "#64B5F6" }) {
               {p}
             </button>
           ))}
+          <button onMouseDown={() => { setManual(true); setSearch(""); setOpen(false); }}
+            style={{ width:"100%", padding:"10px 14px", background:"rgba(255,255,255,0.03)", border:"none", color:accentColor, fontSize:13, fontWeight:700, cursor:"pointer", textAlign:"left", fontFamily:"inherit" }}
+            onMouseEnter={e => e.currentTarget.style.background="rgba(255,255,255,0.08)"}
+            onMouseLeave={e => e.currentTarget.style.background="rgba(255,255,255,0.03)"}>
+            ✏️ Lainnya — isi manual
+          </button>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Komponen: Pilihan chip dengan opsi "Lainnya" (isi manual) ───────────────
+function ChoiceChips({ list, value, onChange, accentColor = "#64B5F6", placeholder = "Tulis pilihan lain..." }) {
+  const [manual, setManual] = useState(() => value !== "" && !list.includes(value));
+  const isCustom = manual || (value !== "" && !list.includes(value));
+
+  return (
+    <div style={{ marginTop:10 }}>
+      <div style={{ display:"flex", flexWrap:"wrap", gap:7 }}>
+        {list.map(item => (
+          <button key={item} onClick={() => { onChange(value===item ? "" : item); setManual(false); }}
+            style={{ padding:"8px 14px", borderRadius:20, border: value===item ? `2px solid ${accentColor}` : "1px solid rgba(255,255,255,0.14)", background: value===item ? `${accentColor}30` : "rgba(255,255,255,0.04)", color: value===item ? accentColor : "rgba(255,255,255,0.65)", fontSize:12, fontWeight: value===item ? 700 : 500, cursor:"pointer", transition:"all 0.15s" }}>
+            {item}
+          </button>
+        ))}
+        <button onClick={() => { setManual(true); onChange(""); }}
+          style={{ padding:"8px 14px", borderRadius:20, border: isCustom ? `2px solid ${accentColor}` : "1px dashed rgba(255,255,255,0.25)", background: isCustom ? `${accentColor}30` : "rgba(255,255,255,0.04)", color: isCustom ? accentColor : "rgba(255,255,255,0.5)", fontSize:12, fontWeight: isCustom ? 700 : 500, cursor:"pointer" }}>
+          ✏️ Lainnya
+        </button>
+      </div>
+      {isCustom && (
+        <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} autoFocus
+          style={{ width:"100%", marginTop:8, padding:"10px 14px", background:"rgba(255,255,255,0.06)", border:`1px solid ${accentColor}66`, borderRadius:10, color:color.card, fontSize:13, outline:"none", boxSizing:"border-box", fontFamily:"inherit" }} />
       )}
     </div>
   );
@@ -170,14 +226,7 @@ function GasFields({ data, setData, accentColor = "#64B5F6" }) {
 
       <div style={{ marginBottom:14 }}>
         <FieldLabel color={accentColor}>Peruntukan</FieldLabel>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginTop:10 }}>
-          {PERUNTUKAN_LIST.map(p => (
-            <button key={p} onClick={() => setData(d => ({...d, peruntukan: d.peruntukan===p ? "" : p}))}
-              style={{ padding:"8px 14px", borderRadius:20, border: data.peruntukan===p ? `2px solid ${accentColor}` : "1px solid rgba(255,255,255,0.14)", background: data.peruntukan===p ? `${accentColor}30` : "rgba(255,255,255,0.04)", color: data.peruntukan===p ? accentColor : "rgba(255,255,255,0.65)", fontSize:12, fontWeight: data.peruntukan===p ? 700 : 500, cursor:"pointer", transition:"all 0.15s" }}>
-              {p}
-            </button>
-          ))}
-        </div>
+        <ChoiceChips list={PERUNTUKAN_LIST} value={data.peruntukan} onChange={v => setData(d => ({...d, peruntukan:v}))} accentColor={accentColor} placeholder="Tulis peruntukan lain..." />
       </div>
     </>
   );
@@ -227,13 +276,13 @@ export default function Penyemprotan() {
   const [ambil, setAmbil] = useState({
     namaPestisida: "", jumlah: "",
     suhuMulai: "", rhMulai: "", suhuSelesai: "", rhSelesai: "",
-    varianTidakDisemprot: "", waktuMulai: "", waktuSelesai: "", keterangan: "",
+    varianTidakDisemprot: "", waktuMulai: "", waktuSelesai: "", waktuPeriode: "", keterangan: "",
     nomorGas: "", gasBaru: null, peruntukan: "",
   });
 
   // ── Penggunaan Pestisida ──
   const [guna, setGuna] = useState({
-    namaPestisida: "", konsentrasi: "", jumlahPemakaian: "", sterilisasi: "",
+    namaPestisida: "", konsentrasi: "", jumlahPemakaian: "", sterilisasi: "", waktuPeriode: "",
   });
 
   // ── Pemakaian Gas ──
@@ -332,6 +381,7 @@ export default function Penyemprotan() {
       ambil_varian_skip:          ambil.varianTidakDisemprot,
       ambil_waktu_mulai:          ambil.waktuMulai,
       ambil_waktu_selesai:        ambil.waktuSelesai,
+      ambil_waktu_periode:        ambil.waktuPeriode,
       ambil_keterangan:           ambil.keterangan,
       ambil_nomor_gas:            ambil.nomorGas,
       ambil_gas_baru:             ambil.gasBaru,
@@ -341,6 +391,7 @@ export default function Penyemprotan() {
       guna_konsentrasi:           guna.konsentrasi,
       guna_jumlah_pemakaian:      guna.jumlahPemakaian,
       guna_sterilisasi:           guna.sterilisasi,
+      guna_waktu_periode:         guna.waktuPeriode,
     };
   };
 
@@ -371,8 +422,8 @@ export default function Penyemprotan() {
     setActivity(""); setSelectedGH(""); setOperator("");
     setPestisidaGSB(""); setKonsentrasiGSB(""); setPenggunaanGram("");
     setAdaPengambilan(null);
-    setAmbil({ namaPestisida:"", jumlah:"", suhuMulai:"", rhMulai:"", suhuSelesai:"", rhSelesai:"", varianTidakDisemprot:"", waktuMulai:"", waktuSelesai:"", keterangan:"", nomorGas:"", gasBaru:null, peruntukan:"" });
-    setGuna({ namaPestisida:"", konsentrasi:"", jumlahPemakaian:"", sterilisasi:"" });
+    setAmbil({ namaPestisida:"", jumlah:"", suhuMulai:"", rhMulai:"", suhuSelesai:"", rhSelesai:"", varianTidakDisemprot:"", waktuMulai:"", waktuSelesai:"", waktuPeriode:"", keterangan:"", nomorGas:"", gasBaru:null, peruntukan:"" });
+    setGuna({ namaPestisida:"", konsentrasi:"", jumlahPemakaian:"", sterilisasi:"", waktuPeriode:"" });
     setGas({ waktuMulai:"", waktuSelesai:"", nomorGas:"", gasBaru:null, peruntukan:"" });
     setSyncing(false); setSubmitError(null); setSavedOffline(false);
   };
@@ -616,6 +667,19 @@ export default function Penyemprotan() {
               </div>
             </div>
 
+            {/* Waktu (Pagi/Siang/Sore) */}
+            <div style={{ marginBottom:14 }}>
+              <FieldLabel>Waktu</FieldLabel>
+              <div style={{ display:"flex", gap:8, marginTop:10 }}>
+                {WAKTU_PERIODE_LIST.map(w => (
+                  <button key={w} onClick={() => setAmbil(d => ({...d, waktuPeriode: d.waktuPeriode===w ? "" : w}))}
+                    style={{ flex:1, padding:"10px 0", borderRadius:12, border: ambil.waktuPeriode===w ? "2px solid #64B5F6" : "1px solid rgba(255,255,255,0.14)", background: ambil.waktuPeriode===w ? "rgba(100,181,246,0.18)" : "rgba(255,255,255,0.04)", color: ambil.waktuPeriode===w ? "#64B5F6" : "rgba(255,255,255,0.65)", fontSize:13, fontWeight: ambil.waktuPeriode===w ? 700 : 500, cursor:"pointer" }}>
+                    {w}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* 7. Varian tidak disemprot */}
             <div style={{ marginBottom:14 }}>
               <FieldLabel>Varian yang Tidak Disemprot</FieldLabel>
@@ -657,14 +721,7 @@ export default function Penyemprotan() {
             {/* 2. Konsentrasi */}
             <div style={{ marginBottom:14 }}>
               <FieldLabel required>Konsentrasi</FieldLabel>
-              <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginTop:10 }}>
-                {KONSENTRASI_LIST.map(k => (
-                  <button key={k} onClick={() => setGuna(d => ({...d, konsentrasi:k}))}
-                    style={{ padding:"8px 13px", borderRadius:20, border: guna.konsentrasi===k ? "2px solid #64B5F6" : "1px solid rgba(255,255,255,0.14)", background: guna.konsentrasi===k ? "rgba(100,181,246,0.18)" : "rgba(255,255,255,0.04)", color: guna.konsentrasi===k ? "#64B5F6" : "rgba(255,255,255,0.65)", fontSize:12, fontWeight: guna.konsentrasi===k ? 700 : 500, cursor:"pointer", transition:"all 0.15s", whiteSpace:"nowrap" }}>
-                    {k}
-                  </button>
-                ))}
-              </div>
+              <ChoiceChips list={KONSENTRASI_LIST} value={guna.konsentrasi} onChange={v => setGuna(d => ({...d, konsentrasi:v}))} placeholder="Tulis konsentrasi lain..." />
             </div>
 
             {/* 3. Jumlah Pemakaian */}
@@ -673,6 +730,19 @@ export default function Penyemprotan() {
               <input type="text" value={guna.jumlahPemakaian} onChange={e => setGuna(d => ({...d, jumlahPemakaian:e.target.value}))}
                 placeholder="contoh: 2 L, 500 ml, 200 g..."
                 style={inp(guna.jumlahPemakaian)} />
+            </div>
+
+            {/* Waktu (Pagi/Siang/Sore) */}
+            <div style={{ marginBottom:14 }}>
+              <FieldLabel>Waktu</FieldLabel>
+              <div style={{ display:"flex", gap:8, marginTop:10 }}>
+                {WAKTU_PERIODE_LIST.map(w => (
+                  <button key={w} onClick={() => setGuna(d => ({...d, waktuPeriode: d.waktuPeriode===w ? "" : w}))}
+                    style={{ flex:1, padding:"10px 0", borderRadius:12, border: guna.waktuPeriode===w ? "2px solid #64B5F6" : "1px solid rgba(255,255,255,0.14)", background: guna.waktuPeriode===w ? "rgba(100,181,246,0.18)" : "rgba(255,255,255,0.04)", color: guna.waktuPeriode===w ? "#64B5F6" : "rgba(255,255,255,0.65)", fontSize:13, fontWeight: guna.waktuPeriode===w ? 700 : 500, cursor:"pointer" }}>
+                    {w}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* 4. Sterilisasi */}
@@ -794,6 +864,7 @@ export default function Penyemprotan() {
                   ...(ambil.rhSelesai  ? [{ label:"RH Selesai",    value:`${ambil.rhSelesai} %` }] : []),
                   ...(ambil.waktuMulai ? [{ label:"Waktu Mulai",   value: ambil.waktuMulai }] : []),
                   ...(ambil.waktuSelesai?[{ label:"Waktu Selesai", value: ambil.waktuSelesai }] : []),
+                  ...(ambil.waktuPeriode ? [{ label:"Waktu",       value: ambil.waktuPeriode }] : []),
                   ...(ambil.varianTidakDisemprot ? [{ label:"Skip Varian", value: ambil.varianTidakDisemprot }] : []),
                   ...(ambil.keterangan? [{ label:"Keterangan",    value: ambil.keterangan }] : []),
                 ] : []),
@@ -820,6 +891,7 @@ export default function Penyemprotan() {
                 { label:"Pestisida",   value: guna.namaPestisida },
                 { label:"Konsentrasi",value: guna.konsentrasi },
                 { label:"Pemakaian",  value: guna.jumlahPemakaian },
+                ...(guna.waktuPeriode ? [{ label:"Waktu", value: guna.waktuPeriode }] : []),
                 ...(guna.sterilisasi  ? [{ label:"Sterilisasi", value: guna.sterilisasi }] : []),
               ]} />
             )}
