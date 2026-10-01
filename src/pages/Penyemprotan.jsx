@@ -275,14 +275,15 @@ export default function Penyemprotan() {
   const [adaPengambilan, setAdaPengambilan] = useState(null);
   const [ambil, setAmbil] = useState({
     namaPestisida: "", jumlah: "",
-    suhuMulai: "", rhMulai: "", suhuSelesai: "", rhSelesai: "",
-    varianTidakDisemprot: "", waktuMulai: "", waktuSelesai: "", waktuPeriode: "", keterangan: "",
-    nomorGas: "", gasBaru: null, peruntukan: "",
   });
 
   // ── Penggunaan Pestisida ──
   const [guna, setGuna] = useState({
-    namaPestisida: "", konsentrasi: "", jumlahPemakaian: "", sterilisasi: "", waktuPeriode: "",
+    namaPestisida: "", konsentrasi: "", jumlahPemakaian: "", sterilisasi: "",
+    suhuMulai: "", rhMulai: "", suhuSelesai: "", rhSelesai: "",
+    waktuMulai: "", waktuSelesai: "", waktuPeriode: "",
+    varianTidakDisemprot: "", keterangan: "",
+    nomorGas: "", gasBaru: null, peruntukan: "",
   });
 
   // ── Pemakaian Gas ──
@@ -374,24 +375,23 @@ export default function Penyemprotan() {
       // Pengambilan
       ambil_nama_pestisida:       ambil.namaPestisida,
       ambil_jumlah:               ambil.jumlah,
-      ambil_suhu_mulai:           ambil.suhuMulai,
-      ambil_rh_mulai:             ambil.rhMulai,
-      ambil_suhu_selesai:         ambil.suhuSelesai,
-      ambil_rh_selesai:           ambil.rhSelesai,
-      ambil_varian_skip:          ambil.varianTidakDisemprot,
-      ambil_waktu_mulai:          ambil.waktuMulai,
-      ambil_waktu_selesai:        ambil.waktuSelesai,
-      ambil_waktu_periode:        ambil.waktuPeriode,
-      ambil_keterangan:           ambil.keterangan,
-      ambil_nomor_gas:            ambil.nomorGas,
-      ambil_gas_baru:             ambil.gasBaru,
-      ambil_peruntukan:           ambil.peruntukan,
       // Penggunaan
       guna_nama_pestisida:        guna.namaPestisida,
       guna_konsentrasi:           guna.konsentrasi,
       guna_jumlah_pemakaian:      guna.jumlahPemakaian,
-      guna_sterilisasi:           guna.sterilisasi,
+      guna_suhu_mulai:            guna.suhuMulai,
+      guna_rh_mulai:              guna.rhMulai,
+      guna_suhu_selesai:          guna.suhuSelesai,
+      guna_rh_selesai:            guna.rhSelesai,
+      guna_waktu_mulai:           guna.waktuMulai,
+      guna_waktu_selesai:         guna.waktuSelesai,
       guna_waktu_periode:         guna.waktuPeriode,
+      guna_varian_skip:           guna.varianTidakDisemprot,
+      guna_sterilisasi:           guna.sterilisasi,
+      guna_nomor_gas:             guna.nomorGas,
+      guna_gas_baru:              guna.gasBaru,
+      guna_peruntukan:            guna.peruntukan,
+      guna_keterangan:            guna.keterangan,
     };
   };
 
@@ -422,8 +422,8 @@ export default function Penyemprotan() {
     setActivity(""); setSelectedGH(""); setOperator("");
     setPestisidaGSB(""); setKonsentrasiGSB(""); setPenggunaanGram("");
     setAdaPengambilan(null);
-    setAmbil({ namaPestisida:"", jumlah:"", suhuMulai:"", rhMulai:"", suhuSelesai:"", rhSelesai:"", varianTidakDisemprot:"", waktuMulai:"", waktuSelesai:"", waktuPeriode:"", keterangan:"", nomorGas:"", gasBaru:null, peruntukan:"" });
-    setGuna({ namaPestisida:"", konsentrasi:"", jumlahPemakaian:"", sterilisasi:"", waktuPeriode:"" });
+    setAmbil({ namaPestisida:"", jumlah:"" });
+    setGuna({ namaPestisida:"", konsentrasi:"", jumlahPemakaian:"", sterilisasi:"", suhuMulai:"", rhMulai:"", suhuSelesai:"", rhSelesai:"", waktuMulai:"", waktuSelesai:"", waktuPeriode:"", varianTidakDisemprot:"", keterangan:"", nomorGas:"", gasBaru:null, peruntukan:"" });
     setGas({ waktuMulai:"", waktuSelesai:"", nomorGas:"", gasBaru:null, peruntukan:"" });
     setSyncing(false); setSubmitError(null); setSavedOffline(false);
   };
@@ -618,86 +618,11 @@ export default function Penyemprotan() {
             </div>
 
             {/* 2. Jumlah */}
-            <div style={{ marginBottom:14 }}>
+            <div style={{ marginBottom:8 }}>
               <FieldLabel required>Jumlah Pengambilan</FieldLabel>
               <input type="text" value={ambil.jumlah} onChange={e => setAmbil(d => ({...d, jumlah:e.target.value}))}
                 placeholder="contoh: 500 ml, 1 botol, 2 kg..."
                 style={inp(ambil.jumlah)} />
-            </div>
-
-            {/* 3-4. Suhu & RH Mulai */}
-            <div style={twoCol}>
-              <div>
-                <FieldLabel>Suhu Mulai</FieldLabel>
-                <input type="number" inputMode="decimal" value={ambil.suhuMulai} onChange={e => setAmbil(d => ({...d, suhuMulai:e.target.value}))}
-                  placeholder="°C" style={{ ...inp(ambil.suhuMulai), marginTop:8, textAlign:"center" }} />
-              </div>
-              <div>
-                <FieldLabel>RH Mulai</FieldLabel>
-                <input type="number" inputMode="decimal" value={ambil.rhMulai} onChange={e => setAmbil(d => ({...d, rhMulai:e.target.value}))}
-                  placeholder="%" style={{ ...inp(ambil.rhMulai), marginTop:8, textAlign:"center" }} />
-              </div>
-            </div>
-
-            {/* 5-6. Suhu & RH Selesai */}
-            <div style={twoCol}>
-              <div>
-                <FieldLabel>Suhu Selesai</FieldLabel>
-                <input type="number" inputMode="decimal" value={ambil.suhuSelesai} onChange={e => setAmbil(d => ({...d, suhuSelesai:e.target.value}))}
-                  placeholder="°C" style={{ ...inp(ambil.suhuSelesai), marginTop:8, textAlign:"center" }} />
-              </div>
-              <div>
-                <FieldLabel>RH Selesai</FieldLabel>
-                <input type="number" inputMode="decimal" value={ambil.rhSelesai} onChange={e => setAmbil(d => ({...d, rhSelesai:e.target.value}))}
-                  placeholder="%" style={{ ...inp(ambil.rhSelesai), marginTop:8, textAlign:"center" }} />
-              </div>
-            </div>
-
-            {/* 8-9. Waktu Mulai & Selesai */}
-            <div style={twoCol}>
-              <div>
-                <FieldLabel>Waktu Mulai</FieldLabel>
-                <input type="time" value={ambil.waktuMulai} onChange={e => setAmbil(d => ({...d, waktuMulai:e.target.value}))}
-                  style={{ ...inp(ambil.waktuMulai), marginTop:8, colorScheme:"dark" }} />
-              </div>
-              <div>
-                <FieldLabel>Waktu Selesai</FieldLabel>
-                <input type="time" value={ambil.waktuSelesai} onChange={e => setAmbil(d => ({...d, waktuSelesai:e.target.value}))}
-                  style={{ ...inp(ambil.waktuSelesai), marginTop:8, colorScheme:"dark" }} />
-              </div>
-            </div>
-
-            {/* Waktu (Pagi/Siang/Sore) */}
-            <div style={{ marginBottom:14 }}>
-              <FieldLabel>Waktu</FieldLabel>
-              <div style={{ display:"flex", gap:8, marginTop:10 }}>
-                {WAKTU_PERIODE_LIST.map(w => (
-                  <button key={w} onClick={() => setAmbil(d => ({...d, waktuPeriode: d.waktuPeriode===w ? "" : w}))}
-                    style={{ flex:1, padding:"10px 0", borderRadius:12, border: ambil.waktuPeriode===w ? "2px solid #64B5F6" : "1px solid rgba(255,255,255,0.14)", background: ambil.waktuPeriode===w ? "rgba(100,181,246,0.18)" : "rgba(255,255,255,0.04)", color: ambil.waktuPeriode===w ? "#64B5F6" : "rgba(255,255,255,0.65)", fontSize:13, fontWeight: ambil.waktuPeriode===w ? 700 : 500, cursor:"pointer" }}>
-                    {w}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 7. Varian tidak disemprot */}
-            <div style={{ marginBottom:14 }}>
-              <FieldLabel>Varian yang Tidak Disemprot</FieldLabel>
-              <input type="text" value={ambil.varianTidakDisemprot} onChange={e => setAmbil(d => ({...d, varianTidakDisemprot:e.target.value}))}
-                placeholder="Tulis nama varian (jika ada)..."
-                style={inp(ambil.varianTidakDisemprot)} />
-            </div>
-
-            {/* Nomor Gas / Gas Baru / Peruntukan */}
-            <GasFields data={ambil} setData={setAmbil} />
-
-            {/* 10. Keterangan */}
-            <div style={{ marginBottom:8 }}>
-              <FieldLabel>Keterangan</FieldLabel>
-              <textarea value={ambil.keterangan} onChange={e => setAmbil(d => ({...d, keterangan:e.target.value}))}
-                placeholder="Catatan tambahan..."
-                rows={2}
-                style={{ width:"100%", marginTop:8, padding:"9px 12px", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.09)", borderRadius:8, color:color.card, fontSize:13, outline:"none", resize:"none", boxSizing:"border-box", fontFamily:"inherit" }} />
             </div>
           </div>
         )}
@@ -732,6 +657,48 @@ export default function Penyemprotan() {
                 style={inp(guna.jumlahPemakaian)} />
             </div>
 
+            {/* Suhu & RH Mulai */}
+            <div style={twoCol}>
+              <div>
+                <FieldLabel>Suhu Mulai</FieldLabel>
+                <input type="number" inputMode="decimal" value={guna.suhuMulai} onChange={e => setGuna(d => ({...d, suhuMulai:e.target.value}))}
+                  placeholder="°C" style={{ ...inp(guna.suhuMulai), marginTop:8, textAlign:"center" }} />
+              </div>
+              <div>
+                <FieldLabel>RH Mulai</FieldLabel>
+                <input type="number" inputMode="decimal" value={guna.rhMulai} onChange={e => setGuna(d => ({...d, rhMulai:e.target.value}))}
+                  placeholder="%" style={{ ...inp(guna.rhMulai), marginTop:8, textAlign:"center" }} />
+              </div>
+            </div>
+
+            {/* Suhu & RH Selesai */}
+            <div style={twoCol}>
+              <div>
+                <FieldLabel>Suhu Selesai</FieldLabel>
+                <input type="number" inputMode="decimal" value={guna.suhuSelesai} onChange={e => setGuna(d => ({...d, suhuSelesai:e.target.value}))}
+                  placeholder="°C" style={{ ...inp(guna.suhuSelesai), marginTop:8, textAlign:"center" }} />
+              </div>
+              <div>
+                <FieldLabel>RH Selesai</FieldLabel>
+                <input type="number" inputMode="decimal" value={guna.rhSelesai} onChange={e => setGuna(d => ({...d, rhSelesai:e.target.value}))}
+                  placeholder="%" style={{ ...inp(guna.rhSelesai), marginTop:8, textAlign:"center" }} />
+              </div>
+            </div>
+
+            {/* Waktu Mulai & Selesai */}
+            <div style={twoCol}>
+              <div>
+                <FieldLabel>Waktu Mulai</FieldLabel>
+                <input type="time" value={guna.waktuMulai} onChange={e => setGuna(d => ({...d, waktuMulai:e.target.value}))}
+                  style={{ ...inp(guna.waktuMulai), marginTop:8, colorScheme:"dark" }} />
+              </div>
+              <div>
+                <FieldLabel>Waktu Selesai</FieldLabel>
+                <input type="time" value={guna.waktuSelesai} onChange={e => setGuna(d => ({...d, waktuSelesai:e.target.value}))}
+                  style={{ ...inp(guna.waktuSelesai), marginTop:8, colorScheme:"dark" }} />
+              </div>
+            </div>
+
             {/* Waktu (Pagi/Siang/Sore) */}
             <div style={{ marginBottom:14 }}>
               <FieldLabel>Waktu</FieldLabel>
@@ -743,6 +710,14 @@ export default function Penyemprotan() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Varian tidak disemprot */}
+            <div style={{ marginBottom:14 }}>
+              <FieldLabel>Varian yang Tidak Disemprot</FieldLabel>
+              <input type="text" value={guna.varianTidakDisemprot} onChange={e => setGuna(d => ({...d, varianTidakDisemprot:e.target.value}))}
+                placeholder="Tulis nama varian (jika ada)..."
+                style={inp(guna.varianTidakDisemprot)} />
             </div>
 
             {/* 4. Sterilisasi */}
@@ -758,8 +733,17 @@ export default function Penyemprotan() {
               </div>
             </div>
 
-            {/* Nomor Gas / Gas Baru / Peruntukan — hanya saat tidak ada pengambilan (sudah diisi di step Pengambilan jika ada) */}
-            {!adaPengambilan && <GasFields data={ambil} setData={setAmbil} />}
+            {/* Nomor Gas / Gas Baru / Peruntukan */}
+            <GasFields data={guna} setData={setGuna} />
+
+            {/* Keterangan */}
+            <div style={{ marginBottom:8 }}>
+              <FieldLabel>Keterangan</FieldLabel>
+              <textarea value={guna.keterangan} onChange={e => setGuna(d => ({...d, keterangan:e.target.value}))}
+                placeholder="Catatan tambahan..."
+                rows={2}
+                style={{ width:"100%", marginTop:8, padding:"9px 12px", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.09)", borderRadius:8, color:color.card, fontSize:13, outline:"none", resize:"none", boxSizing:"border-box", fontFamily:"inherit" }} />
+            </div>
           </div>
         )}
 
@@ -858,19 +842,7 @@ export default function Penyemprotan() {
                 ...(adaPengambilan ? [
                   { label:"Pestisida",  value: ambil.namaPestisida },
                   { label:"Jumlah",     value: ambil.jumlah },
-                  ...(ambil.suhuMulai  ? [{ label:"Suhu Mulai",    value:`${ambil.suhuMulai} °C` }] : []),
-                  ...(ambil.rhMulai    ? [{ label:"RH Mulai",      value:`${ambil.rhMulai} %` }] : []),
-                  ...(ambil.suhuSelesai? [{ label:"Suhu Selesai",  value:`${ambil.suhuSelesai} °C` }] : []),
-                  ...(ambil.rhSelesai  ? [{ label:"RH Selesai",    value:`${ambil.rhSelesai} %` }] : []),
-                  ...(ambil.waktuMulai ? [{ label:"Waktu Mulai",   value: ambil.waktuMulai }] : []),
-                  ...(ambil.waktuSelesai?[{ label:"Waktu Selesai", value: ambil.waktuSelesai }] : []),
-                  ...(ambil.waktuPeriode ? [{ label:"Waktu",       value: ambil.waktuPeriode }] : []),
-                  ...(ambil.varianTidakDisemprot ? [{ label:"Skip Varian", value: ambil.varianTidakDisemprot }] : []),
-                  ...(ambil.keterangan? [{ label:"Keterangan",    value: ambil.keterangan }] : []),
                 ] : []),
-                ...(ambil.nomorGas   ? [{ label:"Nomor Gas",     value: ambil.nomorGas }] : []),
-                ...(ambil.gasBaru !== null ? [{ label:"Gas Baru",value: ambil.gasBaru ? "Ya" : "Tidak" }] : []),
-                ...(ambil.peruntukan ? [{ label:"Peruntukan",    value: ambil.peruntukan }] : []),
               ]} />
             )}
 
@@ -891,8 +863,19 @@ export default function Penyemprotan() {
                 { label:"Pestisida",   value: guna.namaPestisida },
                 { label:"Konsentrasi",value: guna.konsentrasi },
                 { label:"Pemakaian",  value: guna.jumlahPemakaian },
+                ...(guna.suhuMulai   ? [{ label:"Suhu Mulai",    value:`${guna.suhuMulai} °C` }] : []),
+                ...(guna.rhMulai     ? [{ label:"RH Mulai",      value:`${guna.rhMulai} %` }] : []),
+                ...(guna.suhuSelesai ? [{ label:"Suhu Selesai",  value:`${guna.suhuSelesai} °C` }] : []),
+                ...(guna.rhSelesai   ? [{ label:"RH Selesai",    value:`${guna.rhSelesai} %` }] : []),
+                ...(guna.waktuMulai  ? [{ label:"Waktu Mulai",   value: guna.waktuMulai }] : []),
+                ...(guna.waktuSelesai? [{ label:"Waktu Selesai", value: guna.waktuSelesai }] : []),
                 ...(guna.waktuPeriode ? [{ label:"Waktu", value: guna.waktuPeriode }] : []),
+                ...(guna.varianTidakDisemprot ? [{ label:"Skip Varian", value: guna.varianTidakDisemprot }] : []),
                 ...(guna.sterilisasi  ? [{ label:"Sterilisasi", value: guna.sterilisasi }] : []),
+                ...(guna.nomorGas    ? [{ label:"Nomor Gas",    value: guna.nomorGas }] : []),
+                ...(guna.gasBaru !== null ? [{ label:"Gas Baru", value: guna.gasBaru ? "Ya" : "Tidak" }] : []),
+                ...(guna.peruntukan  ? [{ label:"Peruntukan",   value: guna.peruntukan }] : []),
+                ...(guna.keterangan  ? [{ label:"Keterangan",   value: guna.keterangan }] : []),
               ]} />
             )}
 

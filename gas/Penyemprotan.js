@@ -48,15 +48,16 @@ const HEADER = {
 
   PENGAMBILAN: [
     "Timestamp", "Tanggal", "GH",
-    "Nama Pestisida", "Jumlah",
-    "Suhu Mulai (°C)", "RH Mulai (%)", "Suhu Selesai (°C)", "RH Selesai (%)",
-    "Waktu Mulai", "Waktu Selesai", "Waktu (Periode)",
-    "Varian Tidak Disemprot", "Nomor Gas", "Gas Baru", "Peruntukan", "Keterangan", "Operator",
+    "Nama Pestisida", "Jumlah", "Operator",
   ],
 
   PENGGUNAAN: [
     "Timestamp", "Tanggal", "GH",
-    "Nama Pestisida", "Konsentrasi", "Jumlah Pemakaian", "Waktu (Periode)", "Sterilisasi", "Operator",
+    "Nama Pestisida", "Konsentrasi", "Jumlah Pemakaian",
+    "Suhu Mulai (°C)", "RH Mulai (%)", "Suhu Selesai (°C)", "RH Selesai (%)",
+    "Waktu Mulai", "Waktu Selesai", "Waktu (Periode)",
+    "Varian Tidak Disemprot", "Sterilisasi",
+    "Nomor Gas", "Gas Baru", "Peruntukan", "Keterangan", "Operator",
   ],
 
   PEMAKAIAN_GAS: [
@@ -156,28 +157,14 @@ function processSubmission(data) {
   if (data.type === "penggunaan_ambil") {
     const written = [];
 
-    // Tulis ke sheet Pengambilan jika ada pengambilan pestisida, ATAU jika hanya
-    // isian gas (nomor/gas baru/peruntukan) yang diisi meski tidak ada pengambilan
-    const adaGas = data.ambil_nomor_gas || data.ambil_peruntukan || typeof data.ambil_gas_baru === "boolean";
-    if (data.ada_pengambilan || adaGas) {
+    // Tulis ke sheet Pengambilan jika ada pengambilan pestisida
+    if (data.ada_pengambilan) {
       appendRowFast(ss, "PENGAMBILAN", [
         ts,
         data.tanggal                || "",
         data.gh                     || "",
         data.ambil_nama_pestisida   || "",
         data.ambil_jumlah           || "",
-        data.ambil_suhu_mulai       || "",
-        data.ambil_rh_mulai         || "",
-        data.ambil_suhu_selesai     || "",
-        data.ambil_rh_selesai       || "",
-        data.ambil_waktu_mulai      || "",
-        data.ambil_waktu_selesai    || "",
-        data.ambil_waktu_periode    || "",
-        data.ambil_varian_skip      || "",
-        data.ambil_nomor_gas        || "",
-        typeof data.ambil_gas_baru === "boolean" ? (data.ambil_gas_baru ? "Ya" : "Tidak") : "",
-        data.ambil_peruntukan       || "",
-        data.ambil_keterangan       || "",
         data.operator               || "",
       ]);
       written.push(SHEET.PENGAMBILAN);
@@ -192,8 +179,19 @@ function processSubmission(data) {
         data.guna_nama_pestisida     || "",
         data.guna_konsentrasi        || "",
         data.guna_jumlah_pemakaian   || "",
+        data.guna_suhu_mulai         || "",
+        data.guna_rh_mulai           || "",
+        data.guna_suhu_selesai       || "",
+        data.guna_rh_selesai         || "",
+        data.guna_waktu_mulai        || "",
+        data.guna_waktu_selesai      || "",
         data.guna_waktu_periode      || "",
+        data.guna_varian_skip        || "",
         data.guna_sterilisasi        || "",
+        data.guna_nomor_gas          || "",
+        typeof data.guna_gas_baru === "boolean" ? (data.guna_gas_baru ? "Ya" : "Tidak") : "",
+        data.guna_peruntukan         || "",
+        data.guna_keterangan         || "",
         data.operator                || "",
       ]);
       written.push(SHEET.PENGGUNAAN);
@@ -339,23 +337,22 @@ function testSubmitPenggunaan() {
         ada_pengambilan: true,
         ambil_nama_pestisida: "ENDURE",
         ambil_jumlah: "500 ml",
-        ambil_suhu_mulai: "28",
-        ambil_rh_mulai: "75",
-        ambil_suhu_selesai: "30",
-        ambil_rh_selesai: "72",
-        ambil_waktu_mulai: "07:00",
-        ambil_waktu_selesai: "09:30",
-        ambil_waktu_periode: "Pagi",
-        ambil_varian_skip: "",
-        ambil_nomor_gas: "G-01",
-        ambil_gas_baru: true,
-        ambil_peruntukan: "Penyemprotan Pestisida",
-        ambil_keterangan: "Test pengambilan",
         guna_nama_pestisida: "ENDURE",
         guna_konsentrasi: "0.5 Gr/L",
         guna_jumlah_pemakaian: "100 L",
-        guna_waktu_periode: "Siang",
+        guna_suhu_mulai: "28",
+        guna_rh_mulai: "75",
+        guna_suhu_selesai: "30",
+        guna_rh_selesai: "72",
+        guna_waktu_mulai: "07:00",
+        guna_waktu_selesai: "09:30",
+        guna_waktu_periode: "Pagi",
+        guna_varian_skip: "",
         guna_sterilisasi: "Steril Ke-1",
+        guna_nomor_gas: "G-01",
+        guna_gas_baru: true,
+        guna_peruntukan: "Penyemprotan Pestisida",
+        guna_keterangan: "Test penggunaan",
         operator: "Test Operator",
       }),
     },
