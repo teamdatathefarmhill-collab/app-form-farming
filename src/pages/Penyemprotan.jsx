@@ -429,11 +429,11 @@ export default function Penyemprotan() {
   };
 
   // ── Validasi ──
-  const canStart   = activity !== "" && selectedGH !== "";
+  const canStart   = operator.trim() !== "" && activity !== "" && selectedGH !== "";
   const canOlesGSB = pestisidaGSB !== "" && konsentrasiGSB !== "" && penggunaanGram !== "";
   const canAmbil   = adaPengambilan === true ? (ambil.namaPestisida !== "" && ambil.jumlah !== "") : true;
   const canGuna    = guna.namaPestisida !== "" && guna.konsentrasi !== "" && guna.jumlahPemakaian !== "";
-  const canGas     = operator.trim() !== "" && gas.nomorGas.trim() !== "" && gas.gasBaru !== null && gas.peruntukan !== "";
+  const canGas     = gas.nomorGas.trim() !== "" && gas.gasBaru !== null && gas.peruntukan !== "";
   const canSubmit  = operator.trim() !== "";
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -528,6 +528,13 @@ export default function Penyemprotan() {
         {/* ══ START ══════════════════════════════════════════════════════════════ */}
         {step === "start" && (
           <div>
+            <div style={{ marginBottom:24 }}>
+              <FieldLabel required>👤 Nama Operator</FieldLabel>
+              <input type="text" value={operator} onChange={e => setOperator(e.target.value)}
+                placeholder="Tulis nama lengkap..."
+                style={inp(operator.trim())} />
+            </div>
+
             <h2 style={{ fontSize:20, fontWeight:700, margin:"0 0 4px", color:color.card }}>Pilih Kegiatan</h2>
             <p style={{ fontSize:13, color:"rgba(255,255,255,0.4)", marginBottom:16 }}>Pilih jenis kegiatan penyemprotan hari ini</p>
 
@@ -752,14 +759,6 @@ export default function Penyemprotan() {
           <div>
             <h2 style={{ fontSize:20, fontWeight:700, margin:"0 0 20px", color:color.card }}>Isian Pemakaian Gas</h2>
 
-            {/* Operator */}
-            <div style={{ marginBottom:14 }}>
-              <FieldLabel required color="#8E24AA">Nama Operator</FieldLabel>
-              <input type="text" value={operator} onChange={e => setOperator(e.target.value)}
-                placeholder="Tulis nama lengkap..."
-                style={inp(operator.trim())} />
-            </div>
-
             {/* Waktu Mulai & Selesai */}
             <div style={twoCol}>
               <div>
@@ -821,6 +820,7 @@ export default function Penyemprotan() {
 
             {/* Info umum */}
             <RekapSection title="Umum" color="#64B5F6" rows={[
+              { label:"Operator", value: operator },
               { label:"Tanggal",  value: todayISO },
               { label:"GH",       value: selectedGH },
               { label:"Kegiatan", value: activity === "oles_gsb" ? "🖌️ Oles GSB" : activity === "pemakaian_gas" ? "🛢️ Pemakaian Gas" : "💊 Penggunaan & Pengambilan" },
@@ -878,15 +878,6 @@ export default function Penyemprotan() {
                 ...(guna.keterangan  ? [{ label:"Keterangan",   value: guna.keterangan }] : []),
               ]} />
             )}
-
-            {/* Operator */}
-            <div style={{ marginBottom:14 }}>
-              <FieldLabel required>👤 Nama Operator</FieldLabel>
-              <input type="text" value={operator} onChange={e => setOperator(e.target.value)}
-                placeholder="Tulis nama lengkap..."
-                style={inp(operator.trim())} />
-              {!operator.trim() && <div style={{ fontSize:11, color:"rgba(255,255,255,0.3)", marginTop:5 }}>Wajib diisi sebelum submit</div>}
-            </div>
 
             {submitError && (
               <div style={{ padding:"12px", background:"rgba(244,67,54,0.1)", border:"1px solid rgba(244,67,54,0.3)", borderRadius:10, fontSize:13, color:color.dangerBorder, marginBottom:12 }}>
