@@ -74,14 +74,16 @@ export default defineConfig({
         // Cache semua asset app (JS, CSS, HTML)
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
 
-        // Cache GAS fetch dengan strategi NetworkFirst
+        // Cache GAS fetch dengan strategi NetworkFirst.
+        // Tanpa networkTimeoutSeconds: GAS sering lambat (>8 dtk), dan kalau ada timeout
+        // service worker langsung menyajikan cache lama (sampai 1 hari) — akibatnya GH yang
+        // baru tanam tidak muncul di HP operator. Cache hanya dipakai saat jaringan benar-benar gagal.
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/script\.google\.com\/.*/i,
             handler: "NetworkFirst",
             options: {
               cacheName: "gas-api-cache",
-              networkTimeoutSeconds: 8,
               expiration: {
                 maxEntries: 10,
                 maxAgeSeconds: 60 * 60 * 24, // 1 hari

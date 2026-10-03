@@ -11,13 +11,13 @@ const SCRIPT_URL = import.meta.env.VITE_GAS_PENYIRAMAN_URL;
 const GH_PER_TIPE = {
   "Kolam (Tohudan)": [
     "TOHUDAN 1","TOHUDAN 2","TOHUDAN 3","TOHUDAN 4","TOHUDAN 5","TOHUDAN 6",
-    "TOHUDAN 7","TOHUDAN 8","TOHUDAN 9","TOHUDAN 10","TOHUDAN 11","TOHUDAN 12","TOHUDAN 13",
+    "TOHUDAN 7","TOHUDAN 8","TOHUDAN 9","TOHUDAN 10","TOHUDAN 11","TOHUDAN 13",
     "TOHUDAN 22"
   ],
   "Drip (Tohudan/Bergas)": [
     "COLOMADU 1","COLOMADU 2","COLOMADU 3","COLOMADU 4",
     "BERGAS 1","BERGAS 2","BERGAS 3","BERGAS 4","BERGAS 5","BERGAS 7","BERGAS 8",
-    "TOHUDAN 14","TOHUDAN 15","TOHUDAN 16","TOHUDAN 17","TOHUDAN 18","TOHUDAN 19","TOHUDAN 20","TOHUDAN 21",
+    "TOHUDAN 12","TOHUDAN 14","TOHUDAN 15","TOHUDAN 16","TOHUDAN 17","TOHUDAN 18","TOHUDAN 19","TOHUDAN 20","TOHUDAN 21",
   ],
   "Kolam (Sawahan)": [
     "SAWAHAN 1","SAWAHAN 2","SAWAHAN 3","SAWAHAN 4","SAWAHAN TUNNEL 1"
@@ -146,6 +146,9 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
   const [submitError, setSubmitError] = useState(null);
   const [isOnline] = useState(navigator.onLine);
 
+  const stepRef = useRef(step);
+  stepRef.current = step;
+
   const [refData, setRefData]       = useState({});
   const [refDataRnd, setRefDataRnd] = useState({});
   const [loadingRef, setLoadingRef] = useState(true);
@@ -154,10 +157,21 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
   const [dbData, setDbData]         = useState(_draft?.dbData || initDbData());
 
   useEffect(() => {
-    gasFetch(`${SCRIPT_URL}?action=getREF`)
-      .then(json => { if (json.success) { setRefData(json.data); setRefDataRnd(json.dataRnd || {}); } })
-      .catch(() => {})
-      .finally(() => setLoadingRef(false));
+    const loadRef = () =>
+      gasFetch(`${SCRIPT_URL}?action=getREF`)
+        .then(json => { if (json.success) { setRefData(json.data); setRefDataRnd(json.dataRnd || {}); } })
+        .catch(() => {})
+        .finally(() => setLoadingRef(false));
+    loadRef();
+
+    // PWA di HP operator jarang benar-benar tertutup — ambil ulang daftar GH setiap aplikasi
+    // dibuka kembali ke layar, supaya GH yang baru tanam muncul tanpa harus logout/login.
+    // Hanya di step 1 (pilih GH) agar tidak mengganggu isian yang sedang berjalan.
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && stepRef.current === 1) loadRef();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
 
   useEffect(() => {
