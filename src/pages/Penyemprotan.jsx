@@ -284,6 +284,7 @@ export default function Penyemprotan() {
     waktuMulai: "", waktuSelesai: "", waktuPeriode: "",
     varianTidakDisemprot: "", keterangan: "",
     nomorGas: "", gasBaru: null, peruntukan: "",
+    jenisCampuran: "tanpa", namaPestisida2: "", konsentrasi2: "", jumlahPemakaian2: "",
   });
 
   // ── Pemakaian Gas ──
@@ -392,6 +393,10 @@ export default function Penyemprotan() {
       guna_gas_baru:              guna.gasBaru,
       guna_peruntukan:            guna.peruntukan,
       guna_keterangan:            guna.keterangan,
+      guna_jenis_campuran:        guna.jenisCampuran === "campuran" ? "Campuran" : "Tanpa Campuran",
+      guna_nama_pestisida_2:      guna.jenisCampuran === "campuran" ? guna.namaPestisida2 : "",
+      guna_konsentrasi_2:         guna.jenisCampuran === "campuran" ? guna.konsentrasi2 : "",
+      guna_jumlah_pemakaian_2:    guna.jenisCampuran === "campuran" ? guna.jumlahPemakaian2 : "",
     };
   };
 
@@ -423,7 +428,7 @@ export default function Penyemprotan() {
     setPestisidaGSB(""); setKonsentrasiGSB(""); setPenggunaanGram("");
     setAdaPengambilan(null);
     setAmbil({ namaPestisida:"", jumlah:"" });
-    setGuna({ namaPestisida:"", konsentrasi:"", jumlahPemakaian:"", sterilisasi:"", suhuMulai:"", rhMulai:"", suhuSelesai:"", rhSelesai:"", waktuMulai:"", waktuSelesai:"", waktuPeriode:"", varianTidakDisemprot:"", keterangan:"", nomorGas:"", gasBaru:null, peruntukan:"" });
+    setGuna({ namaPestisida:"", konsentrasi:"", jumlahPemakaian:"", sterilisasi:"", suhuMulai:"", rhMulai:"", suhuSelesai:"", rhSelesai:"", waktuMulai:"", waktuSelesai:"", waktuPeriode:"", varianTidakDisemprot:"", keterangan:"", nomorGas:"", gasBaru:null, peruntukan:"", jenisCampuran:"tanpa", namaPestisida2:"", konsentrasi2:"", jumlahPemakaian2:"" });
     setGas({ waktuMulai:"", waktuSelesai:"", nomorGas:"", gasBaru:null, peruntukan:"" });
     setSyncing(false); setSubmitError(null); setSavedOffline(false);
   };
@@ -432,7 +437,8 @@ export default function Penyemprotan() {
   const canStart   = operator.trim() !== "" && activity !== "" && selectedGH !== "";
   const canOlesGSB = pestisidaGSB !== "" && konsentrasiGSB !== "" && penggunaanGram !== "";
   const canAmbil   = adaPengambilan === true ? (ambil.namaPestisida !== "" && ambil.jumlah !== "") : true;
-  const canGuna    = guna.namaPestisida !== "" && guna.konsentrasi !== "" && guna.jumlahPemakaian !== "";
+  const canGuna    = guna.namaPestisida !== "" && guna.konsentrasi !== "" && guna.jumlahPemakaian !== ""
+    && (guna.jenisCampuran !== "campuran" || (guna.namaPestisida2 !== "" && guna.konsentrasi2 !== "" && guna.jumlahPemakaian2 !== ""));
   const canGas     = gas.nomorGas.trim() !== "" && gas.gasBaru !== null && gas.peruntukan !== "";
   const canSubmit  = operator.trim() !== "";
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -664,6 +670,44 @@ export default function Penyemprotan() {
                 style={inp(guna.jumlahPemakaian)} />
             </div>
 
+            {/* Pencampuran: Tanpa Campuran / Campuran (maks 2 jenis) */}
+            <div style={{ marginBottom:14 }}>
+              <FieldLabel required>Pencampuran</FieldLabel>
+              <div style={{ display:"flex", gap:10, marginTop:10 }}>
+                {[{v:"tanpa",l:"Tanpa Campuran"},{v:"campuran",l:"Campuran"}].map(opt => (
+                  <button key={opt.v} onClick={() => setGuna(d => ({...d, jenisCampuran:opt.v}))}
+                    style={{ flex:1, padding:"12px 0", borderRadius:12, border: guna.jenisCampuran===opt.v ? "2px solid #64B5F6" : "1px solid rgba(255,255,255,0.14)", background: guna.jenisCampuran===opt.v ? "rgba(100,181,246,0.18)" : "rgba(255,255,255,0.04)", color: guna.jenisCampuran===opt.v ? "#64B5F6" : "rgba(255,255,255,0.65)", fontSize:14, fontWeight: guna.jenisCampuran===opt.v ? 700 : 500, cursor:"pointer" }}>
+                    {opt.l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {guna.jenisCampuran === "campuran" && (
+              <div style={{ marginBottom:14, padding:"14px", background:"rgba(100,181,246,0.06)", border:"1px solid rgba(100,181,246,0.25)", borderRadius:14 }}>
+                <div style={{ fontSize:12, color:"#64B5F6", fontWeight:700, marginBottom:12 }}>
+                  ➕ Dicampur dengan (Pestisida ke-2)
+                </div>
+
+                <div style={{ marginBottom:14 }}>
+                  <FieldLabel required>Nama Pestisida ke-2</FieldLabel>
+                  <PestisidaPicker value={guna.namaPestisida2} onChange={v => setGuna(d => ({...d, namaPestisida2:v}))} />
+                </div>
+
+                <div style={{ marginBottom:14 }}>
+                  <FieldLabel required>Konsentrasi ke-2</FieldLabel>
+                  <ChoiceChips list={KONSENTRASI_LIST} value={guna.konsentrasi2} onChange={v => setGuna(d => ({...d, konsentrasi2:v}))} placeholder="Tulis konsentrasi lain..." />
+                </div>
+
+                <div>
+                  <FieldLabel required>Jumlah Pemakaian ke-2</FieldLabel>
+                  <input type="text" value={guna.jumlahPemakaian2} onChange={e => setGuna(d => ({...d, jumlahPemakaian2:e.target.value}))}
+                    placeholder="contoh: 2 L, 500 ml, 200 g..."
+                    style={inp(guna.jumlahPemakaian2)} />
+                </div>
+              </div>
+            )}
+
             {/* Suhu & RH Mulai */}
             <div style={twoCol}>
               <div>
@@ -863,6 +907,12 @@ export default function Penyemprotan() {
                 { label:"Pestisida",   value: guna.namaPestisida },
                 { label:"Konsentrasi",value: guna.konsentrasi },
                 { label:"Pemakaian",  value: guna.jumlahPemakaian },
+                { label:"Pencampuran", value: guna.jenisCampuran === "campuran" ? "Campuran" : "Tanpa Campuran" },
+                ...(guna.jenisCampuran === "campuran" ? [
+                  { label:"Pestisida ke-2",   value: guna.namaPestisida2 },
+                  { label:"Konsentrasi ke-2", value: guna.konsentrasi2 },
+                  { label:"Pemakaian ke-2",   value: guna.jumlahPemakaian2 },
+                ] : []),
                 ...(guna.suhuMulai   ? [{ label:"Suhu Mulai",    value:`${guna.suhuMulai} °C` }] : []),
                 ...(guna.rhMulai     ? [{ label:"RH Mulai",      value:`${guna.rhMulai} %` }] : []),
                 ...(guna.suhuSelesai ? [{ label:"Suhu Selesai",  value:`${guna.suhuSelesai} °C` }] : []),
@@ -909,7 +959,7 @@ export default function Penyemprotan() {
                   ? `🖌️ ${pestisidaGSB} · ${konsentrasiGSB} · ${penggunaanGram}g`
                   : activity === "pemakaian_gas"
                   ? `🛢️ Gas ${gas.nomorGas} · ${gas.peruntukan}`
-                  : `💊 ${guna.namaPestisida} ${guna.konsentrasi} ${guna.jumlahPemakaian}`}
+                  : `💊 ${guna.namaPestisida} ${guna.konsentrasi} ${guna.jumlahPemakaian}${guna.jenisCampuran === "campuran" ? ` + ${guna.namaPestisida2} ${guna.konsentrasi2} ${guna.jumlahPemakaian2}` : ""}`}
               </div>
               <div style={{ fontSize:13, color:"rgba(255,255,255,0.45)", marginTop:2 }}>Operator: {operator}</div>
             </div>
@@ -995,7 +1045,7 @@ export default function Penyemprotan() {
           { label: "Kegiatan",  value: activity === "oles_gsb" ? "Oles GSB" : activity === "pemakaian_gas" ? "Pemakaian Gas" : "Penggunaan & Pengambilan" },
           ...(activity === "pemakaian_gas"
             ? [{ label: "Nomor Gas", value: gas.nomorGas }]
-            : [{ label: "Pestisida", value: activity === "oles_gsb" ? pestisidaGSB : guna.namaPestisida }]),
+            : [{ label: "Pestisida", value: activity === "oles_gsb" ? pestisidaGSB : guna.jenisCampuran === "campuran" ? `${guna.namaPestisida} + ${guna.namaPestisida2}` : guna.namaPestisida }]),
           { label: "Operator",  value: operator },
         ]}
       />

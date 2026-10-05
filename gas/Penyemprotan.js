@@ -58,6 +58,8 @@ const HEADER = {
     "Waktu Mulai", "Waktu Selesai", "Waktu (Periode)",
     "Varian Tidak Disemprot", "Sterilisasi",
     "Nomor Gas", "Gas Baru", "Peruntukan", "Keterangan", "Operator",
+    // Kolom pencampuran — ditaruh PALING AKHIR supaya data lama tidak bergeser
+    "Pencampuran", "Nama Pestisida 2", "Konsentrasi 2", "Jumlah Pemakaian 2",
   ],
 
   PEMAKAIAN_GAS: [
@@ -193,6 +195,10 @@ function processSubmission(data) {
         data.guna_peruntukan         || "",
         data.guna_keterangan         || "",
         data.operator                || "",
+        data.guna_jenis_campuran     || "Tanpa Campuran",
+        data.guna_nama_pestisida_2   || "",
+        data.guna_konsentrasi_2      || "",
+        data.guna_jumlah_pemakaian_2 || "",
       ]);
       written.push(SHEET.PENGGUNAAN);
     }
@@ -299,6 +305,27 @@ function initSheets() {
     "• " + SHEET.PENGGUNAAN + "\n" +
     "• " + SHEET.PEMAKAIAN_GAS
   );
+}
+
+// ============================================================
+// migratePenggunaanCampuran — jalankan SATU KALI dari editor
+// Menambah 4 header kolom pencampuran ke sheet Penggunaan yang sudah ada
+// (data lama tidak diubah; baris lama kolom barunya kosong).
+// ============================================================
+function migratePenggunaanCampuran() {
+  const sheet = SpreadsheetApp.openById(SS_ID).getSheetByName(SHEET.PENGGUNAAN);
+  if (!sheet) throw new Error("Sheet Penggunaan belum ada — jalankan initSheets() dulu.");
+  const headers = HEADER.PENGGUNAAN;
+  const start   = headers.indexOf("Pencampuran") + 1;
+  const newCols = headers.slice(start - 1);
+  const range   = sheet.getRange(1, start, 1, newCols.length);
+  range.setValues([newCols]);
+  range.setBackground(HEADER_COLOR.PENGGUNAAN);
+  range.setFontColor("#ffffff");
+  range.setFontWeight("bold");
+  range.setHorizontalAlignment("center");
+  range.setWrap(true);
+  Logger.log("✅ Header campuran ditambahkan mulai kolom " + start);
 }
 
 // ============================================================
