@@ -49,6 +49,8 @@ const PESTISIDA_LIST = [
   "CURACRON","ENDURE 100 ML","ENDURE 200 ML","SUNLIGHT","APPLAUD","ZK",
   "ORONDIS OPTI","MANOHARA","KING BOSS","TSUBAME 250 ML",
   "DACONIL","JIMMY HANTU","MGS","PENTACURE","SORE","SPRING","VELUM","ZEEWA","ANDAVIT",
+  // Perekat / surfaktan (untuk pencampuran) — SEMENTARA, tunggu konfirmasi tim HPT
+  "AGRISTICK","CITOWETT","LATRON","SILWET L-77","TRITON","SUPER SPREADER",
 ];
 
 // ─── Konsentrasi ──────────────────────────────────────────────────────────────
