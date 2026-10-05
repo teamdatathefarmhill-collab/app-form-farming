@@ -58,7 +58,7 @@ function hitungHST(tgl) {
 // Sama persis dengan checkpoint & window "due" di Vigor.jsx (HST_CHECKPOINTS +
 // getCheckpointStatus) — biar Home Koor GH dan form Vigor selalu sepakat soal
 // kapan suatu GH "due" untuk diisi Vigor.
-const VIGOR_CHECKPOINTS = [7, 14, 18, 33, 38, 45, 54];
+const VIGOR_CHECKPOINTS = [7, 11, 14, 18, 33, 38, 45, 54];
 const VIGOR_DUE_RANGE   = 3;
 function isVigorDue(hst) {
   if (hst === null) return false;

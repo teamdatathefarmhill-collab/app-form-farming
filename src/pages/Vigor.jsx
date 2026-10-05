@@ -12,6 +12,7 @@ const SCRIPT_URL = import.meta.env.VITE_GAS_VIGOR_URL;
 
 // ─── Changelog ───────────────────────────────────────────────────────────────
 export const CHANGELOG = [
+  "Tambah checkpoint HST 11 — Vigor Semai (Akar, Batang, Daun, Warna Daun, skor 1–4, 3 sampel random per varian); data masuk ke sheet terpisah",
   "Tipe GH RnD dihapus dari Pilih GH — Tohudan 22, Sawahan Tunnel 1 & Open Field 1 kini kembali masuk tipe Kolam",
   "Tambah Netting Buah (Crack Basah) di checkpoint HST 45",
   "Kesegaran Tanaman (Kelayuan) di HST 38/45/54 kini satu section dengan Warna Daun (sebelumnya section terpisah)",
@@ -28,7 +29,7 @@ export const CHANGELOG = [
 
 const HST_MIN = 1;
 const HST_MAX = 60;
-const HST_CHECKPOINTS = [7, 14, 18, 33, 38, 45, 54];
+const HST_CHECKPOINTS = [7, 11, 14, 18, 33, 38, 45, 54];
 const HST_NEAR_RANGE  = 2;
 
 const TIPE_GH = [
@@ -144,6 +145,34 @@ const NET_BERCAK_HITAM_54_OPTIONS = [
   "Tidak ada net/bercak hitam pada Greeniegal dan/atau Daegoji",
 ];
 
+// ─── Vigor Semai (HST 11) — skor 1–4 per variabel, bobot masing-masing 25% ───
+const SEMAI_VARIABEL = [
+  { key: "semaiAkar", label: "Akar", options: [
+    { skor: 4, desc: "Akar serabut lebar dan merata, terikat penuh (>90%), warna putih, pertumbuhan >95% rata" },
+    { skor: 3, desc: "Akar serabut cukup, terikat sebagian (70-89%), warnah putih, pertumbuhan 85-95% rata" },
+    { skor: 2, desc: "Akar serabut sedikit mengikat (50-69%), warna putih sedikit coklat, pertumbuhan 70-84,9% rata" },
+    { skor: 1, desc: "Akar serabut < 50%, warna putih sedikit coklat, pertumbuhan tidak rata <70%" },
+  ]},
+  { key: "semaiBatang", label: "Batang", options: [
+    { skor: 4, desc: "Diameter batang besar, batang tegak" },
+    { skor: 3, desc: "Diameter batang besar, batang sedikit memanjang" },
+    { skor: 2, desc: "Diameter batang sedikit kurus memanjang, etiolasi ringan" },
+    { skor: 1, desc: "Kurus, etiolasi" },
+  ]},
+  { key: "semaiDaun", label: "Daun", options: [
+    { skor: 4, desc: "Jumlah daun 3, daun lebar" },
+    { skor: 3, desc: "Jumlah daun 3, daun sedang" },
+    { skor: 2, desc: "Jumlah daun 2, daun sedang" },
+    { skor: 1, desc: "Jumlah daun 1-2, daun kecil dan beberapa mengkerut" },
+  ]},
+  { key: "semaiWarnaDaun", label: "Warna Daun", options: [
+    { skor: 4, desc: "Warna daun hijau pekat, tidak ada ciri-ciri defisiensi (>95% rata hijau)" },
+    { skor: 3, desc: "Warna daun hijau tidak pekat, tidak ada ciri-ciri defisiensi (85-95% rata hijau)" },
+    { skor: 2, desc: "Warna daun pucat dan hijau muda (70-84,9% hijau)" },
+    { skor: 1, desc: "Warna daun kekuningan (<70% hijau), menunjukkan gejala klorosis" },
+  ]},
+];
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function hitungHST(tgl) {
   const [y, m, d] = tgl.split("-").map(Number);
@@ -165,12 +194,14 @@ function initVarianData(varianList) {
       lebarDaun: "", diameterBatang: "", warnaDaun: "", warnaAkar: "", volumeAkar: "",
       simetriBuah: "", cabangBuah: "", buahBajang: "", panjangTunasAir: "",
       kesegaran: "", nettingBuah: "", netting50: "", netBercakHitam: "",
+      semaiAkar: "", semaiBatang: "", semaiDaun: "", semaiWarnaDaun: "",
     };
   });
   return obj;
 }
 
-function isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNetting, showNetting50, showNetBercakHitam, showLebarDiameter, showSimetri) {
+function isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNetting, showNetting50, showNetBercakHitam, showLebarDiameter, showSimetri, showSemai) {
+  if (showSemai) return SEMAI_VARIABEL.every(v => d[v.key] !== "" && d[v.key] != null);
   if (showLebarDiameter && (d.lebarDaun === "" || d.diameterBatang === "")) return false;
   if (d.warnaDaun === "" || d.warnaAkar === "" || d.volumeAkar === "") return false;
   if (showKualitas && showSimetri && d.simetriBuah === "") return false;
@@ -305,7 +336,10 @@ export default function Vigor({ initialGH, onDone } = {}) {
     setIsSyncingPending(true);
     for (const record of all) {
       try {
-        const json = await gasPost(SCRIPT_URL, { action: "submitVigorBatch", rows: record.payloads });
+        const json = await gasPost(SCRIPT_URL, {
+          action: record.payloads?.[0]?.action === "submitVigorSemai" ? "submitVigorSemaiBatch" : "submitVigorBatch",
+          rows: record.payloads,
+        });
         if (json.success) {
           markSubmitted(record.gh);
           setSubmittedToday(getSubmittedToday());
@@ -365,8 +399,9 @@ export default function Vigor({ initialGH, onDone } = {}) {
   const hstAktual  = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : null;
   const col        = hstAktual !== null ? hstColor(hstAktual) : hstColor(21);
 
-  const showLebarDiameter  = selectedHST !== 38 && selectedHST !== 45 && selectedHST !== 54;
-  const showKualitas       = selectedHST !== null && selectedHST > 30;
+  const showSemai          = selectedHST === 11;
+  const showLebarDiameter  = !showSemai && selectedHST !== 38 && selectedHST !== 45 && selectedHST !== 54;
+  const showKualitas       = !showSemai && selectedHST !== null && selectedHST > 30;
   const showSimetri        = selectedHST === 33 || selectedHST === 38;
   const showPolinasi       = selectedHST === 18;
   // Kesegaran selalu jadi bagian dari Aspek Vigor (sejajar Warna Daun), di semua checkpoint HST yang relevan
@@ -388,7 +423,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
     : LEBAR_DAUN_7_OPTIONS;
   const diameterOptions = selectedHST === 33 ? DIAMETER_33_OPTIONS : DIAMETER_7_14_OPTIONS;
 
-  const filledCount = varianList.filter(v => isVarianFilled(varianData[v] || {}, showKualitas, showPolinasi, showKesegaran, showNetting, showNetting50Field, showNetBercakHitam, showLebarDiameter, showSimetri)).length;
+  const filledCount = varianList.filter(v => isVarianFilled(varianData[v] || {}, showKualitas, showPolinasi, showKesegaran, showNetting, showNetting50Field, showNetBercakHitam, showLebarDiameter, showSimetri, showSemai)).length;
   const allFilled   = varianList.length > 0 && filledCount === varianList.length;
   const canSubmit   = allFilled && operator.trim().length > 0;
 
@@ -397,6 +432,24 @@ export default function Vigor({ initialGH, onDone } = {}) {
     const submitDate = new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
     return varianList.map(varian => {
       const d = varianData[varian] || {};
+      if (showSemai) {
+        return {
+          action:          "submitVigorSemai",
+          client_timestamp,
+          tanggal:         submitDate,
+          gh:              selectedGH,
+          periode:         ghInfo?.periode || "",
+          hst_aktual:      hstAktual ?? "",
+          hst_checkpoint:  selectedHST ?? "",
+          varian,
+          operator,
+          skor_akar:       d.semaiAkar      || "",
+          skor_batang:     d.semaiBatang    || "",
+          skor_daun:       d.semaiDaun      || "",
+          skor_warna_daun: d.semaiWarnaDaun || "",
+          selfie_url:      "",
+        };
+      }
       return {
         action:            "submitVigor",
         client_timestamp,
@@ -478,7 +531,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
 
       // Kirim semua varian sekaligus dalam satu request batch
       const json = await gasPost(SCRIPT_URL, {
-        action: "submitVigorBatch",
+        action: showSemai ? "submitVigorSemaiBatch" : "submitVigorBatch",
         rows: payloads.map(p => ({ ...p, selfie_url: resolvedSelfieUrl })),
       });
       if (!json.success) throw new Error(json.error || "Gagal menyimpan");
@@ -685,7 +738,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
               {varianList.map((varian) => {
                 const d      = varianData[varian] || {};
-                const filled = isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNetting, showNetting50Field, showNetBercakHitam, showLebarDiameter, showSimetri);
+                const filled = isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNetting, showNetting50Field, showNetBercakHitam, showLebarDiameter, showSimetri, showSemai);
                 const isOpen = activeVarian === varian;
                 return (
                   <div key={varian} style={{ background: color.card, borderRadius: 12, border: `1.5px solid ${filled ? color.brand300 : color.border}`, overflow: "hidden" }}>
@@ -702,6 +755,33 @@ export default function Vigor({ initialGH, onDone } = {}) {
                     {isOpen && (
                       <div style={{ padding: "14px", borderTop: "1px solid #f0f0f0" }}>
 
+                        {/* VIGOR SEMAI (HST 11) */}
+                        {showSemai && (
+                          <div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "#388e3c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🌱 Vigor Semai</div>
+                            <div style={{ fontSize: 10, color: color.textSoft, marginBottom: 12 }}>Per varian per GH · 3 sampel random per varian · pilih skor 1–4 (bobot tiap variabel 25%)</div>
+                            {SEMAI_VARIABEL.map((v, vi) => (
+                              <div key={v.key} style={{ marginBottom: 16 }}>
+                                <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>{vi + 1}. {v.label}</div>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                  {v.options.map(opt => {
+                                    const val = String(opt.skor);
+                                    const active = d[v.key] === val;
+                                    return (
+                                      <button key={opt.skor} onClick={() => updateVarian(varian, v.key, val)}
+                                        style={{ padding: "9px 10px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? color.brand700 : color.border}`, background: active ? `${color.brand700}12` : color.card, color: active ? color.brand700 : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 8 }}>
+                                        <span style={{ flexShrink: 0, minWidth: 22, textAlign: "center", fontWeight: 800, background: active ? color.brand700 : color.bg, color: active ? color.card : "#777", borderRadius: 6, padding: "1px 0" }}>{opt.skor}</span>
+                                        <span>{opt.desc}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {!showSemai && <>
                         {/* ASPEK VIGOR */}
                         <div style={{ fontSize: 11, fontWeight: 700, color: "#388e3c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>🌿 Aspek Vigor Tanaman</div>
                         {(() => {
@@ -886,6 +966,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
                             </div>
                           </div>
                         )}
+                        </>}
 
                       </div>
                     )}

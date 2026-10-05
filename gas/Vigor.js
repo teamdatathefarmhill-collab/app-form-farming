@@ -13,6 +13,7 @@
 //
 // ENDPOINT:
 //   POST body JSON { action: "submitVigor", ... }  → simpan ke sheet
+//   POST body JSON { action: "submitVigorSemaiBatch", rows: [...] } → Vigor Semai HST 11 → sheet For Vigor
 //   POST body JSON { action: "uploadFoto", ... }   → upload foto selfie ke Drive
 //   GET  ?action=test                               → cek koneksi
 //
@@ -32,6 +33,7 @@
 
 const SS_ID            = "1t0hmb0AlqbfJ4KOK47LKkoRpJ-Jgl3fF6Ru8FZzSI0Y";
 const SHEET_NAME       = "DATABASE";
+const SEMAI_SHEET_NAME = "For Vigor"; // sheet terpisah untuk Vigor Semai (HST 11) — dibuat otomatis kalau belum ada
 const SELFIE_FOLDER_ID = "1MGdDXFwpwIersJigv4zOXWCPBsqi0GIv";
 
 // ── Cache global (hidup selama instance GAS warm) ─────────────────────────────
@@ -81,6 +83,49 @@ const HEADERS = [
   "Foto Selfie",       // V
 ];
 
+// Header sheet For Vigor (HST 11). Skor 1–4 per variabel, bobot masing-masing 25%.
+const SEMAI_HEADERS = [
+  "Timestamp", "Tanggal", "GH", "Periode", "HST Aktual", "HST Checkpoint", "Varian", "Operator",
+  "Skor Akar", "Skor Batang", "Skor Daun", "Skor Warna Daun",
+  "Skor Total (bobot 25% x4)", "Foto Selfie",
+];
+
+function getSemaiSheet() {
+  var ss    = SpreadsheetApp.openById(SS_ID);
+  var sheet = ss.getSheetByName(SEMAI_SHEET_NAME);
+  if (!sheet) sheet = ss.insertSheet(SEMAI_SHEET_NAME);
+  if (sheet.getLastRow() === 0) {
+    var h = sheet.getRange(1, 1, 1, SEMAI_HEADERS.length);
+    h.setValues([SEMAI_HEADERS]);
+    h.setFontWeight("bold");
+    h.setBackground("#1b5e20");
+    h.setFontColor("#ffffff");
+    h.setHorizontalAlignment("center");
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function buildSemaiRow(body) {
+  var tsDate = body.client_timestamp ? new Date(body.client_timestamp) : new Date();
+  var akar = Number(body.skor_akar) || 0, batang = Number(body.skor_batang) || 0;
+  var daun = Number(body.skor_daun) || 0, warna  = Number(body.skor_warna_daun) || 0;
+  var total = akar * 0.25 + batang * 0.25 + daun * 0.25 + warna * 0.25; // skala 1–4
+  return [
+    Utilities.formatDate(tsDate, "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss"),
+    body.tanggal        || "",
+    body.gh             || "",
+    body.periode        || "",
+    body.hst_aktual     || "",
+    body.hst_checkpoint || "",
+    body.varian         || "",
+    body.operator       || "",
+    akar || "", batang || "", daun || "", warna || "",
+    total,
+    body.selfie_url     || "",
+  ];
+}
+
 // ============================================================
 //  doPost — terima data dari Vigor.jsx
 // ============================================================
@@ -115,6 +160,14 @@ function doPost(e) {
 
     if (body.action === "uploadFoto") {
       return jsonResponse(uploadFoto(body));
+    }
+
+    if (body.action === "submitVigorSemaiBatch" || body.action === "submitVigorSemai") {
+      var semaiRows = (body.action === "submitVigorSemai" ? [body] : (body.rows || [])).map(buildSemaiRow);
+      if (semaiRows.length === 0) return jsonResponse({ success: false, error: "Tidak ada data yang dikirim" });
+      var semaiSheet = getSemaiSheet();
+      semaiSheet.getRange(semaiSheet.getLastRow() + 1, 1, semaiRows.length, semaiRows[0].length).setValues(semaiRows);
+      return jsonResponse({ success: true, count: semaiRows.length });
     }
 
     if (body.action === "submitVigorBatch") {
