@@ -257,6 +257,9 @@ function getGHData() {
       if (!isNaN(pNew) && pNew > pOld) {
         latestPeriode[gh] = periode;
         latestTanam[gh]   = tanam;
+      } else if (!isNaN(pNew) && pNew === pOld && !latestTanam[gh] && tanam) {
+        // Baris pertama periode ini tanam-nya kosong → pakai baris lain yang terisi
+        latestTanam[gh] = tanam;
       }
     }
 
@@ -346,6 +349,8 @@ function buildRndMap(rows) {
     if (!isNaN(pNew) && pNew > pOld) {
       latestPeriode[gh] = periode;
       latestTanam[gh]   = tanam;
+    } else if (!isNaN(pNew) && pNew === pOld && !latestTanam[gh] && tanam) {
+      latestTanam[gh] = tanam;
     }
   }
 
