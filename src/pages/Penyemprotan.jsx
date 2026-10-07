@@ -20,19 +20,33 @@ const AREA_COLORS = {
   "SEMAI":         "#FFB300",
 };
 
+// GH Nursery selalu tampil di Penyemprotan (tidak bergantung data sheet REF)
+const NURSERY_GH = [
+  "NURSERY 1","NURSERY 2","NURSERY 3","NURSERY 4","NURSERY 6","NURSERY 7","NURSERY 1 SAWAHAN",
+];
+
 function buildGHGroups(ghData) {
   const areaMap = {};
-  Object.keys(ghData).sort().forEach(ghName => {
-    const match = ghName.match(/^(.+?)\s+(\d+)$/);
+  const addGH = (ghName) => {
+    const match = ghName.match(/^(.+?)\s+(\d+)(?:\s+(.+))?$/);
     if (!match) return;
-    const area = match[1].trim();
-    const num  = parseInt(match[2]);
+    const area  = match[1].trim();
+    const num   = parseInt(match[2]);
+    const extra = match[3] ? match[3].trim() : "";
     if (!areaMap[area]) {
-      areaMap[area] = { area, color: AREA_COLORS[area] || "#607D8B", nomor: [] };
+      areaMap[area] = { area, color: AREA_COLORS[area] || "#607D8B", items: [] };
     }
-    if (!areaMap[area].nomor.includes(num)) areaMap[area].nomor.push(num);
+    const name = extra ? `${area} ${num} ${extra}` : `${area} ${num}`;
+    if (!areaMap[area].items.some(i => i.name === name)) {
+      areaMap[area].items.push({ name, num, label: extra ? `${num} ${extra}` : String(num), extra });
+    }
+  };
+  // Nama dari sheet yang berakhiran sufiks (mis. "NURSERY 1 SAWAHAN") hanya diterima untuk Nursery
+  Object.keys(ghData).sort().forEach(ghName => {
+    if (/^(.+?)\s+(\d+)$/.test(ghName) || ghName.toUpperCase().startsWith("NURSERY")) addGH(ghName.toUpperCase().startsWith("NURSERY") ? ghName.toUpperCase() : ghName);
   });
-  Object.values(areaMap).forEach(g => g.nomor.sort((a, b) => a - b));
+  NURSERY_GH.forEach(addGH);
+  Object.values(areaMap).forEach(g => g.items.sort((a, b) => a.num - b.num || a.extra.localeCompare(b.extra)));
   return Object.values(areaMap);
 }
 
@@ -186,13 +200,13 @@ function GHPicker({ value, onChange, groups }) {
             {group.area}
           </div>
           <div style={{ display:"flex", flexWrap:"wrap", gap:7 }}>
-            {group.nomor.map(n => {
-              const ghName  = `${group.area} ${n}`;
+            {group.items.map(item => {
+              const ghName  = item.name;
               const selected = value === ghName;
               return (
-                <button key={n} onClick={() => onChange(ghName)}
-                  style={{ width:44, height:44, borderRadius:10, border: selected ? `2px solid ${group.color}` : "1px solid rgba(255,255,255,0.12)", background: selected ? `${group.color}30` : "rgba(255,255,255,0.04)", color: selected ? group.color : "rgba(255,255,255,0.7)", fontSize:14, fontWeight: selected ? 800 : 500, cursor:"pointer", transition:"all 0.15s" }}>
-                  {n}
+                <button key={ghName} onClick={() => onChange(ghName)}
+                  style={{ minWidth:44, height:44, padding: item.extra ? "0 12px" : 0, borderRadius:10, border: selected ? `2px solid ${group.color}` : "1px solid rgba(255,255,255,0.12)", background: selected ? `${group.color}30` : "rgba(255,255,255,0.04)", color: selected ? group.color : "rgba(255,255,255,0.7)", fontSize:14, fontWeight: selected ? 800 : 500, cursor:"pointer", transition:"all 0.15s", whiteSpace:"nowrap" }}>
+                  {item.label}
                 </button>
               );
             })}
