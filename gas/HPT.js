@@ -121,13 +121,13 @@ function getSemaiRef() {
     if (!ghTujuan || !ghSemai) continue;
     if (tglTanam) continue; // sudah tanam → tidak aktif lagi
 
-    // Key = nama GH Semai (bukan GH tujuan). Kalau GH Semai yang sama muncul
-    // dengan periode berbeda, bedakan dengan suffix periode.
+    // Key unik = GH Semai + GH tujuan + periode (1 GH Semai bisa dipakai banyak batch).
+    // Nama yang tampil/disimpan ke sheet = ghSemai (field "nama").
     const periodeStr = String(periode || "");
-    let key = ghSemai;
-    if (semai[key] && semai[key].periode !== periodeStr) key = ghSemai + " (P" + periodeStr + ")";
+    const key = ghSemai + "|" + ghTujuan + "|" + periodeStr;
     if (!semai[key]) {
       semai[key] = {
+        nama: ghSemai,
         periode: periodeStr,
         ghTujuan: ghTujuan,
         tanam: parseISO(tglSemai), // dipakai FE utk hitung HSS (Today - Semai)

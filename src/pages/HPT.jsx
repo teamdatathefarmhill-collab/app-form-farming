@@ -254,6 +254,7 @@ export default function HPT() {
   };
 
   const ghInfo = activeTab === "semai" ? semaiData[selectedGH] : produksiData[selectedGH];
+  const ghLabel = (activeTab === "semai" && ghInfo?.nama) || selectedGH;
   const hst  = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : null;
   const hstC = hst !== null ? hstColor(hst) : null;
 
@@ -288,7 +289,7 @@ export default function HPT() {
     client_timestamp: new Date().toISOString(),
     tipe: activeTab,
     tanggal: todayISO,
-    gh: selectedGH,
+    gh: ghLabel,
     periode: ghInfo?.periode || "",
     hst,
     operator,
@@ -515,8 +516,8 @@ export default function HPT() {
                     return (
                       <button key={nama} onClick={() => handleSelectGH(nama)} style={{ padding: "12px 14px", background: selected ? "rgba(76,175,80,0.12)" : done ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.04)", border: `1px solid ${selected ? "rgba(76,175,80,0.45)" : done ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.1)"}`, borderRadius: 12, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", transition: "all 0.2s", opacity: done ? 0.6 : 1 }}>
                         <div style={{ textAlign: "left" }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: selected ? color.brand400 : color.card }}>{nama}</div>
-                          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>Periode {info.periode}{info.ghTujuan ? ` · Tujuan: ${info.ghTujuan}` : ""}{info.hssRef ? ` · Ref: ${info.hssRef} HSS` : ""}</div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: selected ? color.brand400 : color.card }}>{info.nama || nama}</div>
+                          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>{info.ghTujuan ? `Bibit ${info.ghTujuan} · ` : ""}Periode {info.periode}{info.hssRef ? ` · Ref: ${info.hssRef} HSS` : ""}</div>
                         </div>
                         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                           {done && <span style={{ fontSize: 10, color: color.brand400, background: "rgba(76,175,80,0.1)", border: "1px solid rgba(76,175,80,0.3)", borderRadius: 20, padding: "2px 7px" }}>✓ Done</span>}
@@ -545,7 +546,7 @@ export default function HPT() {
           {step === 2 && (
             <div>
               <div style={{ padding: "9px 12px", background: "rgba(76,175,80,0.06)", border: "1px solid rgba(76,175,80,0.12)", borderRadius: 10, marginBottom: activeTab === "semai" ? 8 : 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ fontSize: 12, color: color.brand400, fontWeight: 600 }}>{selectedGH}</div>
+                <div style={{ fontSize: 12, color: color.brand400, fontWeight: 600 }}>{ghLabel}</div>
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{operator} · {activeTab === "semai" ? `${hst} HSS` : `${hst} HST`}</div>
               </div>
 
@@ -739,7 +740,7 @@ export default function HPT() {
           isDemoMode={isDemoMode}
           summary={[
             { label: "Tanggal",  value: todayISO },
-            { label: "GH",       value: selectedGH },
+            { label: "GH",       value: ghLabel },
             { label: "Tipe",     value: activeTab === "semai" ? "Semai" : "Produksi" },
             { label: "Operator", value: operator },
           ]}
