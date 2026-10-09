@@ -32,25 +32,27 @@ function fmtNum(n) {
 function emptyEntry() { return { varian: "", jumlah: "" }; }
 
 // ─── Kualitas bibit per varian — dipecah 3 aspek (Akar/Batang/Daun), tiap
-// aspek dinilai lewat 1 dari 3 kriteria deskriptif (bukan cuma label generik),
-// masing-masing punya skor tetap (4/2/0). Total skor (maks 12) lalu dipetakan
-// jadi kategori akhir: 10-12 Baik, 6-8 Sedang, 0-4 Buruk. Sum 3 nilai dari
-// {0,2,4} selalu genap, jadi 3 rentang ini otomatis menutup semua kemungkinan. ──
+// aspek dinilai lewat 1 dari 4 kriteria deskriptif, masing-masing punya skor
+// tetap (4/3/2/1). Total skor (3-12) lalu dipetakan jadi kategori akhir:
+// 10-12 Baik, 7-9 Sedang, 3-6 Buruk (menutup semua kemungkinan total). ──
 const KUALITAS_ASPEK_OPTIONS = {
   akar: [
-    { skor: 4, deskripsi: "Akar serabut lebat & merata, media terikat penuh (>90%)" },
-    { skor: 2, deskripsi: "Akar serabut cukup, media terikat sebagian (60-90%)" },
-    { skor: 0, deskripsi: "Akar sedikit/rusak, media tidak terikat (<60%)" },
+    { skor: 4, deskripsi: "Akar serabut lebat dan merata, terikat penuh (>90%), warna putih" },
+    { skor: 3, deskripsi: "Akar serabut cukup, terikat sebagian (70-89%), warna putih" },
+    { skor: 2, deskripsi: "Akar serabut sedikit mengikat (50-69%), warna putih sedikit coklat" },
+    { skor: 1, deskripsi: "Akar serabut < 50%, warna putih sedikit coklat" },
   ],
   batang: [
-    { skor: 4, deskripsi: "Diameter besar, batang tegak" },
-    { skor: 2, deskripsi: "Diameter batang agak kurus (etiolasi ringan)" },
-    { skor: 0, deskripsi: "Batang rebah, etiolasi (kurus & memanjang)" },
+    { skor: 4, deskripsi: "Diameter batang besar, batang tegak" },
+    { skor: 3, deskripsi: "Diameter batang besar, batang sedikit memanjang" },
+    { skor: 2, deskripsi: "Diameter batang sedikit kurus memanjang, etiolasi ringan" },
+    { skor: 1, deskripsi: "Kurus, etiolasi" },
   ],
   daun: [
-    { skor: 4, deskripsi: "Warna hijau segar, jumlah daun ≥ 3" },
-    { skor: 2, deskripsi: "Warna hijau pucat, jumlah daun < 3" },
-    { skor: 0, deskripsi: "Daun klorosis (menguning), jumlah daun < 3" },
+    { skor: 4, deskripsi: "Warna daun hijau segar, jumlah daun 3, daun lebar" },
+    { skor: 3, deskripsi: "Warna daun hijau muda, jumlah daun 3, daun sedang" },
+    { skor: 2, deskripsi: "Warna daun hijau muda, daun 2, daun sedang" },
+    { skor: 1, deskripsi: "Warna daun kekuningan, daun 1-2, daun kecil" },
   ],
 };
 const KUALITAS_ASPEK = [
@@ -58,7 +60,8 @@ const KUALITAS_ASPEK = [
   { key: "batang", label: "Batang" },
   { key: "daun",   label: "Daun" },
 ];
-const KUALITAS_SKOR_COLOR = { 4: "#2e7d32", 2: "#f57f17", 0: "#c62828" };
+const KUALITAS_SKOR_COLOR = { 4: "#2e7d32", 3: "#7cb342", 2: "#f57f17", 1: "#c62828" };
+const KUALITAS_KATEGORI_COLOR = { Baik: "#2e7d32", Sedang: "#f57f17", Buruk: "#c62828" };
 
 // ── Total skor 1 varian = jumlah skor Akar+Batang+Daun. Kategori (Baik/Sedang/
 // Buruk) cuma valid kalau ketiganya sudah dinilai, jadi total di sini juga
@@ -74,7 +77,7 @@ function hitungTotalKualitas(k) {
 function kategoriKualitas(total) {
   if (total === null) return null;
   if (total >= 10) return "Baik";
-  if (total >= 6) return "Sedang";
+  if (total >= 7) return "Sedang";
   return "Buruk";
 }
 
@@ -677,7 +680,7 @@ export default function PemetaanGH() {
                       <div key={v} style={{ border: `1px solid ${color.border}`, borderRadius: 10, padding: "9px 10px" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 7 }}>
                           <span style={{ fontSize: 12, fontWeight: 700, color: color.text }}>{v}</span>
-                          <span style={{ fontSize: 11, fontWeight: 800, color: total !== null ? KUALITAS_SKOR_COLOR[kategori === "Baik" ? 4 : kategori === "Sedang" ? 2 : 0] : color.textGhost }}>
+                          <span style={{ fontSize: 11, fontWeight: 800, color: total !== null ? KUALITAS_KATEGORI_COLOR[kategori] : color.textGhost }}>
                             {total !== null ? `${total}/12 · ${kategori}` : "Belum lengkap"}
                           </span>
                         </div>

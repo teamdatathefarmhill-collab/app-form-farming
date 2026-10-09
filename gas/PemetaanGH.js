@@ -21,8 +21,8 @@
 //          selisih:[{varian,referensi,realisasi,selisih,keterangan}] }
 //
 // Kualitas bibit: tiap aspek (Akar/Batang/Daun) dinilai pakai kriteria
-// deskriptif (bukan cuma label), skor tetap 4/2/0 per kriteria. Kategori
-// akhir (Baik 10-12 / Sedang 6-8 / Buruk 0-4) dihitung di client dari total
+// deskriptif (bukan cuma label), skor tetap 4/3/2/1 per kriteria. Kategori
+// akhir (Baik 10-12 / Sedang 7-9 / Buruk 3-6) dihitung di client dari total
 // skor, dikirim apa adanya supaya sheet langsung berisi bentuk final —
 // tidak perlu dihitung ulang di sisi GAS/spreadsheet.
 // ============================================================
@@ -296,24 +296,24 @@ function testSubmitPemetaan() {
     kualitasBibit: [
       {
         varian: 'Greeniegal',
-        akarSkor: 4, akarDeskripsi: 'Akar serabut lebat & merata, media terikat penuh (>90%)',
-        batangSkor: 2, batangDeskripsi: 'Diameter batang agak kurus (etiolasi ringan)',
-        daunSkor: 4, daunDeskripsi: 'Warna hijau segar, jumlah daun ≥ 3',
-        totalPoin: 10, kategori: 'Baik',
+        akarSkor: 4, akarDeskripsi: 'Akar serabut lebat dan merata, terikat penuh (>90%), warna putih',
+        batangSkor: 3, batangDeskripsi: 'Diameter batang besar, batang sedikit memanjang',
+        daunSkor: 4, daunDeskripsi: 'Warna daun hijau segar, jumlah daun 3, daun lebar',
+        totalPoin: 11, kategori: 'Baik',
       },
       {
         varian: 'Sunray',
-        akarSkor: 2, akarDeskripsi: 'Akar serabut cukup, media terikat sebagian (60-90%)',
-        batangSkor: 2, batangDeskripsi: 'Diameter batang agak kurus (etiolasi ringan)',
-        daunSkor: 2, daunDeskripsi: 'Warna hijau pucat, jumlah daun < 3',
-        totalPoin: 6, kategori: 'Sedang',
+        akarSkor: 3, akarDeskripsi: 'Akar serabut cukup, terikat sebagian (70-89%), warna putih',
+        batangSkor: 2, batangDeskripsi: 'Diameter batang sedikit kurus memanjang, etiolasi ringan',
+        daunSkor: 3, daunDeskripsi: 'Warna daun hijau muda, jumlah daun 3, daun sedang',
+        totalPoin: 8, kategori: 'Sedang',
       },
       {
         varian: 'Midori',
-        akarSkor: 0, akarDeskripsi: 'Akar sedikit/rusak, media tidak terikat (<60%)',
-        batangSkor: 0, batangDeskripsi: 'Batang rebah, etiolasi (kurus & memanjang)',
-        daunSkor: 2, daunDeskripsi: 'Warna hijau pucat, jumlah daun < 3',
-        totalPoin: 2, kategori: 'Buruk',
+        akarSkor: 1, akarDeskripsi: 'Akar serabut < 50%, warna putih sedikit coklat',
+        batangSkor: 1, batangDeskripsi: 'Kurus, etiolasi',
+        daunSkor: 2, daunDeskripsi: 'Warna daun hijau muda, daun 2, daun sedang',
+        totalPoin: 4, kategori: 'Buruk',
       },
     ],
     selisih: [
