@@ -66,14 +66,6 @@ const HAMA_LIST = [
   { key: "kutu_putih",  label: "Kutu Putih",      icon: "🤍", color: "#B0BEC5", unit: "ekor" },
 ];
 
-// Gejala bibit khusus semai (bukan hama)
-const GEJALA_SEMAI = [
-  { key: "keriting",      label: "Keriting",      icon: "🍃", color: "#FFB300", unit: "bibit" },
-  { key: "cacat",         label: "Cacat",         icon: "🍂", color: "#EF5350", unit: "bibit" },
-  { key: "kerdil",        label: "Kerdil",        icon: "🌱", color: "#AB47BC", unit: "bibit" },
-  { key: "tidak_tumbuh",  label: "Tidak Tumbuh",  icon: "🪨", color: "#607D8B", unit: "bibit" },
-];
-
 const PENYAKIT_SKOR = [
   { key: "dm", label: "DM", fullLabel: "Downy Mildew",   icon: "💧", color: "#1E88E5", hasSkor: true },
   { key: "pm", label: "PM", fullLabel: "Powdery Mildew", icon: "⬜", color: color.infoBorder, hasSkor: true },
@@ -92,9 +84,7 @@ function initHPTData() {
   PENYAKIT_SIMPLE.forEach(p => {
     penyakit[p.key] = { jumlah: "" };
   });
-  const gejalaSemai = {};
-  GEJALA_SEMAI.forEach(g => { gejalaSemai[g.key] = ""; });
-  return { hama, penyakit, gejalaSemai, keteranganWajib: "", keterangan: "" };
+  return { hama, penyakit, keterangan: "" };
 }
 
 const TIPE_GH = [
@@ -267,8 +257,7 @@ export default function HPT() {
   const hst  = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : null;
   const hstC = hst !== null ? hstColor(hst) : null;
 
-  const canProceedStep2 = operator.trim().length >= 2 &&
-    (activeTab !== "semai" || !semuaGejalaSemai0 || hptData.keteranganWajib.trim().length > 0);
+  const canProceedStep2 = operator.trim().length >= 2;
 
   const handleHama = (key, val) => {
     if (val === "" || /^\d+$/.test(val))
@@ -280,18 +269,11 @@ export default function HPT() {
       setHptData(d => ({ ...d, penyakit: { ...d.penyakit, [key]: { ...d.penyakit[key], [field]: val } } }));
   };
 
-  const handleGejalaSemai = (key, val) => {
-    if (val === "" || /^\d+$/.test(val))
-      setHptData(d => ({ ...d, gejalaSemai: { ...d.gejalaSemai, [key]: val } }));
-  };
-
   // Auto-save draft
   useEffect(() => {
     if (step === 3) return;
     saveDraft({ step, selectedGH, activeTab, selectedTipe, operator, hptData });
   }, [step, selectedGH, activeTab, selectedTipe, operator, hptData]);
-
-  const semuaGejalaSemai0 = GEJALA_SEMAI.every(g => !hptData.gejalaSemai[g.key] || hptData.gejalaSemai[g.key] === "0" || hptData.gejalaSemai[g.key] === "");
 
   const resetForm = () => {
     clearDraft();
@@ -321,12 +303,7 @@ export default function HPT() {
     ...Object.fromEntries(PENYAKIT_SIMPLE.map(p => [
       [`penyakit_${p.key}`, hptData.penyakit[p.key]?.jumlah || "0"],
     ])),
-    ...(activeTab === "semai"
-      ? Object.fromEntries(GEJALA_SEMAI.map(g => [`semai_${g.key}`, hptData.gejalaSemai[g.key] || "0"]))
-      : {}),
-    keterangan: activeTab === "semai"
-      ? [hptData.keteranganWajib, hptData.keterangan].filter(Boolean).join(" | ")
-      : hptData.keterangan,
+    keterangan: hptData.keterangan,
   });
 
   const handleSubmit = async () => {
@@ -451,13 +428,6 @@ export default function HPT() {
                 ))}
               </div>
 
-              {activeTab === "semai" && (
-                <div style={{ marginBottom: 12, padding: "8px 12px", background: "rgba(76,175,80,0.07)", border: "1px solid rgba(76,175,80,0.25)", borderRadius: 9, display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 14 }}>🌱</span>
-                  <span style={{ fontSize: 11, color: color.brand400 }}>🌱 HPT Semai: Keriting, Cacat, Kerdil, Tidak Tumbuh</span>
-                </div>
-              )}
-
               {activeTab === "produksi" && (
                 loadingGH ? (
                   <div style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.3)", fontSize: 13 }}>⏳ Memuat data GH...</div>
@@ -546,7 +516,7 @@ export default function HPT() {
                       <button key={nama} onClick={() => handleSelectGH(nama)} style={{ padding: "12px 14px", background: selected ? "rgba(76,175,80,0.12)" : done ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.04)", border: `1px solid ${selected ? "rgba(76,175,80,0.45)" : done ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.1)"}`, borderRadius: 12, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", transition: "all 0.2s", opacity: done ? 0.6 : 1 }}>
                         <div style={{ textAlign: "left" }}>
                           <div style={{ fontSize: 14, fontWeight: 700, color: selected ? color.brand400 : color.card }}>{nama}</div>
-                          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>Periode {info.periode}{info.hssRef ? ` · Ref: ${info.hssRef} HSS` : ""}</div>
+                          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>Periode {info.periode}{info.ghTujuan ? ` · Tujuan: ${info.ghTujuan}` : ""}{info.hssRef ? ` · Ref: ${info.hssRef} HSS` : ""}</div>
                         </div>
                         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                           {done && <span style={{ fontSize: 10, color: color.brand400, background: "rgba(76,175,80,0.1)", border: "1px solid rgba(76,175,80,0.3)", borderRadius: 20, padding: "2px 7px" }}>✓ Done</span>}
@@ -586,39 +556,9 @@ export default function HPT() {
                 </div>
               )}
 
-              {activeTab === "semai" && (
-                <div style={{ marginBottom: 14, padding: "7px 12px", background: "rgba(76,175,80,0.06)", border: "1px solid rgba(76,175,80,0.2)", borderRadius: 8 }}>
-                  <span style={{ fontSize: 11, color: color.brand400 }}>🌱 Pengamatan gejala bibit</span>
-                </div>
-              )}
-
-              {activeTab === "semai" ? (
-                <>
-                  <div style={S.sectionTitle}>🌿 Gejala Bibit</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, marginBottom: 20 }}>
-                    {GEJALA_SEMAI.map(g => {
-                      const val = hptData.gejalaSemai[g.key];
-                      const hasVal = val !== "" && val !== "0";
-                      return (
-                        <div key={g.key} style={{ background: hasVal ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.025)", border: `1px solid ${hasVal ? g.color + "55" : "rgba(255,255,255,0.07)"}`, borderRadius: 10, padding: "9px 10px", transition: "all 0.2s" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 7 }}>
-                            <span style={{ fontSize: 15 }}>{g.icon}</span>
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: 11, fontWeight: 700, color: hasVal ? color.card : "rgba(255,255,255,0.55)" }}>{g.label}</div>
-                              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)" }}>{g.unit}</div>
-                            </div>
-                          </div>
-                          <input type="number" inputMode="numeric" value={val} onChange={e => handleGejalaSemai(g.key, e.target.value)} placeholder="0" style={{ width: "100%", padding: "7px 10px", background: "rgba(0,0,0,0.3)", border: `1px solid ${hasVal ? g.color : "rgba(255,255,255,0.12)"}`, borderRadius: 7, color: hasVal ? g.color : color.card, fontSize: 15, fontWeight: 700, outline: "none", textAlign: "center", boxSizing: "border-box" }} />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              ) : (
-                <>
                   <div style={S.sectionTitle}>🐛 Populasi Hama</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, marginBottom: 20 }}>
-                {HAMA_LIST.filter(h => activeTab === "semai" ? HAMA_SEMAI.includes(h.key) : true).map(h => {
+                {HAMA_LIST.map(h => {
                   const val = hptData.hama[h.key];
                   const hasVal = val !== "" && val !== "0";
                   return (
@@ -682,8 +622,6 @@ export default function HPT() {
                   );
                 })}
               </div>
-                </>
-              )}
 
               <div style={S.sectionTitle}>👤 Nama Operator</div>
               <input
@@ -693,22 +631,7 @@ export default function HPT() {
                 style={{ width: "100%", marginBottom: 16, padding: "13px 14px", background: "rgba(255,255,255,0.05)", border: `1px solid ${operator.length >= 2 ? "rgba(76,175,80,0.4)" : "rgba(255,255,255,0.1)"}`, borderRadius: 12, color: color.card, fontSize: 15, outline: "none", boxSizing: "border-box" }}
               />
 
-              {activeTab === "semai" && semuaGejalaSemai0 && (
-                <>
-                  <div style={{ ...S.sectionTitle, color: "rgba(229,57,53,0.8)", display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef5350", display: "inline-block" }} />
-                    Keterangan (wajib bila semua pengamatan 0)
-                  </div>
-                  <textarea value={hptData.keteranganWajib} onChange={e => setHptData(d => ({ ...d, keteranganWajib: e.target.value }))} placeholder="Jelaskan kondisi bibit hari ini..." rows={3} style={{ width: "100%", padding: "11px 13px", background: "rgba(229,57,53,0.05)", border: `1px solid ${hptData.keteranganWajib.trim() ? "rgba(76,175,80,0.35)" : "rgba(229,57,53,0.35)"}`, borderRadius: 10, color: color.card, fontSize: 13, outline: "none", resize: "none", boxSizing: "border-box" }} />
-                  {!hptData.keteranganWajib.trim() && (
-                    <div style={{ marginTop: 6, padding: "7px 10px", background: "rgba(229,57,53,0.08)", border: "1px solid rgba(229,57,53,0.2)", borderRadius: 7, fontSize: 11, color: color.dangerBorder, display: "flex", alignItems: "center", gap: 6 }}>
-                      ⚠️ Semua nilai pengamatan masih 0. Wajib isi keterangan sebelum submit.
-                    </div>
-                  )}
-                </>
-              )}
-
-              <div style={{ ...S.sectionTitle, marginTop: 16 }}>📝 {activeTab === "semai" ? "Keterangan tambahan (opsional)" : "Keterangan (opsional)"}</div>
+              <div style={{ ...S.sectionTitle, marginTop: 16 }}>📝 Keterangan (opsional)</div>
               <textarea value={hptData.keterangan} onChange={e => setHptData(d => ({ ...d, keterangan: e.target.value }))} placeholder="Catatan tambahan..." rows={3} style={{ width: "100%", padding: "11px 13px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: color.card, fontSize: 13, outline: "none", resize: "none", boxSizing: "border-box" }} />
 
               {submitError && (

@@ -17,8 +17,11 @@ const HEADER_PRODUKSI = [
 
 const HEADER_SEMAI = [
   "Timestamp", "GH", "Periode", "HSS",
-  "Keriting", "Cacat", "Kerdil", "Tidak Tumbuh",
-  "Operator", "Keterangan"
+  "Kutu Kebul", "Thrips", "Ulat/Kupu-kupu", "Tungau (per daun)",
+  "Tikus", "Aphids", "Ulat Kompos", "Kutu Putih",
+  "PM (Insidensi)", "PM Skor 1", "PM Skor 2", "PM Skor 3", "PM Skor 4",
+  "DM (Insidensi)", "DM Skor 1", "DM Skor 2", "DM Skor 3", "DM Skor 4",
+  "GSB", "Operator", "Keterangan"
 ];
 
 // ─── CORS Helper ──────────────────────────────────────────────────────────────
@@ -65,7 +68,7 @@ function doGet(e) {
 }
 
 // ─── GET SEMAI REF ────────────────────────────────────────────────────────────
-// Baca sheet "Data sprout (New)", grup per (Nama GH tujuan + Periode + GH Semai),
+// Baca sheet "Data sprout (New)", grup per (GH Semai + Periode); GH tujuan disimpan sbg info,
 // hanya ambil baris yang kolom "Tanam" masih kosong (belum pindah tanam).
 function getSemaiRef() {
   const sheet = SS_SEMAI.getSheetByName(SHEET_REF_SEMAI);
@@ -118,9 +121,15 @@ function getSemaiRef() {
     if (!ghTujuan || !ghSemai) continue;
     if (tglTanam) continue; // sudah tanam → tidak aktif lagi
 
-    if (!semai[ghTujuan]) {
-      semai[ghTujuan] = {
-        periode: String(periode || ""),
+    // Key = nama GH Semai (bukan GH tujuan). Kalau GH Semai yang sama muncul
+    // dengan periode berbeda, bedakan dengan suffix periode.
+    const periodeStr = String(periode || "");
+    let key = ghSemai;
+    if (semai[key] && semai[key].periode !== periodeStr) key = ghSemai + " (P" + periodeStr + ")";
+    if (!semai[key]) {
+      semai[key] = {
+        periode: periodeStr,
+        ghTujuan: ghTujuan,
         tanam: parseISO(tglSemai), // dipakai FE utk hitung HSS (Today - Semai)
         status: "SEDANG_SEMAI",
       };
@@ -138,46 +147,35 @@ function submitHPT(p) {
   const gh        = p.gh       || "";
   const operator  = p.operator || "";
 
-  if (tipe === "semai") {
-    const row = [
-      timestamp,
-      gh,
-      p.periode            || "",
-      p.hst                || "",
-      p.semai_keriting     || "0",
-      p.semai_cacat        || "0",
-      p.semai_kerdil       || "0",
-      p.semai_tidak_tumbuh || "0",
-      operator,
-      p.keterangan         || "",
-    ];
-    appendToSheet(SHEET_OUT_SEMAI, HEADER_SEMAI, row);
+  const dataHPT = [
+    p.hama_kutu_kebul       || "0",
+    p.hama_thrips           || "0",
+    p.hama_ulat_kupu        || "0",
+    p.hama_tungau           || "0",
+    p.hama_tikus            || "0",
+    p.hama_aphids           || "0",
+    p.hama_ulat_kompos      || "0",
+    p.hama_kutu_putih       || "0",
+    p.penyakit_pm_insidensi || "0",
+    p.penyakit_pm_skor1     || "0",
+    p.penyakit_pm_skor2     || "0",
+    p.penyakit_pm_skor3     || "0",
+    p.penyakit_pm_skor4     || "0",
+    p.penyakit_dm_insidensi || "0",
+    p.penyakit_dm_skor1     || "0",
+    p.penyakit_dm_skor2     || "0",
+    p.penyakit_dm_skor3     || "0",
+    p.penyakit_dm_skor4     || "0",
+    p.penyakit_gsb          || "0",
+    operator,
+    p.keterangan            || "",
+  ];
 
+  if (tipe === "semai") {
+    const row = [timestamp, gh, p.periode || "", p.hst || ""].concat(dataHPT);
+    appendToSheet(SHEET_OUT_SEMAI, HEADER_SEMAI, row);
   } else {
-    const row = [
-      timestamp, gh,
-      p.hama_kutu_kebul       || "0",
-      p.hama_thrips           || "0",
-      p.hama_ulat_kupu        || "0",
-      p.hama_tungau           || "0",
-      p.hama_tikus            || "0",
-      p.hama_aphids           || "0",
-      p.hama_ulat_kompos      || "0",
-      p.hama_kutu_putih       || "0",
-      p.penyakit_pm_insidensi || "0",
-      p.penyakit_pm_skor1     || "0",
-      p.penyakit_pm_skor2     || "0",
-      p.penyakit_pm_skor3     || "0",
-      p.penyakit_pm_skor4     || "0",
-      p.penyakit_dm_insidensi || "0",
-      p.penyakit_dm_skor1     || "0",
-      p.penyakit_dm_skor2     || "0",
-      p.penyakit_dm_skor3     || "0",
-      p.penyakit_dm_skor4     || "0",
-      p.penyakit_gsb          || "0",
-      operator,
-      p.keterangan            || "",
-    ];
+    const row = [timestamp, gh].concat(dataHPT);
     appendToSheet(SHEET_OUT_PRODUKSI, HEADER_PRODUKSI, row);
   }
 
@@ -261,16 +259,12 @@ function testGetSemaiRef() {
 // TEST 4 — Tulis baris test ke sheet HPT Semai (beneran nulis!)
 function testSubmitSemaiReal() {
   const row = [
-    new Date(),
-    "TEST - Colomadu 1",   // GH
-    "26.1",                // Periode
-    "42",                  // HSS
-    "2",                   // Keriting
-    "0",                   // Cacat
-    "1",                   // Kerdil
-    "0",                   // Tidak Tumbuh
-    "Test Operator",       // Operator
-    "Test dari GAS - boleh dihapus", // Keterangan
+    new Date(), "TEST - Colomadu 1", "26.1", "42",
+    "2", "0", "1", "0", "0", "0", "0", "0",   // hama
+    "0", "0", "0", "0", "0",                  // PM
+    "0", "0", "0", "0", "0",                  // DM
+    "0",                                      // GSB
+    "Test Operator", "Test dari GAS - boleh dihapus",
   ];
 
   appendToSheet(SHEET_OUT_SEMAI, HEADER_SEMAI, row);
