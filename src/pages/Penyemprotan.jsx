@@ -349,8 +349,9 @@ export default function Penyemprotan() {
     setIsSyncingPending(true);
     for (const rec of all) {
       try {
-        await gasPost(SCRIPT_URL, rec.payload);
-        await idbDelete(DB_NAME, rec.id);
+        const res = await gasPost(SCRIPT_URL, rec.payload);
+        // Data yang ditolak server karena tidak lengkap tidak akan pernah berhasil — buang dari antrian
+        if (res?.success || /tidak lengkap/i.test(res?.error || "")) await idbDelete(DB_NAME, rec.id);
       } catch { /* coba lagi nanti */ }
     }
     await refreshPendingCount();
@@ -372,7 +373,7 @@ export default function Penyemprotan() {
 
   // ── Payload ──
   const buildPayload = () => {
-    const base = { action:"submitPenyemprotan", tanggal:todayISO, gh:selectedGH, operator, type:activity, client_timestamp: new Date().toISOString() };
+    const base = { action:"submitPenyemprotan", tanggal:todayISO, gh:selectedGH, operator:operator.trim(), type:activity, client_timestamp: new Date().toISOString() };
     if (activity === "oles_gsb") {
       return { ...base, pestisida:pestisidaGSB, konsentrasi:konsentrasiGSB, penggunaan_gram:penggunaanGram };
     }
@@ -432,7 +433,8 @@ export default function Penyemprotan() {
       navigateTo("sukses"); setSyncing(false); return;
     }
     try {
-      await gasPost(SCRIPT_URL, payload);
+      const res = await gasPost(SCRIPT_URL, payload);
+      if (!res?.success) { setSubmitError(`Ditolak server: ${res?.error || "alasan tidak diketahui"}`); setSyncing(false); return; }
     } catch { setSubmitError("Gagal mengirim, cek koneksi."); setSyncing(false); return; }
     navigateTo("sukses"); setSyncing(false);
   };

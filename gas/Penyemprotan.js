@@ -133,6 +133,22 @@ function processSubmission(data) {
     throw new Error("Unknown action: " + data.action);
   }
 
+  // Rapikan spasi di semua isian teks (mis. "Kiki Triansyah " vs "Kiki Triansyah")
+  Object.keys(data).forEach(function(k) {
+    if (typeof data[k] === "string") data[k] = data[k].trim();
+  });
+
+  // Tolak submit yang tidak berisi data inti — supaya tidak ada baris kosong di sheet
+  if (data.type === "oles_gsb" && !(data.gh && data.pestisida && data.penggunaan_gram)) {
+    throw new Error("Data Oles GSB tidak lengkap");
+  }
+  if (data.type === "pemakaian_gas" && !(data.gh && data.gas_nomor && data.gas_peruntukan)) {
+    throw new Error("Data Pemakaian Gas tidak lengkap (GH, Nomor Gas, Peruntukan wajib)");
+  }
+  if (data.type === "penggunaan_ambil" && !data.guna_nama_pestisida && !(data.ada_pengambilan && data.ambil_nama_pestisida)) {
+    throw new Error("Data Penggunaan/Pengambilan tidak lengkap");
+  }
+
   // Gunakan cached spreadsheet — tidak openById() ulang tiap request
   const ss = getSpreadsheet();
 
@@ -308,7 +324,7 @@ function initSheets() {
 }
 
 // ============================================================
-// migratePenggunaanCampuran — jalankan SATU KALI dari editor
+// migratePenggunaanCampuran — DEPRECATED, pakai rapikanSheets() di bawah.
 // Menambah 4 header kolom pencampuran ke sheet Penggunaan yang sudah ada
 // (data lama tidak diubah; baris lama kolom barunya kosong).
 // ============================================================
@@ -326,6 +342,182 @@ function migratePenggunaanCampuran() {
   range.setHorizontalAlignment("center");
   range.setWrap(true);
   Logger.log("✅ Header campuran ditambahkan mulai kolom " + start);
+}
+
+// ============================================================
+// rapikanSheets — jalankan SATU KALI dari editor (menggantikan
+// migratePenggunaanCampuran). Header sheet lama sudah ketinggalan dari kode,
+// sedangkan baris data ditulis dengan beberapa layout berbeda sehingga kolom
+// bergeser. Fungsi ini:
+//   1. Backup tiap sheet → "bak_<waktu>_<nama>" (hapus manual kalau sudah yakin)
+//   2. Petakan semua baris lama ke layout HEADER terbaru
+//   3. Pindahkan isian gas yang nyasar di sheet Pengambilan → Pemakaian Gas
+//   4. Buang baris kosong/duplikat persis/baris test, urutkan per Timestamp
+//   5. Rapikan format: header, freeze, filter, lebar kolom, kolom sisa dihapus
+// ============================================================
+const _TZ = "Asia/Jakarta";
+
+function _s(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, _TZ, "dd/MM/yyyy HH:mm:ss");
+  return v === null || v === undefined ? "" : String(v).trim();
+}
+function _d(v) {
+  return v instanceof Date ? Utilities.formatDate(v, _TZ, "dd/MM/yyyy") : _s(v);
+}
+function _t(v) {
+  return v instanceof Date ? Utilities.formatDate(v, _TZ, "H:mm") : _s(v);
+}
+function _tsKey(ts) {
+  const m = String(ts).match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (!m) return "";
+  const p = function(x) { return ("0" + (x || "0")).slice(-2); };
+  return m[3] + m[2] + m[1] + p(m[4]) + p(m[5]) + p(m[6]);
+}
+function _isTest(op) { return /^test/i.test(op || ""); }
+
+// Layout sheet Penggunaan: baru = 24 kolom (Operator di kolom T);
+// lama = 9 kolom + 4 kolom campuran (Operator di kolom I).
+function _normPenggunaan(r) {
+  if (_s(r[19])) {
+    const out = [];
+    for (let i = 0; i < 24; i++) out.push(i === 1 ? _d(r[i]) : (i === 10 || i === 11) ? _t(r[i]) : _s(r[i]));
+    if (!out[20]) out[20] = "Tanpa Campuran";
+    return out;
+  }
+  let steril = _s(r[7]), operator = _s(r[8]), periode = _s(r[6]);
+  if (!operator && steril && /steril|tidak ada/i.test(periode)) { // layout 8 kolom (tanpa Waktu)
+    operator = steril; steril = periode; periode = "";
+  }
+  return [
+    _s(r[0]), _d(r[1]), _s(r[2]), _s(r[3]), _s(r[4]), _s(r[5]),
+    "", "", "", "", "", "", periode, "", steril,
+    "", "", "", "", operator,
+    _s(r[9]) || "Tanpa Campuran", _s(r[10]), _s(r[11]), _s(r[12]),
+  ];
+}
+
+// Layout sheet Pengambilan: 6 kolom (Operator di F) sekarang; versi lama punya
+// kolom suhu/waktu/gas dan Operator di N, Q atau R. Mengembalikan baris
+// Pengambilan + (jika ada) baris Pemakaian Gas yang nyasar di situ.
+function _normPengambilan(r) {
+  const c = function(i) { return _s(r[i - 1]); };
+  let op = "", gas = null;
+  if (c(18))      { op = c(18); gas = { nomor: c(14), baru: c(15), per: c(16) }; }
+  else if (c(17)) { op = c(17); gas = { nomor: c(13), baru: c(14), per: c(15) }; }
+  else if (c(14) && !/^(ya|tidak)$/i.test(c(14))) { op = c(14); }
+  else            { op = c(6); }
+  const ts = _s(r[0]), tgl = _d(r[1]), gh = _s(r[2]);
+  const pengambilan = (c(4) || c(5)) ? [ts, tgl, gh, c(4), c(5), op] : null;
+  const gasRow = (gas && (gas.nomor || gas.per))
+    ? [ts, tgl, gh, _t(r[9]), _t(r[10]), gas.nomor, gas.baru, gas.per, op] : null;
+  return { pengambilan: pengambilan, gas: gasRow };
+}
+
+function _normGas(r) {
+  return [_s(r[0]), _d(r[1]), _s(r[2]), _t(r[3]), _t(r[4]), _s(r[5]), _s(r[6]), _s(r[7]), _s(r[8])];
+}
+function _normOles(r) {
+  return [_s(r[0]), _d(r[1]), _s(r[2]), _s(r[3]), _s(r[4]), _s(r[5]), _s(r[6])];
+}
+
+// Buang baris kosong/test/duplikat persis, lalu urutkan per Timestamp (stabil)
+function _finalisasi(rows, opIdx) {
+  const seen = {};
+  const out = [];
+  rows.forEach(function(row, i) {
+    if (!row[2] || _isTest(row[opIdx])) return;                 // tanpa GH / data test
+    const k = JSON.stringify(row);
+    if (seen[k]) return;
+    seen[k] = true;
+    out.push({ row: row, key: _tsKey(row[0]), i: i });
+  });
+  out.sort(function(a, b) { return a.key < b.key ? -1 : a.key > b.key ? 1 : a.i - b.i; });
+  return out.map(function(o) { return o.row; });
+}
+
+// Baris gas kosong dibuang kalau GH+tanggal yang sama sudah punya baris gas berisi
+function _bersihkanGasKosong(rows) {
+  const adaIsi = {};
+  rows.forEach(function(r) { if (r[3] || r[5] || r[7]) adaIsi[r[1] + "|" + r[2]] = true; });
+  return rows.filter(function(r) { return r[3] || r[5] || r[7] || !adaIsi[r[1] + "|" + r[2]]; });
+}
+
+function _tulisSheet(ss, key, rows) {
+  const headers = HEADER[key];
+  const n  = headers.length;
+  const sh = ss.getSheetByName(SHEET[key]) || createSheet(ss, key);
+
+  sh.getFilter() && sh.getFilter().remove();
+  sh.getBandings().forEach(function(b) { b.remove(); });
+  sh.clear();
+  if (sh.getMaxColumns() > n) sh.deleteColumns(n + 1, sh.getMaxColumns() - n);
+  if (sh.getMaxColumns() < n) sh.insertColumnsAfter(sh.getMaxColumns(), n - sh.getMaxColumns());
+  if (sh.getMaxRows() < rows.length + 2) sh.insertRowsAfter(sh.getMaxRows(), rows.length + 2 - sh.getMaxRows());
+
+  // Kolom teks (tanggal/waktu) dikunci "@" supaya Sheets tidak mengubah 05/10 jadi tanggal lain
+  headers.forEach(function(h, i) {
+    if (/^(Timestamp|Tanggal|Waktu Mulai|Waktu Selesai)$/.test(h)) {
+      sh.getRange(2, i + 1, sh.getMaxRows() - 1, 1).setNumberFormat("@");
+    }
+  });
+  if (rows.length) sh.getRange(2, 1, rows.length, n).setValues(rows);
+
+  const hRange = sh.getRange(1, 1, 1, n);
+  hRange.setValues([headers]).setBackground(HEADER_COLOR[key]).setFontColor("#ffffff")
+    .setFontWeight("bold").setHorizontalAlignment("center").setVerticalAlignment("middle").setWrap(true);
+  sh.setRowHeight(1, 40);
+  sh.setFrozenRows(1);
+  sh.getRange(1, 1, Math.max(rows.length + 1, 2), n).createFilter();
+  sh.getRange(2, 1, Math.max(rows.length, 1), n).setVerticalAlignment("middle").setWrap(false);
+  sh.autoResizeColumns(1, n);
+  for (let c = 1; c <= n; c++) if (sh.getColumnWidth(c) < 70) sh.setColumnWidth(c, 70);
+}
+
+function rapikanSheets() {
+  const ss    = SpreadsheetApp.openById(SS_ID);
+  const stamp = Utilities.formatDate(new Date(), _TZ, "yyMMdd_HHmm");
+  const baca  = function(key) {
+    const sh = ss.getSheetByName(SHEET[key]);
+    if (!sh) return [];
+    sh.copyTo(ss).setName("bak_" + stamp + "_" + key);
+    return sh.getLastRow() < 2 ? [] : sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+  };
+
+  const rawOles = baca("OLES_GSB"), rawAmbil = baca("PENGAMBILAN"),
+        rawGuna = baca("PENGGUNAAN"), rawGas = baca("PEMAKAIAN_GAS");
+
+  const oles  = _finalisasi(rawOles.map(_normOles), 6);
+  const guna  = _finalisasi(rawGuna.map(_normPenggunaan), 19);
+
+  const ambil = [];
+  let gas = rawGas.map(_normGas);
+  const gasKey = {};
+  gas.forEach(function(g) { gasKey[[g[1], g[2], g[5], g[7]].join("|")] = true; });
+  let gasDipindah = 0;
+  rawAmbil.forEach(function(r) {
+    const x = _normPengambilan(r);
+    if (x.pengambilan) ambil.push(x.pengambilan);
+    if (x.gas) {
+      const k = [x.gas[1], x.gas[2], x.gas[5], x.gas[7]].join("|");
+      if (!gasKey[k]) { gasKey[k] = true; gas.push(x.gas); gasDipindah++; }
+    }
+  });
+  const ambilOk = _finalisasi(ambil, 5);
+  const gasOk   = _bersihkanGasKosong(_finalisasi(gas, 8));
+
+  _tulisSheet(ss, "OLES_GSB",      oles);
+  _tulisSheet(ss, "PENGAMBILAN",   ambilOk);
+  _tulisSheet(ss, "PENGGUNAAN",    guna);
+  _tulisSheet(ss, "PEMAKAIAN_GAS", gasOk);
+
+  const msg = "Selesai.\n" +
+    "• Oles GSB: " + rawOles.length + " → " + oles.length + "\n" +
+    "• Pengambilan: " + rawAmbil.length + " → " + ambilOk.length + "\n" +
+    "• Penggunaan: " + rawGuna.length + " → " + guna.length + "\n" +
+    "• Pemakaian Gas: " + rawGas.length + " → " + gasOk.length + " (" + gasDipindah + " dipindah dari Pengambilan)\n" +
+    "Backup: sheet bak_" + stamp + "_* — hapus manual kalau sudah yakin.";
+  Logger.log(msg);
+  try { SpreadsheetApp.getUi().alert(msg); } catch (e) { /* dijalankan tanpa UI */ }
 }
 
 // ============================================================
