@@ -284,7 +284,47 @@ function doGet(e) {
     });
   }
 
+  if (action === "getVigorStatus") {
+    if (!checkAppToken((e.parameter || {}).token)) return jsonResponse({ success: false, error: "Unauthorized" });
+    return jsonResponse(getVigorStatus());
+  }
+
   return jsonResponse({ success: true, app: "Vigor GAS", status: "active" });
+}
+
+// ============================================================
+//  getVigorStatus — daftar (GH, Periode, HST Checkpoint) yang sudah
+//  masuk ke sheet, dibaca dari ~600 baris terakhir saja (cukup untuk
+//  beberapa minggu). Dipakai pengingat Vigor di Home untuk tahu
+//  checkpoint mana yang masih belum diisi. Sheet DATABASE = HST
+//  biasa, sheet For Vigor = Vigor Semai (HST 11).
+// ============================================================
+function getVigorStatus() {
+  try {
+    var seen = {};
+    var done = [];
+    var sources = [
+      { sheet: getSheet(),      cols: 6 },
+      { sheet: getSemaiSheet(), cols: 6 },
+    ];
+    sources.forEach(function (src) {
+      var last = src.sheet.getLastRow();
+      if (last < 2) return;
+      var start = Math.max(2, last - 599);
+      var vals  = src.sheet.getRange(start, 1, last - start + 1, src.cols).getValues();
+      vals.forEach(function (r) {
+        var gh = String(r[2] || "").trim(), per = String(r[3] || "").trim(), cp = String(r[5] || "").trim();
+        if (!gh || !cp) return;
+        var key = gh.toUpperCase() + "|" + per + "|" + cp;
+        if (seen[key]) return;
+        seen[key] = true;
+        done.push({ gh: gh, periode: per, cp: Number(cp), tanggal: String(r[1] || "") });
+      });
+    });
+    return { success: true, done: done };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
 }
 
 // ============================================================

@@ -18,6 +18,7 @@ import Penyemprotan from "../pages/Penyemprotan";
 import Sanitasi     from "../pages/Sanitasi";
 import HPT          from "../pages/HPT";
 import Cuaca        from "../pages/Cuaca";
+import VigorReminder from "./VigorReminder";
 import { useGHData } from "../hooks/useGHData";
 import { gasFetch } from "../utils/idb";
 
@@ -168,6 +169,8 @@ export default function KoorGHHome({ user, logout }) {
           </div>
         </div>
       </div>
+
+      <VigorReminder onOpenVigor={(gh) => setActiveTask({ gh, menu: "Vigor" })} />
 
       {/* Kegiatan Harian */}
       <div style={{ padding: 18 }}>

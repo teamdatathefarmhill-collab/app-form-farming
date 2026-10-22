@@ -6,6 +6,7 @@ import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 import FotoSelfie from "../components/FotoSelfie";
 import { color } from "../styles/tokens";
+import { HST_CHECKPOINTS, HST_NEAR_RANGE, TIPE_GH } from "../lib/vigorDue";
 
 const DB_NAME    = "VigorOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_VIGOR_URL;
@@ -29,35 +30,6 @@ export const CHANGELOG = [
 
 const HST_MIN = 1;
 const HST_MAX = 60;
-const HST_CHECKPOINTS = [7, 11, 14, 18, 33, 38, 45, 54];
-const HST_NEAR_RANGE  = 2;
-
-const TIPE_GH = [
-  {
-    key: "drip", label: "Drip", icon: "💧", color: "#1E88E5",
-    pattern: (gh) => {
-      const upper = gh.toUpperCase();
-      if (upper.startsWith("BERGAS"))   { const n = parseInt(upper.replace("BERGAS","").trim());   return n >= 1 && n <= 8 && n !== 6; }
-      if (upper.startsWith("COLOMADU")) { const n = parseInt(upper.replace("COLOMADU","").trim()); return n >= 1 && n <= 4; }
-      if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim());  return n === 12 || n === 14 || n === 15 || n === 16 || n === 17 || n === 18 || n === 19 || n === 20 || n === 21; }
-      return false;
-    },
-  },
-  {
-    key: "kolam", label: "Kolam", icon: "🏊", color: "#00897B",
-    pattern: (gh) => {
-      const upper = gh.toUpperCase().trim();
-      if (upper === "SAWAHAN TUNNEL 1") return true;
-      if (upper.startsWith("TOHUDAN")) { const n = parseInt(upper.replace("TOHUDAN","").trim()); return (n >= 1 && n <= 11) || n === 13 || n === 22; }
-      if (upper.startsWith("SAWAHAN")) { const n = parseInt(upper.replace("SAWAHAN","").trim()); return n >= 1 && n <= 4; }
-      return false;
-    },
-  },
-  {
-    key: "rnd", label: "RnD", icon: "🧪", color: "#6D4C41",
-    pattern: (gh) => gh.toUpperCase().trim() === "OPEN FIELD 1",
-  },
-];
 
 function getCheckpointStatus(hst) {
   if (hst === null) return null;
