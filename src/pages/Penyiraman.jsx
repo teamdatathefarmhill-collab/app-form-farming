@@ -28,6 +28,35 @@ const GH_PER_TIPE = {
 };
 
 const TIPE_LIST = Object.keys(GH_PER_TIPE);
+
+// Cache REF terakhir yang berhasil dimuat — dipakai sebagai cadangan kalau server
+// sedang sibuk/error (rate limit, timeout), supaya daftar GH tidak kosong.
+const REF_CACHE_KEY = "penyiraman_ref_cache";
+function readRefCache() {
+  try {
+    const c = JSON.parse(localStorage.getItem(REF_CACHE_KEY) || "null");
+    if (!c?.data) return { data: {}, dataRnd: {} };
+    // HST di cache sudah basi — hitung ulang dari tanggal tanam
+    const fix = (map) => {
+      const out = {};
+      const now = new Date(); now.setHours(0, 0, 0, 0);
+      for (const [g, v] of Object.entries(map || {})) {
+        let hst = v.hst;
+        if (v.tanam) {
+          const [y, m, d] = v.tanam.split("-").map(Number);
+          hst = Math.floor((now - new Date(y, m - 1, d)) / 86400000);
+        }
+        if (hst !== null && hst !== undefined && hst >= 70) continue;
+        out[g] = { ...v, hst };
+      }
+      return out;
+    };
+    return { data: fix(c.data), dataRnd: fix(c.dataRnd) };
+  } catch { return { data: {}, dataRnd: {} }; }
+}
+function writeRefCache(data, dataRnd) {
+  try { localStorage.setItem(REF_CACHE_KEY, JSON.stringify({ data, dataRnd })); } catch { /* abaikan */ }
+}
 const isMultiSuhuRH = (gh) => gh === "SAWAHAN 3" || gh === "SAWAHAN 4";
 // GH yang fisiknya punya instalasi Dutch Bucket TAMBAHAN di samping Drip biasa (walau tipe
 // form-nya sekarang "Drip") — form untuk GH ini isi field varian Drip SEKALIGUS field
@@ -149,19 +178,34 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
   const stepRef = useRef(step);
   stepRef.current = step;
 
-  const [refData, setRefData]       = useState({});
-  const [refDataRnd, setRefDataRnd] = useState({});
+  const [refData, setRefData]       = useState(() => readRefCache().data);
+  const [refDataRnd, setRefDataRnd] = useState(() => readRefCache().dataRnd);
   const [loadingRef, setLoadingRef] = useState(true);
+  const [refError, setRefError]     = useState("");
+  const [refFromCache, setRefFromCache] = useState(() => Object.keys(readRefCache().data).length > 0);
   const [varianData, setVarianData] = useState(_draft?.varianData || {});
   const [nutrisi, setNutrisi]       = useState(_draft?.nutrisi || "");
   const [dbData, setDbData]         = useState(_draft?.dbData || initDbData());
 
+  const loadRefRef = useRef(null);
+
   useEffect(() => {
-    const loadRef = () =>
-      gasFetch(`${SCRIPT_URL}?action=getREF`)
-        .then(json => { if (json.success) { setRefData(json.data); setRefDataRnd(json.dataRnd || {}); } })
-        .catch(() => {})
+    const loadRef = () => {
+      setLoadingRef(true);
+      return gasFetch(`${SCRIPT_URL}?action=getREF`)
+        .then(json => {
+          if (json?.success && json.data) {
+            setRefData(json.data); setRefDataRnd(json.dataRnd || {});
+            setRefError(""); setRefFromCache(false);
+            writeRefCache(json.data, json.dataRnd || {});
+          } else {
+            setRefError(json?.error || "Server tidak mengirim data greenhouse.");
+          }
+        })
+        .catch(err => setRefError(err?.name === "AbortError" ? "Server tidak merespons (timeout)." : "Gagal terhubung ke server."))
         .finally(() => setLoadingRef(false));
+    };
+    loadRefRef.current = loadRef;
     loadRef();
 
     // PWA di HP operator jarang benar-benar tertutup — ambil ulang daftar GH setiap aplikasi
@@ -425,6 +469,20 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
                   Nama Greenhouse
                   {loadingRef && <span style={{ fontSize: 10, fontWeight: 400, color: color.textGhost, marginLeft: 8 }}>memuat...</span>}
                 </div>
+                {refError && (
+                  <div style={{ marginBottom: 10, background: color.dangerBg, border: `1px solid ${color.dangerBorder}`, borderRadius: 10, padding: "10px 12px", fontSize: 12, color: color.dangerDeep }}>
+                    ⚠ {refError}{refFromCache ? " Menampilkan data tersimpan terakhir (mungkin belum terbaru)." : " Daftar greenhouse tidak bisa dimuat."}
+                    <div>
+                      <button onClick={() => loadRefRef.current?.()} disabled={loadingRef}
+                        style={{ marginTop: 8, padding: "6px 14px", borderRadius: 8, border: `1px solid ${color.danger}`, background: color.card, color: color.dangerDeep, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                        {loadingRef ? "Memuat..." : "Coba lagi"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {!refError && !loadingRef && (GH_PER_TIPE[tipe] || []).every(g => !refSource[g]) && (
+                  <div style={{ marginBottom: 10, fontSize: 12, color: color.textSoft }}>Tidak ada greenhouse aktif untuk tipe ini.</div>
+                )}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   {(GH_PER_TIPE[tipe] || []).filter(g => refSource[g]).map(g => {
                     const info = refSource[g];
