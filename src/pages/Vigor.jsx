@@ -13,7 +13,7 @@ const SCRIPT_URL = import.meta.env.VITE_GAS_VIGOR_URL;
 
 // ─── Changelog ───────────────────────────────────────────────────────────────
 export const CHANGELOG = [
-  "Tambah kolom Keterangan (opsional) di paling bawah tiap varian pada semua checkpoint HST — masuk ke kolom Keterangan di sheet",
+  "Tambah kolom Keterangan (opsional) di bawah Foto Selfie — satu catatan untuk seluruh checkpoint, masuk ke kolom Keterangan di sheet (sama di semua baris varian)",
   "Tambah checkpoint HST 11 — Vigor Semai (Akar, Batang, Daun, Warna Daun, skor 1–4, 3 sampel random per varian); data masuk ke sheet terpisah",
   "Tipe GH RnD dihapus dari Pilih GH — Tohudan 22, Sawahan Tunnel 1 & Open Field 1 kini kembali masuk tipe Kolam",
   "Tambah Netting Buah (Crack Basah) di checkpoint HST 45",
@@ -168,7 +168,6 @@ function initVarianData(varianList) {
       simetriBuah: "", cabangBuah: "", buahBajang: "", panjangTunasAir: "",
       kesegaran: "", nettingBuah: "", netting50: "", netBercakHitam: "",
       semaiAkar: "", semaiBatang: "", semaiDaun: "", semaiWarnaDaun: "",
-      keterangan: "",
     };
   });
   return obj;
@@ -262,6 +261,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
   const [selectedTipe, setSelectedTipe] = useState(_draft?.selectedTipe || "");
   const [varianData, setVarianData]     = useState(_draft?.varianData   || {});
   const [operator, setOperator]         = useState(_draft?.operator     || "");
+  const [keterangan, setKeterangan]     = useState(_draft?.keterangan   || "");
   const [activeVarian, setActiveVarian] = useState(null);
 
   const [submitting, setSubmitting]     = useState(false);
@@ -284,8 +284,8 @@ export default function Vigor({ initialGH, onDone } = {}) {
 
   useEffect(() => {
     if (step === 3) return;
-    saveDraft({ step, selectedGH, selectedHST, selectedTipe, varianData, operator });
-  }, [step, selectedGH, selectedHST, selectedTipe, varianData, operator]);
+    saveDraft({ step, selectedGH, selectedHST, selectedTipe, varianData, operator, keterangan });
+  }, [step, selectedGH, selectedHST, selectedTipe, varianData, operator, keterangan]);
 
   const refreshPendingCount = useCallback(async () => {
     try { setPendingCount(await idbCount(DB_NAME)); } catch { setPendingCount(0); }
@@ -421,7 +421,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
           skor_batang:     d.semaiBatang    || "",
           skor_daun:       d.semaiDaun      || "",
           skor_warna_daun: d.semaiWarnaDaun || "",
-          keterangan:      (d.keterangan || "").trim(),
+          keterangan:      keterangan.trim(),
           selfie_url:      "",
         };
       }
@@ -448,7 +448,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
         netting_buah:      showNetting        ? (d.nettingBuah     || "") : "",
         netting_50:        showNetting50Field ? (d.netting50       || "") : "",
         net_bercak_hitam:  showNetBercakHitam ? (d.netBercakHitam  || "") : "",
-        keterangan:        (d.keterangan || "").trim(),
+        keterangan:        keterangan.trim(),
         selfie_url:        "",
       };
     });
@@ -521,7 +521,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
 
   const resetForm = () => {
     clearDraft();
-    setStep(1); setSelectedGH(""); setOperator(""); setVarianData({});
+    setStep(1); setSelectedGH(""); setOperator(""); setKeterangan(""); setVarianData({});
     setSelectedHST(null); setSelectedTipe(""); setActiveVarian(null); setSubmitting(false);
     setSubmitError(null); setSavedOffline(false);
     setSelfieFile(null); setSelfiePreview(null); setSelfieUrl("");
@@ -944,20 +944,6 @@ export default function Vigor({ initialGH, onDone } = {}) {
                         )}
                         </>}
 
-                        {/* KETERANGAN — opsional, paling bawah tiap checkpoint */}
-                        <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginTop: 14 }}>
-                          <div style={{ fontSize: 12, color: "#555", marginBottom: 6, fontWeight: 600 }}>
-                            📝 Keterangan <span style={{ fontWeight: 400, color: color.textGhost }}>(opsional)</span>
-                          </div>
-                          <textarea
-                            value={d.keterangan || ""}
-                            onChange={e => updateVarian(varian, "keterangan", e.target.value)}
-                            placeholder="Catatan tambahan untuk varian ini (boleh dikosongkan)"
-                            rows={2}
-                            style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 10, border: `1.5px solid ${color.border}`, fontSize: 12, lineHeight: 1.4, fontFamily: "inherit", resize: "vertical", color: color.text, background: color.card }}
-                          />
-                        </div>
-
                       </div>
                     )}
                   </div>
@@ -979,6 +965,16 @@ export default function Vigor({ initialGH, onDone } = {}) {
               onClear={() => { setSelfieFile(null); setSelfiePreview(null); setSelfieUrl(""); }}
               isOffline={!isOnline} darkMode={false}
             />
+
+            {/* KETERANGAN — opsional, satu untuk seluruh checkpoint (dikirim sama ke semua varian) */}
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 11, color: "#388e3c", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
+                📝 Keterangan <span style={{ fontWeight: 400, color: color.textGhost, textTransform: "none", letterSpacing: 0 }}>(opsional)</span>
+              </label>
+              <textarea value={keterangan} onChange={e => setKeterangan(e.target.value)}
+                placeholder="Catatan tambahan (boleh dikosongkan)" rows={2}
+                style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: color.card, border: `1.5px solid ${keterangan.trim() ? color.brand400 : color.border}`, borderRadius: 10, color: color.text, fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit", resize: "vertical" }} />
+            </div>
 
             {!allFilled && varianList.length > 0 && (
               <div style={{ fontSize: 12, color: color.warning, background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
