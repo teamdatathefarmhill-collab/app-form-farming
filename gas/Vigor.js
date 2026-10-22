@@ -28,7 +28,9 @@
 //   R  Kesegaran
 //   S  Netting Buah     T  Netting 50%
 //   U  Bercak Hitam
-//   V  Foto Selfie
+//   V  Foto Selfie      W  Keterangan (opsional)
+//
+// Sheet "For Vigor" (HST 11): kolom terakhir O = Keterangan (opsional)
 // ============================================================
 
 const SS_ID            = "1t0hmb0AlqbfJ4KOK47LKkoRpJ-Jgl3fF6Ru8FZzSI0Y";
@@ -81,13 +83,15 @@ const HEADERS = [
   "Bercak Hitam",      // U
   // Foto Selfie Operator
   "Foto Selfie",       // V
+  // Catatan opsional operator per varian
+  "Keterangan",        // W
 ];
 
 // Header sheet For Vigor (HST 11). Skor 1–4 per variabel, bobot masing-masing 25%.
 const SEMAI_HEADERS = [
   "Timestamp", "Tanggal", "GH", "Periode", "HST Aktual", "HST Checkpoint", "Varian", "Operator",
   "Skor Akar", "Skor Batang", "Skor Daun", "Skor Warna Daun",
-  "Skor Total (bobot 25% x4)", "Foto Selfie",
+  "Skor Total (bobot 25% x4)", "Foto Selfie", "Keterangan",
 ];
 
 function getSemaiSheet() {
@@ -123,6 +127,7 @@ function buildSemaiRow(body) {
     akar || "", batang || "", daun || "", warna || "",
     total,
     body.selfie_url     || "",
+    body.keterangan     || "",
   ];
 }
 
@@ -230,6 +235,7 @@ function buildVigorRow(body) {
     body.netting_50        || "",  // T
     body.net_bercak_hitam  || "",  // U
     body.selfie_url        || "",  // V
+    body.keterangan        || "",  // W
   ];
 }
 
@@ -512,7 +518,7 @@ function testSubmitVigor() {
       data.simetri_buah, data.cabang_buah,
       data.buah_bajang, data.panjang_tunas_air,
       data.kesegaran, data.netting_buah, data.netting_50,
-      data.net_bercak_hitam, data.selfie_url,
+      data.net_bercak_hitam, data.selfie_url, data.keterangan || "",
     ];
     var lastRow = sheet.getLastRow();
     sheet.getRange(lastRow + 1, 1, 1, row.length).setValues([row]);

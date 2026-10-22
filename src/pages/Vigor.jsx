@@ -13,6 +13,7 @@ const SCRIPT_URL = import.meta.env.VITE_GAS_VIGOR_URL;
 
 // ─── Changelog ───────────────────────────────────────────────────────────────
 export const CHANGELOG = [
+  "Tambah kolom Keterangan (opsional) di paling bawah tiap varian pada semua checkpoint HST — masuk ke kolom Keterangan di sheet",
   "Tambah checkpoint HST 11 — Vigor Semai (Akar, Batang, Daun, Warna Daun, skor 1–4, 3 sampel random per varian); data masuk ke sheet terpisah",
   "Tipe GH RnD dihapus dari Pilih GH — Tohudan 22, Sawahan Tunnel 1 & Open Field 1 kini kembali masuk tipe Kolam",
   "Tambah Netting Buah (Crack Basah) di checkpoint HST 45",
@@ -167,6 +168,7 @@ function initVarianData(varianList) {
       simetriBuah: "", cabangBuah: "", buahBajang: "", panjangTunasAir: "",
       kesegaran: "", nettingBuah: "", netting50: "", netBercakHitam: "",
       semaiAkar: "", semaiBatang: "", semaiDaun: "", semaiWarnaDaun: "",
+      keterangan: "",
     };
   });
   return obj;
@@ -419,6 +421,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
           skor_batang:     d.semaiBatang    || "",
           skor_daun:       d.semaiDaun      || "",
           skor_warna_daun: d.semaiWarnaDaun || "",
+          keterangan:      (d.keterangan || "").trim(),
           selfie_url:      "",
         };
       }
@@ -445,6 +448,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
         netting_buah:      showNetting        ? (d.nettingBuah     || "") : "",
         netting_50:        showNetting50Field ? (d.netting50       || "") : "",
         net_bercak_hitam:  showNetBercakHitam ? (d.netBercakHitam  || "") : "",
+        keterangan:        (d.keterangan || "").trim(),
         selfie_url:        "",
       };
     });
@@ -939,6 +943,20 @@ export default function Vigor({ initialGH, onDone } = {}) {
                           </div>
                         )}
                         </>}
+
+                        {/* KETERANGAN — opsional, paling bawah tiap checkpoint */}
+                        <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginTop: 14 }}>
+                          <div style={{ fontSize: 12, color: "#555", marginBottom: 6, fontWeight: 600 }}>
+                            📝 Keterangan <span style={{ fontWeight: 400, color: color.textGhost }}>(opsional)</span>
+                          </div>
+                          <textarea
+                            value={d.keterangan || ""}
+                            onChange={e => updateVarian(varian, "keterangan", e.target.value)}
+                            placeholder="Catatan tambahan untuk varian ini (boleh dikosongkan)"
+                            rows={2}
+                            style={{ width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 10, border: `1.5px solid ${color.border}`, fontSize: 12, lineHeight: 1.4, fontFamily: "inherit", resize: "vertical", color: color.text, background: color.card }}
+                          />
+                        </div>
 
                       </div>
                     )}
