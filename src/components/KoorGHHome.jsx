@@ -21,6 +21,7 @@ import Cuaca        from "../pages/Cuaca";
 import VigorReminder from "./VigorReminder";
 import { useGHData } from "../hooks/useGHData";
 import { gasFetch } from "../utils/idb";
+import { Icon } from "./form";
 
 const GHREF_URL = import.meta.env.VITE_GAS_GHREF_URL;
 
@@ -90,15 +91,15 @@ function hstBadgeColor(hst) {
 
 // Menu di sheet "DAILY TASK" dicocokkan ke sini (case-insensitive, tanpa spasi)
 const MENU_MAP = {
-  penyiraman:   { label: "Penyiraman",   icon: "💧", color: "#0277bd", component: Penyiraman },
-  vigor:        { label: "Vigor",        icon: "🌿", color: "#43A047", component: Vigor },
-  gramasi:      { label: "Gramasi",      icon: "⚖️", color: "#1E88E5", component: Gramasi },
-  kesiapan:     { label: "Kesiapan GH",  icon: "✅", color: "#00897B", component: KesiapanGH },
-  so:           { label: "SO",           icon: "📑", color: "#FF7043", component: SO },
-  penyemprotan: { label: "Penyemprotan", icon: "🧴", color: "#FF7043", component: Penyemprotan },
-  sanitasi:     { label: "Sanitasi",     icon: "🛡️", color: "#FF7043", component: Sanitasi },
-  hpt:          { label: "HPT",          icon: "🐛", color: "#FF7043", component: HPT },
-  cuaca:        { label: "Cuaca",        icon: "🌤️", color: "#0d47a1", component: Cuaca },
+  penyiraman:   { label: "Penyiraman",   icon: "Droplets", color: "#0277bd", component: Penyiraman },
+  vigor:        { label: "Vigor",        icon: "Sprout", color: "#43A047", component: Vigor },
+  gramasi:      { label: "Gramasi",      icon: "Scale", color: "#1E88E5", component: Gramasi },
+  kesiapan:     { label: "Kesiapan GH",  icon: "ClipboardCheck", color: "#00897B", component: KesiapanGH },
+  so:           { label: "SO",           icon: "ClipboardList", color: "#FF7043", component: SO },
+  penyemprotan: { label: "Penyemprotan", icon: "SprayCan", color: "#FF7043", component: Penyemprotan },
+  sanitasi:     { label: "Sanitasi",     icon: "ShieldCheck", color: "#FF7043", component: Sanitasi },
+  hpt:          { label: "HPT",          icon: "Bug", color: "#FF7043", component: HPT },
+  cuaca:        { label: "Cuaca",        icon: "CloudSun", color: "#0d47a1", component: Cuaca },
 };
 
 function normalizeMenuKey(menu) {
@@ -200,7 +201,7 @@ export default function KoorGHHome({ user, logout }) {
             const menuKey = normalizeMenuKey(t.menu);
             const menuDef = MENU_MAP[menuKey];
             const color   = menuDef?.color || "#666";
-            const icon    = menuDef?.icon  || "📌";
+            const icon    = menuDef?.icon  || "ClipboardList";
             const hst     = hitungHST(findGHInfo(ghData, t.gh)?.tanam);
             const hstC    = hstBadgeColor(hst);
             const isVigor = menuKey === "vigor";
@@ -210,7 +211,7 @@ export default function KoorGHHome({ user, logout }) {
               <button key={i} onClick={() => setActiveTask(t)}
                 style={{ textAlign: "left", background: "#fff", border: `1.5px solid ${sudahIsi ? "#ffb74d" : "#e0e0e0"}`, borderRadius: 14, padding: "14px 12px", cursor: "pointer", boxShadow: "0 1px 4px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", gap: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ width: 38, height: 38, borderRadius: 10, background: `${color}1a`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{icon}</div>
+                  <div style={{ width: 38, height: 38, borderRadius: 10, background: `${color}1a`, display: "flex", alignItems: "center", justifyContent: "center", color }}><Icon name={icon} size={20} /></div>
                   <span style={{ fontSize: 13, color: "#ccc" }}>›</span>
                 </div>
                 <div>

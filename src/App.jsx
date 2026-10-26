@@ -20,6 +20,7 @@ import VigorReminder from "./components/VigorReminder";
 import InstallPWA from "./components/InstallPWA";
 import PWAUpdatePrompt from "./components/PWAUpdatePrompt";
 import { useAuth } from "./hooks/useAuth";
+import { Icon } from "./components/form";
 
 // ─── Build ID — di-inject otomatis oleh Vite saat build ──────────────────────
 // Setiap ada file yang berubah dan di-build ulang, BUILD_ID otomatis berubah.
@@ -29,20 +30,20 @@ const APP_VERSION_KEY = "farmhill_build_id";
 
 // Sub-menu HPT — key harus match kolom di REF OPERATOR
 const HPT_SUBMENU = [
-  { key: "so",           label: "SO",           icon: "📑", component: SO           },
-  { key: "penyemprotan", label: "Penyemprotan", icon: "🧴", component: Penyemprotan },
-  { key: "sanitasi",     label: "Sanitasi",     icon: "🛡️", component: Sanitasi     },
-  { key: "hpt",          label: "HPT",          icon: "🐛", component: HPT          },
+  { key: "so",           label: "SO",           icon: "ClipboardList", component: SO           },
+  { key: "penyemprotan", label: "Penyemprotan", icon: "SprayCan", component: Penyemprotan },
+  { key: "sanitasi",     label: "Sanitasi",     icon: "ShieldCheck", component: Sanitasi     },
+  { key: "hpt",          label: "HPT",          icon: "Bug", component: HPT          },
 ];
 
 // Menu standalone (bukan bagian HPT)
 const STANDALONE_TABS = [
-  { key: "gramasi",    label: "Gramasi",    icon: "⚖️",  color: "#1E88E5", component: Gramasi    },
-  { key: "penyiraman", label: "Penyiraman", icon: "💧",  color: "#0277bd", component: Penyiraman },
-  { key: "vigor",      label: "Vigor",      icon: "🌿",  color: "#43A047", component: Vigor      },
-  { key: "kesiapan",   label: "Kesiapan",   icon: "✅",  color: "#00897B", component: KesiapanGH },
-  { key: "cuaca", label: "Cuaca", icon: "🌤️", color: "#0d47a1", component: Cuaca },
-  { key: "pemetaan", label: "Pemetaan", icon: "🗺️", color: "#1b5e20", component: PemetaanGH },
+  { key: "gramasi",    label: "Gramasi",    icon: "Scale",  color: "#1E88E5", component: Gramasi    },
+  { key: "penyiraman", label: "Penyiraman", icon: "Droplets",  color: "#0277bd", component: Penyiraman },
+  { key: "vigor",      label: "Vigor",      icon: "Sprout",  color: "#43A047", component: Vigor      },
+  { key: "kesiapan",   label: "Kesiapan",   icon: "ClipboardCheck",  color: "#00897B", component: KesiapanGH },
+  { key: "cuaca", label: "Cuaca", icon: "CloudSun", color: "#0d47a1", component: Cuaca },
+  { key: "pemetaan", label: "Pemetaan", icon: "Map", color: "#1b5e20", component: PemetaanGH },
 ];
 
 const HPT_COLOR = "#FF7043";
@@ -252,7 +253,7 @@ export default function App() {
             {/* Dropdown menu — muncul ke atas */}
             {hptOpen && (
               <div style={{
-                position: "absolute", bottom: "100%", left: 0, right: 0,
+                position: "absolute", bottom: "100%", left: 0, right: 0, minWidth: 200,
                 background: "rgba(10,20,15,0.98)",
                 border: "1px solid rgba(255,255,255,0.1)",
                 borderBottom: "none",
@@ -272,7 +273,7 @@ export default function App() {
                         cursor: "pointer", textAlign: "left",
                         display: "flex", alignItems: "center", gap: 10,
                       }}>
-                      <span style={{ fontSize: 16 }}>{item.icon}</span>
+                      <Icon name={item.icon} size={18} />
                       <span>{item.label}</span>
                       {isActive && <span style={{ marginLeft: "auto", fontSize: 11, color: HPT_COLOR }}>●</span>}
                     </button>
@@ -295,7 +296,7 @@ export default function App() {
                 display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
                 borderTop: isHPTActive ? `2px solid ${HPT_COLOR}` : "2px solid transparent",
               }}>
-              <span style={{ fontSize: 20, lineHeight: 1 }}>🔍</span>
+              <span style={{ color: isHPTActive ? "#fff" : "rgba(255,255,255,0.55)", display: "flex" }}><Icon name="Bug" size={22} /></span>
               <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
                 <span style={{ fontSize: 10, fontWeight: isHPTActive ? 700 : 500, color: isHPTActive ? HPT_COLOR : "rgba(255,255,255,0.35)", letterSpacing: 0.5, whiteSpace: "nowrap" }}>
                   {accessibleHPT.length === 1 ? accessibleHPT[0].label : "HPT"}
@@ -320,7 +321,7 @@ export default function App() {
                 gap: 4, transition: "all 0.2s",
                 borderTop: isActive ? `2px solid ${tab.color}` : "2px solid transparent",
               }}>
-              <span style={{ fontSize: 20, lineHeight: 1 }}>{tab.icon}</span>
+              <span style={{ color: isActive ? "#fff" : "rgba(255,255,255,0.55)", display: "flex" }}><Icon name={tab.icon} size={22} /></span>
               <span style={{ fontSize: 10, fontWeight: isActive ? 700 : 500, color: isActive ? tab.color : "rgba(255,255,255,0.35)", letterSpacing: 0.5, whiteSpace: "nowrap" }}>
                 {tab.label}
               </span>
