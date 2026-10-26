@@ -1,0 +1,218 @@
+/* ─── The Farmhill Design System — token + komponen form bersama ───
+   Dipakai halaman yang sudah di-rebuild (lihat PRD Rebuild UI UX all menu).
+   Semua class diawali `fh-` dan hanya berlaku di dalam `.fh-root`, jadi
+   menu lama yang belum migrasi tidak ikut berubah. */
+
+:root {
+  /* brand */
+  --leaf-50:  #eef6ec;
+  --leaf-100: #d8ebd3;
+  --leaf-200: #b3d7a9;
+  --leaf-400: #5fa552;
+  --leaf-600: #2f7a3a;
+  --leaf-700: #24612e;
+  --leaf-800: #1b4a23;
+
+  /* aksen — hanya untuk status "due / perlu aksi" */
+  --melon-50:  #fff3ec;
+  --melon-100: #ffe1cf;
+  --melon-400: #f08a4b;
+  --melon-600: #c9622a;
+
+  /* netral */
+  --cream-100: #f7f5ee;
+  --cream-200: #efebdf;
+  --surface:   #ffffff;
+  --surface-sunken: #f2f0e8;
+  --ink-900: #1f2a22;
+  --ink-700: #3d4a40;
+  --ink-500: #66716a;
+  --ink-400: #8a938c;
+  --border-default: #dcd8cc;
+  --border-strong:  #bdb8aa;
+
+  /* status */
+  --status-danger-bg:     #fdecea;
+  --status-danger-border: #f2b8b2;
+  --status-danger-fg:     #b3261e;
+  --status-warning-bg:     #fff6e0;
+  --status-warning-border: #f0d48a;
+  --status-warning-fg:     #8a5a00;
+  --status-info-bg:     #eaf2f8;
+  --status-info-border: #b5cfe3;
+  --status-info-fg:     #24557a;
+  --status-success-bg:     var(--leaf-50);
+  --status-success-border: var(--leaf-200);
+  --status-success-fg:     var(--leaf-700);
+
+  /* tipografi */
+  --font-sans: "Source Sans 3", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+
+  /* radius */
+  --radius-badge: 3px;
+  --radius-input: 4px;
+  --radius-card:  6px;
+
+  /* ukuran sentuh */
+  --touch: 48px;
+  --touch-min: 44px;
+
+  --shadow-footer: 0 -1px 0 var(--border-default), 0 -4px 12px rgba(31, 42, 34, 0.06);
+}
+
+/* ─── Reset lokal ─── */
+.fh-root {
+  min-height: 100%;
+  /* tutup paddingBottom 64px container App supaya latar cream sampai ke bottom bar */
+  margin-bottom: -64px;
+  padding-bottom: 64px;
+  background: var(--cream-100);
+  color: var(--ink-900);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.45;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+.fh-root *, .fh-root *::before, .fh-root *::after { box-sizing: border-box; }
+.fh-root button { font-family: inherit; }
+/* netralkan h1/h2 global dari index.css (sisa template Vite) */
+.fh-root h1, .fh-root h2 { font-family: inherit; color: var(--ink-900); letter-spacing: normal; }
+
+/* ─── FormShell ─── */
+.fh-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-default);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.fh-header-text { flex: 1; min-width: 0; }
+.fh-root .fh-title { font-size: 17px; font-weight: 600; margin: 0; line-height: 1.3; }
+.fh-subtitle { font-size: 13px; color: var(--ink-500); margin: 2px 0 0; }
+.fh-icon-btn {
+  width: var(--touch-min); height: var(--touch-min);
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border-default); border-radius: var(--radius-input);
+  background: var(--surface); color: var(--ink-700); cursor: pointer;
+}
+.fh-progress { display: flex; gap: 4px; padding: 0 16px 12px; background: var(--surface); border-bottom: 1px solid var(--border-default); }
+.fh-progress span { flex: 1; height: 4px; border-radius: 2px; background: var(--cream-200); }
+.fh-progress span.is-done { background: var(--leaf-600); }
+
+.fh-content { max-width: 560px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 20px; }
+
+/* footer menempel di atas bottom bar app (tinggi ±64px) */
+.fh-footer {
+  position: sticky;
+  bottom: 64px;
+  background: var(--surface);
+  box-shadow: var(--shadow-footer);
+  padding: 12px 16px;
+}
+.fh-footer-inner { max-width: 560px; margin: 0 auto; }
+
+/* ─── Section ─── */
+.fh-section { display: flex; flex-direction: column; gap: 8px; }
+.fh-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.fh-label { font-size: 13px; font-weight: 600; color: var(--ink-700); }
+.fh-meta { font-size: 13px; color: var(--ink-500); font-variant-numeric: tabular-nums; }
+.fh-overline {
+  font-size: 12px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-500);
+}
+
+/* ─── Tombol ─── */
+.fh-btn {
+  width: 100%; min-height: var(--touch);
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border-radius: var(--radius-input); border: 1px solid transparent;
+  font-size: 15px; font-weight: 600; cursor: pointer;
+}
+.fh-btn-primary { background: var(--leaf-600); color: #fff; }
+.fh-btn-primary:hover:not(:disabled) { background: var(--leaf-700); }
+.fh-btn-secondary { background: var(--surface); color: var(--leaf-700); border-color: var(--border-strong); }
+.fh-btn:disabled { background: var(--cream-200); color: var(--ink-400); border-color: transparent; cursor: not-allowed; }
+
+/* ─── FieldAlert ─── */
+.fh-alert {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 10px 12px; border: 1px solid; border-radius: var(--radius-card);
+  font-size: 13px; line-height: 1.45;
+}
+.fh-alert svg { flex-shrink: 0; margin-top: 1px; }
+.fh-alert-danger  { background: var(--status-danger-bg);  border-color: var(--status-danger-border);  color: var(--status-danger-fg); }
+.fh-alert-warning { background: var(--status-warning-bg); border-color: var(--status-warning-border); color: var(--status-warning-fg); }
+.fh-alert-info    { background: var(--status-info-bg);    border-color: var(--status-info-border);    color: var(--status-info-fg); }
+.fh-alert-success { background: var(--status-success-bg); border-color: var(--status-success-border); color: var(--status-success-fg); }
+.fh-alert-action { margin-left: auto; background: none; border: none; color: inherit; font-weight: 600; font-size: 13px; text-decoration: underline; cursor: pointer; padding: 0; min-height: 24px; }
+
+/* ─── SuccessState ─── */
+.fh-success { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding-top: 24px; }
+.fh-success-icon {
+  width: 56px; height: 56px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--leaf-50); color: var(--leaf-600); margin-bottom: 6px;
+}
+.fh-success-icon.is-offline { background: var(--status-warning-bg); color: var(--status-warning-fg); }
+.fh-root .fh-success-title { font-size: 17px; font-weight: 600; margin: 0; }
+.fh-success-desc { font-size: 15px; color: var(--ink-500); margin: 0; }
+.fh-summary {
+  width: 100%; margin-top: 14px;
+  background: var(--surface); border: 1px solid var(--border-default); border-radius: var(--radius-card);
+  text-align: left;
+}
+.fh-summary-row { display: flex; justify-content: space-between; gap: 12px; padding: 12px 14px; font-size: 15px; }
+.fh-summary-row + .fh-summary-row { border-top: 1px solid var(--border-default); }
+.fh-summary-row dt { color: var(--ink-500); }
+.fh-summary-row dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ─── OptionList ─── */
+.fh-options { display: flex; flex-direction: column; gap: 6px; }
+.fh-option {
+  min-height: 56px; width: 100%;
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 14px;
+  background: var(--surface); color: var(--ink-900);
+  border: 1px solid var(--border-default); border-radius: var(--radius-card);
+  font-size: 15px; text-align: left; cursor: pointer;
+}
+.fh-option-icon { color: var(--ink-500); flex-shrink: 0; }
+.fh-option-label { flex: 1; }
+.fh-option-meta { font-size: 13px; color: var(--ink-500); font-variant-numeric: tabular-nums; }
+.fh-option-radio {
+  width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+  border: 1.5px solid var(--border-strong); background: var(--surface);
+}
+.fh-option.is-active { border-color: var(--leaf-600); box-shadow: inset 0 0 0 1px var(--leaf-600); background: var(--leaf-50); }
+.fh-option.is-active .fh-option-icon { color: var(--leaf-700); }
+.fh-option.is-active .fh-option-label { font-weight: 600; }
+.fh-option.is-active .fh-option-radio { border: 6px solid var(--leaf-600); }
+.fh-option:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ─── Grid slot (jam) ─── */
+.fh-slots { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.fh-slot {
+  min-height: var(--touch-min);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  background: var(--surface); color: var(--ink-900);
+  border: 1px solid var(--border-default); border-radius: var(--radius-input);
+  font-size: 15px; font-variant-numeric: tabular-nums; cursor: pointer; padding: 4px 2px;
+}
+.fh-slot.is-active { border-color: var(--leaf-600); box-shadow: inset 0 0 0 1px var(--leaf-600); color: var(--leaf-700); font-weight: 600; }
+.fh-slot.is-filled { background: var(--leaf-600); border-color: var(--leaf-600); color: #fff; cursor: not-allowed; }
+.fh-slot.is-filled small { font-size: 12px; opacity: 0.9; display: flex; align-items: center; gap: 2px; }
+.fh-slot:disabled:not(.is-filled) { color: var(--ink-400); background: var(--cream-200); cursor: wait; }
+.fh-legend { display: flex; gap: 14px; font-size: 13px; color: var(--ink-500); }
+.fh-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.fh-legend i { width: 12px; height: 12px; border-radius: 2px; border: 1px solid var(--border-strong); background: var(--surface); }
+.fh-legend i.is-filled { background: var(--leaf-600); border-color: var(--leaf-600); }
+
+/* OptionList mode grid (columns > 1) */
+.fh-options.is-grid { display: grid; gap: 6px; }
+.fh-options.is-grid .fh-option {
+  min-height: 76px; flex-direction: column; justify-content: center; gap: 6px;
+  padding: 10px 6px; text-align: center;
+}
+.fh-options.is-grid .fh-option-label { flex: none; line-height: 1.25; }
