@@ -8,7 +8,7 @@ import Icon from "./Icon";
 //   footer    — isi footer sticky (biasanya tombol utama)
 export default function FormShell({ title, subtitle, steps = 0, step = 1, onBack, actions, footer, children }) {
   return (
-    <div className="fh-root">
+    <div className={`fh-root${footer ? " has-footer" : ""}`}>
       <header className="fh-header">
         {onBack && (
           <button type="button" className="fh-icon-btn" onClick={onBack} aria-label="Kembali">

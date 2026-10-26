@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { FormShell, FieldAlert, SuccessState, OptionList, Icon } from "../components/form";
+import { formatTanggal, formatWaktu } from "../lib/format";
 
 const WEBHOOK = "https://script.google.com/macros/s/AKfycbzBndG0bEIxKN2RJ7zvI571vRk9EOq5iuN-OzObBU6LHZDvG2GKb6ptXRqHdMj1Z7K2Dw/exec";
 
@@ -17,26 +18,12 @@ const CUACA_OPTIONS = [
   { label: "Hujan",         icon: "CloudRain", skor: 0   },
 ];
 
-const BULAN = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
-
 function getTodayISO() {
   const d = new Date();
   const yyyy = d.getFullYear();
   const mm   = String(d.getMonth() + 1).padStart(2, "0");
   const dd   = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
-}
-
-// "26 Okt 2026"
-function formatTanggal(d) {
-  return `${d.getDate()} ${BULAN[d.getMonth()]} ${d.getFullYear()}`;
-}
-
-// "26 Okt 2026 · 06.47 WIB"
-function formatWaktu(d) {
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mi = String(d.getMinutes()).padStart(2, "0");
-  return `${formatTanggal(d)} · ${hh}.${mi} WIB`;
 }
 
 function jamToString(jamStr) {

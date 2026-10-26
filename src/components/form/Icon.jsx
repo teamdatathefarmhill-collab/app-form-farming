@@ -1,6 +1,7 @@
 import {
   ArrowLeft, Check, CircleAlert, CircleCheck, CloudOff, Info, TriangleAlert,
   Sun, CloudSun, Cloud, Cloudy, CloudRain,
+  Plus, X, Search, Copy, ChevronDown, ChevronUp, Upload,
 } from "lucide-react";
 
 // Daftar ikon yang dipakai — import eksplisit supaya bundle hanya membawa ikon ini.
@@ -8,6 +9,7 @@ import {
 const ICONS = {
   ArrowLeft, Check, CircleAlert, CircleCheck, CloudOff, Info, TriangleAlert,
   Sun, CloudSun, Cloud, Cloudy, CloudRain,
+  Plus, X, Search, Copy, ChevronDown, ChevronUp, Upload,
 };
 
 // Satu pintu untuk ikon Lucide — nama pakai PascalCase Lucide ("CloudSun", "ArrowLeft").

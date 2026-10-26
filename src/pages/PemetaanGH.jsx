@@ -1,16 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
 import { useDraft } from "../hooks/useDraft";
+import { useAuth } from "../hooks/useAuth";
 import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch, gasPost } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList } from "../hooks/useGHBlockedList";
-import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
-import { color } from "../styles/tokens";
+import { FormShell, FieldAlert, SuccessState, OptionList, GHPicker, ReviewTable, Icon } from "../components/form";
+import { formatTanggal, formatAngka, formatSelisih } from "../lib/format";
 
 const DB_NAME    = "PemetaanOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_PEMETAAN_URL;
 
 const LS_SEMAI_CACHE_KEY = "farmhill_pemetaan_semairef_cache";
-const LS_SEMAI_CACHE_TTL = 1000 * 60 * 30; // 30 menit
 function saveSemaiCache(data) {
   try { localStorage.setItem(LS_SEMAI_CACHE_KEY, JSON.stringify({ data, savedAt: Date.now() })); } catch { /* ignore */ }
 }
@@ -22,12 +22,11 @@ function loadSemaiCache() {
   } catch { return null; }
 }
 
+// todayISO dikirim ke sheet (format dd/mm/yyyy) — jangan diubah
 const todayISO   = new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
 const todayLabel = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
 
-function fmtNum(n) {
-  return (n || 0).toLocaleString("id-ID");
-}
+const fmtNum = formatAngka;
 
 function emptyEntry() { return { varian: "", jumlah: "" }; }
 
@@ -60,8 +59,7 @@ const KUALITAS_ASPEK = [
   { key: "batang", label: "Batang" },
   { key: "daun",   label: "Daun" },
 ];
-const KUALITAS_SKOR_COLOR = { 4: "#2e7d32", 3: "#7cb342", 2: "#f57f17", 1: "#c62828" };
-const KUALITAS_KATEGORI_COLOR = { Baik: "#2e7d32", Sedang: "#f57f17", Buruk: "#c62828" };
+const KATEGORI_TONE = { Baik: "success", Sedang: "warning", Buruk: "danger" };
 
 // ── Total skor 1 varian = jumlah skor Akar+Batang+Daun. Kategori (Baik/Sedang/
 // Buruk) cuma valid kalau ketiganya sudah dinilai, jadi total di sini juga
@@ -79,32 +77,6 @@ function kategoriKualitas(total) {
   if (total >= 10) return "Baik";
   if (total >= 7) return "Sedang";
   return "Buruk";
-}
-
-// ── Pilihan deskriptif 1 aspek — list vertikal (bukan pil sejajar) karena teksnya panjang ──
-function AspekOptionList({ aspekKey, value, onChange }) {
-  const options = KUALITAS_ASPEK_OPTIONS[aspekKey];
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-      {options.map((opt) => {
-        const active = value === opt.skor;
-        const c = KUALITAS_SKOR_COLOR[opt.skor];
-        return (
-          <button key={opt.skor} type="button" onClick={() => onChange(active ? "" : opt.skor)}
-            style={{
-              display: "flex", alignItems: "flex-start", gap: 6, textAlign: "left", padding: "6px 8px", borderRadius: 8, cursor: "pointer",
-              border: `1.5px solid ${active ? c : color.border}`,
-              background: active ? `${c}12` : "#fafafa",
-              color: active ? c : color.textSoft,
-              fontSize: 10.5, fontWeight: active ? 700 : 500, lineHeight: 1.35,
-            }}>
-            <span style={{ flexShrink: 0, marginTop: 1 }}>{active ? "●" : "○"}</span>
-            <span>{opt.deskripsi} <span style={{ opacity: 0.7, fontWeight: 700 }}>({opt.skor})</span></span>
-          </button>
-        );
-      })}
-    </div>
-  );
 }
 
 // ─── Daftar lengkap varian yang kita punya — dropdown pilih varian pakai ini,
@@ -154,6 +126,7 @@ function findProduksiInfo(produksiData, ghTujuan) {
 }
 
 export default function PemetaanGH() {
+  const { user } = useAuth();
   const { getDraft, saveDraft, clearDraft } = useDraft("pemetaan");
   const _draft = getDraft();
 
@@ -184,14 +157,20 @@ export default function PemetaanGH() {
 
   const [selectedGH, setSelectedGH] = useState(_draft?.selectedGH || "");
   const [barisRows, setBarisRows]   = useState(_draft?.barisRows  || []);
-  const [operator, setOperator]     = useState(_draft?.operator   || "");
+  // Operator otomatis dari akun login; bisa diubah di langkah rekap
+  const [operator, setOperator]     = useState(_draft?.operator || user?.nama || "");
   const [keteranganSelisih, setKeteranganSelisih] = useState(_draft?.keteranganSelisih || {});
   const [kualitasVarian, setKualitasVarian] = useState(_draft?.kualitasVarian || {});
+  const [openKualitas, setOpenKualitas] = useState(null); // varian yang kartunya terbuka
+
+  // useAuth membaca sessionStorage setelah render pertama → isi operator begitu nama tersedia
+  useEffect(() => {
+    if (user?.nama) setOperator((prev) => prev || user.nama);
+  }, [user?.nama]);
 
   const [syncing, setSyncing]         = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [savedOffline, setSavedOffline] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [copyDone, setCopyDone]       = useState(false);
 
   const [pendingCount, setPendingCount] = useState(0);
@@ -249,8 +228,7 @@ export default function PemetaanGH() {
   // supaya user tetap bisa pilih varian lain yang benar-benar ditanam. ──
   const semaiVarianRaw = (semaiData[selectedGH]?.varian || []).map((v) => v.nama);
   // ── Case-insensitive supaya "Greenie sweet" (daftar tetap) tidak dianggap varian
-  // beda dari "Greenie Sweet" (nama asli di sheet semai) — dulu keduanya nongol
-  // sebagai 2 opsi dropdown yang keliatan sama tapi value-nya beda. ──
+  // beda dari "Greenie Sweet" (nama asli di sheet semai). ──
   const semaiVarianBase = new Set(semaiVarianRaw.map((v) => varianDisplayName(v).toLowerCase()));
   const dropdownVarianOptions = [...semaiVarianRaw, ...ALL_VARIAN.filter((v) => !semaiVarianBase.has(v.toLowerCase()))];
 
@@ -311,7 +289,7 @@ export default function PemetaanGH() {
   const addManualBaris = () => {
     setBarisRows((prev) => {
       const sulamanIdx = prev.findIndex((r) => r.isSulaman);
-      const newRow = { baris: "", isSulaman: false, entries: [emptyEntry()] };
+      const newRow = { baris: "", isSulaman: false, isManual: true, entries: [emptyEntry()] };
       const next = [...prev];
       next.splice(sulamanIdx >= 0 ? sulamanIdx : next.length, 0, newRow);
       return next;
@@ -329,7 +307,8 @@ export default function PemetaanGH() {
   const allBarisNamed = regulerRows.every((r) => r.baris.trim());
   const allRegulerFilled = regulerRows.every((r) => r.entries.every((e) => e.varian && e.jumlah !== ""));
   const keteranganOK = mismatches.every((v) => (keteranganSelisih[v] || "").trim().length > 0);
-  const canProceedStep2 = allBarisNamed && allRegulerFilled && operator.trim().length > 0 && keteranganOK;
+  const canProceedStep2 = allBarisNamed && allRegulerFilled && keteranganOK;
+  const canSubmit = operator.trim().length > 0 && !syncing;
 
   // ── Teks untuk grup ──
   const barisLines = barisRows
@@ -425,7 +404,7 @@ export default function PemetaanGH() {
         setSavedOffline(true);
         setStep(4);
       } catch {
-        setSubmitError("Gagal menyimpan data offline. Coba lagi.");
+        setSubmitError("Data belum tersimpan di perangkat. Tekan Simpan offline sekali lagi.");
       } finally {
         setSyncing(false);
       }
@@ -438,7 +417,7 @@ export default function PemetaanGH() {
       clearDraft();
       setStep(4);
     } catch {
-      setSubmitError("Gagal mengirim data. Cek koneksi dan coba lagi.");
+      setSubmitError("Data belum terkirim karena koneksi terputus. Cek sinyal lalu tekan Kirim lagi.");
     } finally {
       setSyncing(false);
     }
@@ -446,394 +425,386 @@ export default function PemetaanGH() {
 
   const resetForm = () => {
     clearDraft();
-    setStep(1); setSelectedGH(""); setBarisRows([]); setOperator("");
-    setKeteranganSelisih({}); setKualitasVarian({}); setSyncing(false); setSubmitError(null);
+    setStep(1); setSelectedGH(""); setBarisRows([]); setOperator(user?.nama || "");
+    setKeteranganSelisih({}); setKualitasVarian({}); setOpenKualitas(null); setSyncing(false); setSubmitError(null);
     setSavedOffline(false); setCopyDone(false);
   };
 
+  const copyText = () => {
+    navigator.clipboard.writeText(clipboardText).then(() => {
+      setCopyDone(true);
+      setTimeout(() => setCopyDone(false), 1400);
+    }).catch(() => {});
+  };
+
   const loadingAll = loadingGH || loadingSemai;
+  const periode = semaiData[selectedGH]?.periode;
+
+  // ── Header ──
+  const title = step === 1 || step === 4 ? "Pemetaan GH" : `Pemetaan · ${selectedGH}`;
+  const subtitle = step === 1
+    ? `${formatTanggal()} · Langkah 1 dari 3`
+    : step === 4
+      ? formatTanggal()
+      : `${periode ? `P${periode} · ` : ""}Langkah ${step} dari 3`;
+  const onBack = step === 2 ? () => setStep(1) : step === 3 ? () => setStep(2) : undefined;
+
+  // ── Footer ──
+  let footer = null;
+  if (step === 2) {
+    let label = "Lihat rekap";
+    if (!allBarisNamed) label = "Beri nama baris tambahan";
+    else if (!allRegulerFilled) label = "Lengkapi varian dan jumlah tiap baris";
+    else if (!keteranganOK) label = "Isi alasan selisih";
+    footer = (
+      <button type="button" className="fh-btn fh-btn-primary" disabled={!canProceedStep2} onClick={() => setStep(3)}>
+        {label}
+      </button>
+    );
+  } else if (step === 3) {
+    const sendLabel = syncing ? "Mengirim…" : isDemoMode ? "Kirim demo" : !isOnline ? "Simpan offline" : "Kirim pemetaan";
+    footer = (
+      <div className="fh-btn-row">
+        <button type="button" className="fh-btn fh-btn-secondary" onClick={() => setStep(2)}>Kembali</button>
+        <button type="button" className="fh-btn fh-btn-primary" disabled={!canSubmit} onClick={handleSubmit}>{sendLabel}</button>
+      </div>
+    );
+  } else if (step === 4) {
+    footer = <button type="button" className="fh-btn fh-btn-secondary" onClick={resetForm}>Isi GH lain</button>;
+  }
 
   return (
-    <div style={{ minHeight: "100vh", background: color.bg, fontFamily: "'DM Sans','Segoe UI',sans-serif" }}>
+    <FormShell title={title} subtitle={subtitle} steps={step < 4 ? 3 : 0} step={step} onBack={onBack} footer={footer}>
 
-      {/* ── Header ── */}
-      <div style={{ background: color.brand900, color: color.card, padding: "14px 16px 10px", position: "sticky", top: 0, zIndex: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <div style={{ fontSize: 10, opacity: 0.75, letterSpacing: 1.5, textTransform: "uppercase" }}>Pemetaan GH Produksi</div>
-            <div style={{ fontSize: 13, opacity: 0.65, marginTop: 1 }}>{todayLabel}</div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {pendingCount > 0 && (
-              <button onClick={isOnline ? syncPendingData : undefined}
-                style={{ fontSize: 10, fontWeight: 700, background: isOnline ? "rgba(33,150,243,0.3)" : "rgba(255,179,0,0.3)", border: `1px solid ${isOnline ? "rgba(33,150,243,0.6)" : "rgba(255,179,0,0.6)"}`, color: color.card, padding: "2px 8px", borderRadius: 20, cursor: isOnline ? "pointer" : "default" }}>
-                {isSyncingPending ? "⏳" : "📤"} {pendingCount} pending
-              </button>
-            )}
-            {isDemoMode && (
-              <div style={{ fontSize: 10, fontWeight: 700, background: "rgba(255,179,0,0.25)", border: "1px solid rgba(255,179,0,0.5)", borderRadius: 20, padding: "2px 8px", color: "#fff9c4" }}>DEMO</div>
-            )}
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: isOnline ? color.brand300 : color.dangerBorder }} />
-          </div>
-        </div>
+      {/* ── Status koneksi & antrean ── */}
+      {step < 4 && !isOnline && (
+        <FieldAlert tone="info">Mode offline. Data disimpan di perangkat dan terkirim otomatis saat online.</FieldAlert>
+      )}
+      {step < 4 && pendingCount > 0 && (
+        <FieldAlert
+          tone="warning"
+          action={isOnline && !isSyncingPending ? { label: "Kirim sekarang", onClick: syncPendingData } : undefined}
+        >
+          {isSyncingPending ? "Mengirim data tertunda…" : `${pendingCount} pemetaan tersimpan offline, belum terkirim.`}
+        </FieldAlert>
+      )}
+      {step < 4 && isDemoMode && (
+        <FieldAlert tone="warning">Mode demo. Data tidak dikirim ke sheet.</FieldAlert>
+      )}
 
-        {!isOnline && (
-          <div style={{ marginTop: 8, padding: "6px 10px", background: "rgba(244,67,54,0.2)", border: "1px solid rgba(244,67,54,0.4)", borderRadius: 7, display: "flex", alignItems: "center", gap: 7 }}>
-            <span style={{ fontSize: 13 }}>📵</span>
-            <span style={{ fontSize: 11, color: "#ffcdd2" }}>Mode offline — data tersimpan lokal & sync otomatis saat online</span>
-          </div>
-        )}
+      {/* ══ STEP 1 — Pilih GH ══ */}
+      {step === 1 && (
+        <>
+          <section className="fh-section">
+            <span className="fh-label">GH semai aktif</span>
+            <p className="fh-hint">GH tujuan di Data sprout (New) yang kolom Tanam-nya masih kosong.</p>
+          </section>
+          <GHPicker
+            loading={loadingAll}
+            selected={selectedGH}
+            onSelect={handleSelectGH}
+            emptyText="Tidak ada GH semai aktif saat ini."
+            items={semaiAktif.map((item) => {
+              // Menu Pemetaan tetap membuka GH Shutdown/Restart — badge ini hanya info, bukan penghalang
+              const blockedInfo = blockedMap[item.gh.trim().toUpperCase()];
+              return {
+                gh: item.gh,
+                meta: `${item.periode ? `P${item.periode} · ` : ""}${item.varian?.length || 0} varian`,
+                badges: blockedInfo ? [{ label: blockedInfo.aksi, tone: "danger" }] : [],
+              };
+            })}
+          />
+        </>
+      )}
 
-        {step < 4 && (
-          <div style={{ display: "flex", gap: 4, marginTop: 10 }}>
-            {[1, 2, 3].map((s) => (
-              <div key={s} style={{ flex: 1, height: 3, borderRadius: 2, background: s <= step ? color.brand300 : "rgba(255,255,255,0.2)" }} />
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div style={{ padding: 16 }}>
-
-        {/* ══ STEP 1 — Pilih GH ══ */}
-        {step === 1 && (
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 18, color: color.brand900, marginBottom: 4 }}>GH Semai Aktif</div>
-            <div style={{ fontSize: 12, color: color.textSoft, marginBottom: 16 }}>
-              Sumbernya sama dengan referensi Sanitasi/HPT Semai — GH tujuan yang di Data sprout (New) kolom Tanam-nya masih kosong.
+      {/* ══ STEP 2 — Input Pemetaan ══ */}
+      {step === 2 && (
+        <>
+          <section className="fh-section">
+            <div className="fh-section-head">
+              <span className="fh-label">Realisasi per baris</span>
+              <span className="fh-meta">{regulerRows.length} baris · total {fmtNum(totalUtama)}</span>
             </div>
+            <p className="fh-hint">Satu baris boleh berisi lebih dari satu varian.</p>
 
-            {loadingAll ? (
-              <div style={{ textAlign: "center", padding: "40px 0", color: color.textGhost }}>
-                <div style={{ fontSize: 28 }}>🔄</div>
-                <div style={{ fontSize: 13, marginTop: 8 }}>Memuat data...</div>
-              </div>
-            ) : semaiAktif.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "32px 0", color: color.textGhost, fontSize: 13 }}>Tidak ada GH semai aktif saat ini.</div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {semaiAktif.map((item) => {
-                  const dipilih = selectedGH === item.gh;
-                  // Menu Pemetaan tetap membuka GH Shutdown/Restart — badge ini hanya info, bukan penghalang
-                  const blockedInfo = blockedMap[item.gh.trim().toUpperCase()];
-                  return (
-                    <button key={item.gh} onClick={() => handleSelectGH(item.gh)}
-                      style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "12px 13px", borderRadius: 12, border: dipilih ? `1.5px solid ${color.brand700}` : `1.5px solid ${color.border}`, background: dipilih ? color.brandBg : color.card, cursor: "pointer", textAlign: "left" }}>
-                      <div>
-                        <div style={{ fontSize: 13.5, fontWeight: 800, color: dipilih ? color.brand900 : color.text }}>{item.gh}</div>
-                        <div style={{ fontSize: 10.5, color: color.textFaint, marginTop: 2 }}>P{item.periode} · {item.varian?.length || 0} varian</div>
-                        {blockedInfo && (
-                          <div style={{ marginTop: 4, fontSize: 9, color: color.dangerDeep, background: color.dangerBg, border: `1px solid ${color.dangerBorder}`, borderRadius: 6, padding: "1px 5px", display: "inline-block" }}>
-                            ⚠ {blockedInfo.aksi}
-                          </div>
-                        )}
+            {barisRows.map((row, rowIdx) => {
+              const subtotal = row.entries.reduce((s, e) => s + (parseInt(e.jumlah) || 0), 0);
+              // baris tambahan manual = tanpa nama dari GHRef (draft lama tidak punya flag isManual)
+              const isManual = !row.isSulaman && (row.isManual || !row.baris);
+              return (
+                <div key={rowIdx} className="fh-card">
+                  <div className="fh-card-head">
+                    <span className="fh-card-title">
+                      {row.isSulaman && <>Sulaman <span className="fh-tag">di luar total</span></>}
+                      {isManual && (
+                        <input
+                          className={`fh-input${row.baris.trim() ? "" : " is-error"}`}
+                          style={{ width: 140 }}
+                          value={row.baris}
+                          onChange={(e) => updateBarisLabel(rowIdx, e.target.value)}
+                          placeholder="Nama baris"
+                          aria-label="Nama baris tambahan"
+                        />
+                      )}
+                      {!row.isSulaman && !isManual && `Baris ${barisDisplayLabel(row.baris)}`}
+                    </span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <span className="fh-num">{fmtNum(subtotal)}</span>
+                      {isManual && (
+                        <button type="button" className="fh-icon-btn is-danger" onClick={() => removeManualBaris(rowIdx)} aria-label="Hapus baris">
+                          <Icon name="X" />
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                  <div className="fh-card-body">
+                    {row.entries.map((entry, entryIdx) => (
+                      <div key={entryIdx} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <select
+                          className={`fh-select${entry.varian ? "" : " is-empty"}`}
+                          style={{ flex: 1, minWidth: 0 }}
+                          value={entry.varian}
+                          onChange={(e) => updateEntry(rowIdx, entryIdx, "varian", e.target.value)}
+                          aria-label="Varian"
+                        >
+                          <option value="">Pilih varian</option>
+                          {dropdownVarianOptions.map((v) => <option key={v} value={v}>{varianDisplayName(v)}</option>)}
+                        </select>
+                        <input
+                          className="fh-input is-number"
+                          style={{ width: 84, flexShrink: 0 }}
+                          type="text"
+                          inputMode="numeric"
+                          value={entry.jumlah}
+                          onChange={(e) => updateEntry(rowIdx, entryIdx, "jumlah", e.target.value.replace(/\D/g, ""))}
+                          placeholder="0"
+                          aria-label="Jumlah tanaman"
+                        />
+                        <button type="button" className="fh-icon-btn is-danger" onClick={() => removeEntry(rowIdx, entryIdx)} aria-label="Hapus varian">
+                          <Icon name="X" />
+                        </button>
                       </div>
-                      {dipilih && <div style={{ fontSize: 11, fontWeight: 800, background: color.brandBg, color: color.brand700, border: `1px solid ${color.brand700}`, borderRadius: 20, padding: "3px 10px" }}>✓ Dipilih</div>}
+                    ))}
+                    <button type="button" className="fh-link-btn" onClick={() => addEntry(rowIdx)}>
+                      <Icon name="Plus" size={18} /> Tambah varian
                     </button>
-                  );
-                })}
+                  </div>
+                </div>
+              );
+            })}
+
+            <button type="button" className="fh-dashed-btn" onClick={addManualBaris}>
+              <Icon name="Plus" size={18} /> Baris tidak terdaftar
+            </button>
+          </section>
+
+          {/* ── Referensi semai vs realisasi, alasan selisih wajib inline ── */}
+          {varianList.length > 0 && (
+            <section className="fh-section">
+              <span className="fh-label">Referensi semai vs realisasi</span>
+              <div className="fh-card" style={{ overflow: "hidden" }}>
+                <table className="fh-table">
+                  <thead>
+                    <tr><th>Varian</th><th className="is-num">Ref.</th><th className="is-num">Real.</th><th className="is-num">Selisih</th></tr>
+                  </thead>
+                  <tbody>
+                    {varianList.map((v) => {
+                      const ref = referensiMap[v] || 0;
+                      const real = realisasiMap[v] || 0;
+                      const diff = real - ref;
+                      const isMismatch = diff !== 0;
+                      const alasan = keteranganSelisih[v] || "";
+                      return [
+                        <tr key={v}>
+                          <td>{v}</td>
+                          <td className="is-num">{fmtNum(ref)}</td>
+                          <td className="is-num fh-num">{fmtNum(real)}</td>
+                          <td className="is-num">
+                            {isMismatch
+                              ? <span className="fh-badge fh-badge-danger">{formatSelisih(diff)}</span>
+                              : <span className="fh-badge fh-badge-success"><Icon name="Check" size={14} strokeWidth={2.5} />sesuai</span>}
+                          </td>
+                        </tr>,
+                        isMismatch && (
+                          <tr key={`${v}-alasan`} className="is-detail">
+                            <td colSpan={4}>
+                              <label className="fh-section">
+                                <span className="fh-label">Alasan selisih {v} (wajib)</span>
+                                <textarea
+                                  className={`fh-textarea${alasan.trim() ? "" : " is-error"}`}
+                                  rows={2}
+                                  value={alasan}
+                                  onChange={(e) => setKeteranganSelisih((prev) => ({ ...prev, [v]: e.target.value }))}
+                                  placeholder={`Contoh: ${Math.abs(diff)} bibit ${v} layu saat pindah tanam`}
+                                />
+                              </label>
+                            </td>
+                          </tr>
+                        ),
+                      ];
+                    })}
+                  </tbody>
+                </table>
               </div>
-            )}
+            </section>
+          )}
 
-            <div style={{ fontSize: 11, color: color.textGhost, textAlign: "center", marginTop: 16, lineHeight: 1.6 }}>
-              Begitu kolom <strong>Tanam</strong> di Data sprout (New) diisi tanggal, GH ini akan hilang dari daftar aktif.
-            </div>
-          </div>
-        )}
-
-        {/* ══ STEP 2 — Input Pemetaan ══ */}
-        {step === 2 && (
-          <div>
-            <button onClick={() => setStep(1)} style={{ background: "none", border: "none", color: color.textMuted, fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 12 }}>← Kembali</button>
-
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
-              <div style={{ background: color.brandBg, border: `1px solid ${color.brand300}`, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: color.brand700, fontWeight: 700 }}>{selectedGH}</div>
-              <div style={{ background: color.bg, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: color.textMuted }}>Periode {semaiData[selectedGH]?.periode}</div>
-              <div style={{ background: color.bg, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: color.textMuted }}>{regulerRows.length} baris + Sulaman</div>
-            </div>
-
-            <div style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 11, color: color.brand700, letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
-                👤 Nama Operator <span style={{ color: color.danger }}>*</span>
-              </label>
-              <input type="text" value={operator} onChange={(e) => setOperator(e.target.value)}
-                placeholder="Tulis nama lengkap..."
-                style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: color.card, border: `1.5px solid ${operator.trim() ? color.brand400 : color.border}`, borderRadius: 10, color: color.text, fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
-            </div>
-
-            <div style={{ fontWeight: 700, fontSize: 15, color: color.brand900, margin: "0 0 2px" }}>Realisasi per Baris</div>
-            <div style={{ fontSize: 12, color: color.textSoft, marginBottom: 10 }}>Tiap baris = 1 kartu. Satu baris boleh diisi lebih dari satu varian.</div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
-              {barisRows.map((row, rowIdx) => {
-                const subtotal = row.entries.reduce((s, e) => s + (parseInt(e.jumlah) || 0), 0);
-                const isManualLabel = !row.baris && !row.isSulaman;
+          {/* ── Kualitas bibit per varian — opsional ── */}
+          {varianList.length > 0 && (
+            <section className="fh-section">
+              <div className="fh-section-head">
+                <span className="fh-label">Kualitas bibit per varian</span>
+                <span className="fh-meta">opsional</span>
+              </div>
+              <p className="fh-hint">Nilai akar, batang, dan daun. Total skor menentukan kategori.</p>
+              {varianList.map((v) => {
+                const k = kualitasVarian[v] || {};
+                const total = hitungTotalKualitas(k);
+                const kategori = kategoriKualitas(total);
+                const open = openKualitas === v;
                 return (
-                  <div key={rowIdx} style={{ background: color.card, border: `1.5px solid ${row.isSulaman ? "#ce93d870" : color.border}`, borderRadius: 12, overflow: "hidden" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 12px", background: row.isSulaman ? color.purpleBg : color.brandBg }}>
-                      <span style={{ fontSize: 12.5, fontWeight: 800, color: row.isSulaman ? color.purple700 : color.brand900, display: "flex", alignItems: "center", gap: 6 }}>
-                        {row.isSulaman ? "🧵 Sulaman" : "🌾"}
-                        {!row.isSulaman && (
-                          isManualLabel
-                            ? <input value={row.baris} onChange={(e) => updateBarisLabel(rowIdx, e.target.value)} placeholder="Nama baris" style={{ width: 90, padding: "3px 6px", borderRadius: 6, border: `1px solid ${color.brand300}`, fontSize: 12, fontWeight: 700 }} />
-                            : `Baris ${barisDisplayLabel(row.baris)}`
-                        )}
-                        {row.isSulaman && <span style={{ fontWeight: 600, fontSize: 10, opacity: 0.75 }}>(opsional, di luar total)</span>}
-                      </span>
+                  <div key={v} className="fh-card">
+                    <button
+                      type="button"
+                      className="fh-card-head"
+                      style={{ width: "100%", background: "none", border: "none", borderBottom: open ? "1px solid var(--border-default)" : "none", cursor: "pointer", minHeight: 52, color: "inherit" }}
+                      onClick={() => setOpenKualitas(open ? null : v)}
+                      aria-expanded={open}
+                    >
+                      <span className="fh-card-title">{v}</span>
                       <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontSize: 12.5, fontWeight: 800, color: color.text }}>{fmtNum(subtotal)}</span>
-                        {isManualLabel && (
-                          <button onClick={() => removeManualBaris(rowIdx)} style={{ background: "none", border: "none", color: color.danger, fontSize: 16, cursor: "pointer", lineHeight: 1 }}>×</button>
-                        )}
+                        {total !== null
+                          ? <span className={`fh-badge fh-badge-${KATEGORI_TONE[kategori]}`}>{total}/12 · {kategori}</span>
+                          : <span className="fh-meta">belum dinilai</span>}
+                        <Icon name={open ? "ChevronUp" : "ChevronDown"} />
                       </span>
-                    </div>
-                    <div style={{ padding: "9px 10px 10px", display: "flex", flexDirection: "column", gap: 7 }}>
-                      {row.entries.map((entry, entryIdx) => (
-                        <div key={entryIdx} style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                          <select value={entry.varian} onChange={(e) => updateEntry(rowIdx, entryIdx, "varian", e.target.value)}
-                            style={{ flex: 1, padding: "8px 9px", borderRadius: 8, border: `1.5px solid ${color.border}`, background: "#fafafa", fontSize: 12.5, fontWeight: 600, color: color.text }}>
-                            <option value="">Pilih varian</option>
-                            {dropdownVarianOptions.map((v) => <option key={v} value={v}>{varianDisplayName(v)}</option>)}
-                          </select>
-                          <input type="number" inputMode="numeric" value={entry.jumlah}
-                            onChange={(e) => updateEntry(rowIdx, entryIdx, "jumlah", e.target.value)}
-                            placeholder="0"
-                            style={{ width: 64, padding: "8px 9px", borderRadius: 8, border: `1.5px solid ${color.border}`, background: "#fafafa", fontSize: 12.5, fontWeight: 700, textAlign: "center", color: color.text }} />
-                          <button onClick={() => removeEntry(rowIdx, entryIdx)} style={{ background: "none", border: "none", color: color.danger, fontSize: 17, cursor: "pointer", width: 22 }}>×</button>
-                        </div>
-                      ))}
-                      <button onClick={() => addEntry(rowIdx)}
-                        style={{ alignSelf: "flex-start", border: "1px dashed #bbb", background: "transparent", color: color.textSoft, borderRadius: 8, padding: "6px 11px", fontSize: 11.5, fontWeight: 700, cursor: "pointer" }}>
-                        + Tambah varian
-                      </button>
-                    </div>
+                    </button>
+                    {open && (
+                      <div className="fh-card-body" style={{ gap: 14 }}>
+                        {KUALITAS_ASPEK.map((aspek) => (
+                          <div key={aspek.key} className="fh-section">
+                            <span className="fh-label">{aspek.label}</span>
+                            <OptionList
+                              name={`${aspek.label} ${v}`}
+                              value={k[aspek.key]}
+                              // tekan pilihan yang sama lagi untuk mengosongkan
+                              onChange={(val) => setKualitasVarian((prev) => ({
+                                ...prev,
+                                [v]: { ...prev[v], [aspek.key]: prev[v]?.[aspek.key] === val ? "" : val },
+                              }))}
+                              options={KUALITAS_ASPEK_OPTIONS[aspek.key].map((o) => ({
+                                value: o.skor,
+                                label: o.deskripsi,
+                                meta: `skor ${o.skor}`,
+                              }))}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
-            </div>
-
-            <button onClick={addManualBaris}
-              style={{ width: "100%", padding: 10, background: color.purpleBg, border: `1.5px dashed ${color.purple300}`, borderRadius: 10, color: color.purple700, fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 16 }}>
-              + Tambah baris tidak terdaftar
-            </button>
-
-            {!allBarisNamed && (
-              <div style={{ fontSize: 12, color: color.warning, background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>⚠️ Ada baris tambahan yang belum diberi nama</div>
-            )}
-            {!allRegulerFilled && allBarisNamed && (
-              <div style={{ fontSize: 12, color: color.warning, background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>⚠️ Masih ada baris yang varian/jumlahnya belum lengkap</div>
-            )}
-
-            {/* ── Ref panel — ditaruh paling bawah supaya operator bisa isi baris dulu tanpa scroll panjang ── */}
-            {varianList.length > 0 && (
-              <div style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: 13, padding: "12px 13px 6px", marginBottom: 14 }}>
-                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase", color: color.brand900, marginBottom: 8 }}>🌱 Referensi Populasi Akhir (Semai) vs Realisasi</div>
-                <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 54px 64px", gap: 6, fontSize: 9, textTransform: "uppercase", color: color.textGhost, paddingBottom: 4 }}>
-                  <span>Varian</span><span style={{ textAlign: "right" }}>Referensi</span><span style={{ textAlign: "right" }}>Realisasi</span>
-                </div>
-                {varianList.map((v) => {
-                  const ref = referensiMap[v] || 0;
-                  const real = realisasiMap[v] || 0;
-                  const diff = real - ref;
-                  const isMismatch = diff !== 0;
-                  return (
-                    <div key={v} style={{ padding: "6px 0", borderTop: "1px dashed #eee" }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 54px 64px", gap: 6, alignItems: "baseline", fontSize: 11.5 }}>
-                        <span style={{ color: color.text, fontWeight: 600 }}>{v}</span>
-                        <span style={{ textAlign: "right", color: color.textSoft }}>{fmtNum(ref)}</span>
-                        <span style={{ textAlign: "right" }}>
-                          <span style={{ display: "block", fontWeight: 700, color: isMismatch ? color.warning : color.text }}>{fmtNum(real)}</span>
-                          <span style={{ display: "block", fontSize: 9.5, fontWeight: 700, color: isMismatch ? color.warning : color.brand700 }}>{isMismatch ? `⚠ ${diff > 0 ? "+" : ""}${diff}` : "✓ sesuai"}</span>
-                        </span>
-                      </div>
-                      {isMismatch && (
-                        <div style={{ marginTop: 7, padding: "9px 10px", background: color.warningBg, borderLeft: `3px solid ${color.warning}`, borderRadius: "0 8px 8px 0" }}>
-                          <div style={{ fontSize: 11, color: color.warning, fontWeight: 700, marginBottom: 6 }}>⚠️ {v} selisih {diff > 0 ? "+" : ""}{diff} dari referensi semai — wajib jelaskan kenapa</div>
-                          <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: 0.6, textTransform: "uppercase", color: color.warning, marginBottom: 4 }}>✎ Alasan selisih (wajib diisi)</div>
-                          <textarea
-                            rows={2}
-                            value={keteranganSelisih[v] || ""}
-                            onChange={(e) => setKeteranganSelisih((prev) => ({ ...prev, [v]: e.target.value }))}
-                            placeholder={`Contoh: ${Math.abs(diff)} bibit ${v} layu saat pindah tanam...`}
-                            style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: `1.5px solid ${color.warning}`, background: color.card, color: color.text, fontFamily: "inherit", fontSize: 12.5, resize: "none", boxSizing: "border-box" }}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* ── Kualitas bibit per varian — opsional, dipecah 3 aspek (Akar/Daun/Batang),
-                 diakumulasi jadi 1 total poin per varian sebelum submit ── */}
-            {varianList.length > 0 && (
-              <div style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: 13, padding: "12px 13px", marginBottom: 14 }}>
-                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase", color: color.brand900, marginBottom: 2 }}>🌱 Kualitas Bibit per Varian</div>
-                <div style={{ fontSize: 10.5, color: color.textFaint, marginBottom: 10 }}>Opsional — nilai Akar, Batang, Daun tiap varian sesuai kondisi yang paling cocok. Total skor menentukan kategori akhir.</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {varianList.map((v) => {
-                    const k = kualitasVarian[v] || {};
-                    const total = hitungTotalKualitas(k);
-                    const kategori = kategoriKualitas(total);
-                    return (
-                      <div key={v} style={{ border: `1px solid ${color.border}`, borderRadius: 10, padding: "9px 10px" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 7 }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: color.text }}>{v}</span>
-                          <span style={{ fontSize: 11, fontWeight: 800, color: total !== null ? KUALITAS_KATEGORI_COLOR[kategori] : color.textGhost }}>
-                            {total !== null ? `${total}/12 · ${kategori}` : "Belum lengkap"}
-                          </span>
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-                          {KUALITAS_ASPEK.map((aspek) => (
-                            <div key={aspek.key}>
-                              <div style={{ fontSize: 10.5, color: color.textSoft, fontWeight: 700, marginBottom: 4 }}>{aspek.label}</div>
-                              <AspekOptionList aspekKey={aspek.key} value={k[aspek.key] === undefined ? "" : k[aspek.key]}
-                                onChange={(val) => setKualitasVarian((prev) => ({ ...prev, [v]: { ...prev[v], [aspek.key]: val } }))} />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {!keteranganOK && (
-              <div style={{ fontSize: 12, color: color.warning, background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>⚠️ Ada selisih vs referensi semai yang belum dijelaskan</div>
-            )}
-          </div>
-        )}
-
-        {/* ══ STEP 3 — Ringkasan ══ */}
-        {step === 3 && (
-          <div>
-            <button onClick={() => setStep(2)} style={{ background: "none", border: "none", color: color.textMuted, fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 12 }}>← Kembali</button>
-
-            <div style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: 13, padding: "13px 14px", marginBottom: 14 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 9 }}>
-                <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase", color: color.brand900 }}>📋 Teks untuk grup</span>
-                <button onClick={() => {
-                  navigator.clipboard.writeText(clipboardText).then(() => {
-                    setCopyDone(true);
-                    setTimeout(() => setCopyDone(false), 1400);
-                  }).catch(() => {});
-                }} style={{ border: "none", background: copyDone ? color.brand700 : "#43a047", color: color.card, fontSize: 11, fontWeight: 800, padding: "6px 12px", borderRadius: 8, cursor: "pointer" }}>
-                  {copyDone ? "✓ Disalin" : "Copy"}
-                </button>
-              </div>
-              <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace", fontSize: 12.5, lineHeight: 1.65, color: color.text, background: "#f6f8f4", borderRadius: 9, padding: "10px 11px", border: "1px solid #eee" }}>
-                {clipboardText}
-              </pre>
-            </div>
-
-            {mismatches.length > 0 ? (
-              <div style={{ background: color.warningBg, border: `1px solid ${color.warning}`, borderRadius: 13, padding: "13px 14px", marginBottom: 14 }}>
-                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase", color: color.warning, marginBottom: 9 }}>⚠️ Keterangan Selisih ({mismatches.length} varian)</div>
-                {mismatches.map((v) => (
-                  <div key={v} style={{ marginBottom: 6 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 11.5, fontWeight: 800, color: color.text }}>
-                      <span>{v}</span>
-                      <span style={{ color: color.warning, textAlign: "right" }}>{fmtNum(realisasiMap[v] || 0)} vs {fmtNum(referensiMap[v])} ({(realisasiMap[v] || 0) - referensiMap[v] > 0 ? "+" : ""}{(realisasiMap[v] || 0) - referensiMap[v]})</span>
-                    </div>
-                    <div style={{ background: color.card, borderRadius: 8, padding: "6px 10px", border: "1px solid #eee", fontSize: 12, color: color.text, marginTop: 3 }}>
-                      "{keteranganSelisih[v]}"
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ background: color.brandBg, border: `1px solid ${color.brand300}`, borderRadius: 13, padding: "12px 14px", marginBottom: 14, fontSize: 12.5, color: color.brand700 }}>
-                ✓ Semua varian sesuai referensi semai — tidak ada keterangan diperlukan.
-              </div>
-            )}
-
-            <div style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: 13, padding: "13px 14px", marginBottom: 16 }}>
-              <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase", color: color.brand900, marginBottom: 2 }}>🔍 Total per Varian</div>
-              <div style={{ fontSize: 10, color: color.textFaint, marginBottom: 8 }}>Angka = <strong>Realisasi</strong> / Referensi</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 14 }}>
-                {varianList.map((v) => {
-                  const ref = referensiMap[v] || 0, real = realisasiMap[v] || 0;
-                  return (
-                    <div key={v} style={{ display: "flex", justifyContent: "space-between", gap: 6, fontSize: 11.5, padding: "3px 0" }}>
-                      <span style={{ color: color.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v}</span>
-                      <span style={{ fontWeight: 700, whiteSpace: "nowrap", color: real === ref ? color.brand700 : color.warning }}>{fmtNum(real)}/{fmtNum(ref)}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              <div style={{ borderTop: "1px dashed #eee", marginTop: 8, paddingTop: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "2px 0" }}><span style={{ color: color.textMuted }}>Total baris (tanpa sulaman)</span><span style={{ fontWeight: 700 }}>{fmtNum(totalUtama)}</span></div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "2px 0" }}><span style={{ color: color.textMuted }}>Sulaman</span><span style={{ fontWeight: 700 }}>{fmtNum(totalSulaman)}</span></div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 800, padding: "4px 0" }}><span>Total realisasi + sulaman</span><span>{fmtNum(totalUtama + totalSulaman)}</span></div>
-              </div>
-            </div>
-
-            {submitError && (
-              <div style={{ fontSize: 12, color: color.dangerDeep, background: color.dangerBg, border: `1px solid ${color.dangerBorder}`, borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>⚠️ {submitError}</div>
-            )}
-          </div>
-        )}
-
-        {/* ══ STEP 4 — Sukses ══ */}
-        {step === 4 && (
-          <div style={{ textAlign: "center", paddingTop: 32 }}>
-            <div style={{ fontSize: 60, marginBottom: 12 }}>{isDemoMode ? "🧪" : savedOffline ? "💾" : "✅"}</div>
-            <div style={{ fontSize: 21, fontWeight: 800, color: isDemoMode ? "#f57f17" : savedOffline ? color.info : color.brand700, marginBottom: 6 }}>
-              {isDemoMode ? "Demo Selesai!" : savedOffline ? "Tersimpan Lokal!" : "Pemetaan Tersimpan!"}
-            </div>
-            <div style={{ fontSize: 13, color: color.textSoft, marginBottom: 20 }}>
-              {isDemoMode ? "Data tidak dikirim (mode demo)" : savedOffline ? "Data disimpan di perangkat. Otomatis terkirim ke Google Sheets saat online." : `${selectedGH} berhasil dikirim ke sheet Data.`}
-            </div>
-            <button onClick={resetForm} style={{ width: "100%", padding: 15, background: isDemoMode ? "#fff8e1" : savedOffline ? color.infoBg : color.brandBg, border: `2px solid ${isDemoMode ? color.warningBorder : savedOffline ? color.infoBorder : color.brand400}`, borderRadius: 12, color: isDemoMode ? color.warning : savedOffline ? color.info : color.brand700, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-              + Pemetaan GH Berikutnya
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* ── Bottom Nav ── */}
-      {step === 2 && (
-        <div style={{ padding: "12px 16px 24px", borderTop: `1px solid ${color.border}`, background: color.card, position: "sticky", bottom: 0, display: "flex", gap: 10 }}>
-          <button onClick={() => setStep(1)} style={{ flex: 1, padding: 13, background: color.bg, border: `1px solid ${color.border}`, borderRadius: 12, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>← Kembali</button>
-          <button onClick={() => setStep(3)} disabled={!canProceedStep2}
-            style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: canProceedStep2 ? `linear-gradient(135deg,${color.brand900},${color.brand700})` : color.border, color: canProceedStep2 ? color.card : color.textGhost, fontSize: 15, fontWeight: 700, cursor: canProceedStep2 ? "pointer" : "not-allowed" }}>
-            Review Ringkasan →
-          </button>
-        </div>
+            </section>
+          )}
+        </>
       )}
+
+      {/* ══ STEP 3 — Rekap ══ */}
       {step === 3 && (
-        <div style={{ padding: "12px 16px 24px", borderTop: `1px solid ${color.border}`, background: color.card, position: "sticky", bottom: 0, display: "flex", gap: 10 }}>
-          <button onClick={() => setStep(2)} style={{ flex: 1, padding: 13, background: color.bg, border: `1px solid ${color.border}`, borderRadius: 12, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>← Kembali</button>
-          <button onClick={() => setConfirmOpen(true)} disabled={syncing}
-            style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: syncing ? "rgba(76,175,80,0.3)" : isDemoMode ? "linear-gradient(135deg,#5d4037,#795548)" : !isOnline ? `linear-gradient(135deg,${color.info},#1976D2)` : `linear-gradient(135deg,${color.brand900},${color.brand700})`, color: color.card, fontSize: 15, fontWeight: 700, cursor: syncing ? "not-allowed" : "pointer" }}>
-            {syncing ? "⏳ Mengirim..." : isDemoMode ? "Submit Demo 🧪" : !isOnline ? "💾 Simpan Offline" : "Submit Pemetaan ✓"}
-          </button>
-        </div>
+        <>
+          <label className="fh-section">
+            <span className="fh-label">Operator</span>
+            <input
+              className={`fh-input${operator.trim() ? "" : " is-error"}`}
+              value={operator}
+              onChange={(e) => setOperator(e.target.value)}
+              placeholder="Nama operator"
+            />
+            <p className="fh-hint">Terisi dari akun login. Ubah bila yang mengisi orang lain.</p>
+          </label>
+
+          <ReviewTable
+            title="Rekap"
+            info={[
+              ["Tanggal", formatTanggal()],
+              ["GH", selectedGH],
+              ["Periode", periode || "-"],
+              ["Total tanaman", fmtNum(totalUtama)],
+              ["Sulaman", fmtNum(totalSulaman)],
+              ["Total + sulaman", fmtNum(totalUtama + totalSulaman)],
+            ]}
+            columns={[
+              { key: "varian", label: "Varian" },
+              { key: "real", label: "Real./Ref.", num: true },
+              { key: "kualitas", label: "Kualitas", num: true },
+            ]}
+            rows={varianList.map((v) => {
+              const ref = referensiMap[v] || 0, real = realisasiMap[v] || 0;
+              const total = hitungTotalKualitas(kualitasVarian[v]);
+              const kategori = kategoriKualitas(total);
+              return {
+                key: v,
+                varian: v,
+                real: (
+                  <span className={`fh-badge fh-badge-${real === ref ? "success" : "danger"}`}>
+                    {fmtNum(real)}/{fmtNum(ref)}
+                  </span>
+                ),
+                kualitas: kategori ? `${total} · ${kategori}` : "-",
+              };
+            })}
+          />
+
+          {mismatches.length > 0 ? (
+            <section className="fh-section">
+              <span className="fh-label">Keterangan selisih ({mismatches.length} varian)</span>
+              {mismatches.map((v) => (
+                <div key={v} className="fh-card fh-card-body">
+                  <div className="fh-section-head">
+                    <span className="fh-card-title">{v}</span>
+                    <span className="fh-badge fh-badge-danger">{formatSelisih((realisasiMap[v] || 0) - referensiMap[v])}</span>
+                  </div>
+                  <p className="fh-hint" style={{ color: "var(--ink-900)" }}>{keteranganSelisih[v]}</p>
+                </div>
+              ))}
+            </section>
+          ) : (
+            <FieldAlert tone="success">Semua varian sesuai referensi semai.</FieldAlert>
+          )}
+
+          <section className="fh-section">
+            <div className="fh-section-head">
+              <span className="fh-label">Teks untuk grup</span>
+              <button type="button" className="fh-btn fh-btn-secondary fh-btn-sm" onClick={copyText}>
+                <Icon name={copyDone ? "Check" : "Copy"} size={16} /> {copyDone ? "Disalin" : "Salin"}
+              </button>
+            </div>
+            <pre className="fh-pre">{clipboardText}</pre>
+          </section>
+
+          {submitError && <FieldAlert tone="danger">{submitError}</FieldAlert>}
+        </>
       )}
 
-      <ConfirmSubmitModal
-        open={confirmOpen}
-        onCancel={() => setConfirmOpen(false)}
-        onConfirm={() => { setConfirmOpen(false); handleSubmit(); }}
-        color={color.brand700}
-        isOffline={!isOnline}
-        isDemoMode={isDemoMode}
-        summary={[
-          { label: "Tanggal", value: todayISO },
-          { label: "GH", value: selectedGH },
-          { label: "Total tanaman", value: `${fmtNum(totalUtama)} (+${fmtNum(totalSulaman)} sulaman)` },
-          { label: "Operator", value: operator },
-          ...(mismatches.length > 0 ? [{ label: "Selisih", value: `${mismatches.length} varian perlu keterangan` }] : []),
-        ]}
-      />
-
-      <style>{`
-        input[type=number]::-webkit-outer-spin-button,
-        input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-      `}</style>
-    </div>
+      {/* ══ STEP 4 — Sukses ══ */}
+      {step === 4 && (
+        <SuccessState
+          offline={savedOffline}
+          title={isDemoMode ? "Demo selesai" : savedOffline ? "Tersimpan di perangkat" : `Pemetaan ${selectedGH} terkirim`}
+          description={isDemoMode
+            ? "Data tidak dikirim (mode demo)."
+            : savedOffline
+              ? "Terkirim otomatis ke sheet saat online."
+              : "Data masuk ke sheet Data."}
+          summary={[
+            ["GH", selectedGH],
+            ["Total tanaman", fmtNum(totalUtama)],
+            ["Sulaman", fmtNum(totalSulaman)],
+            ["Operator", operator],
+          ]}
+        />
+      )}
+    </FormShell>
   );
 }
