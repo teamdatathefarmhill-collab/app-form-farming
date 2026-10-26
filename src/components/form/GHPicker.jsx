@@ -25,7 +25,7 @@ function saveOpen(set) {
 function compareItem(a, b) {
   const va = a.sortValue ?? -Infinity, vb = b.sortValue ?? -Infinity;
   if (va !== vb) return vb - va;
-  return a.gh.localeCompare(b.gh, "id", { numeric: true });
+  return (a.label || a.gh).localeCompare(b.label || b.gh, "id", { numeric: true });
 }
 
 function compareArea(a, b) {
@@ -36,7 +36,8 @@ function compareArea(a, b) {
 
 // Daftar GH dikelompokkan per lokasi yang bisa dibuka/tutup, dengan pencarian.
 // Saat mencari, atau bila hanya ada satu lokasi, semua grup terbuka.
-//   items    — [{ gh, meta?, badges?: [{ label, tone }], done?, urgent? }]
+//   items    — [{ gh, label?, meta?, badges?: [{ label, tone }], done?, urgent? }]
+//              `label` (opsional) nama tampilan bila beda dari key `gh` (mis. semai)
 //              `done` (opsional) dipakai untuk hitungan "n/m sudah diisi" di judul lokasi
 //              `urgent` (opsional) dihitung jadi badge "n perlu aksi" di judul lokasi
 //              `sortValue` (opsional, angka) — bila ada, GH dalam lokasi diurutkan dari
@@ -56,13 +57,14 @@ export default function GHPicker({ items, selected, onSelect, loading = false, e
     });
   };
   const q = query.trim().toLowerCase();
-  const filtered = q ? items.filter(it => it.gh.toLowerCase().includes(q)) : items;
+  const nameOf = it => it.label || it.gh;
+  const filtered = q ? items.filter(it => nameOf(it).toLowerCase().includes(q)) : items;
 
   if (loading) return <p className="fh-empty">Memuat daftar GH…</p>;
   if (items.length === 0) return <p className="fh-empty">{emptyText}</p>;
 
   const groups = {};
-  filtered.forEach(it => { (groups[areaOf(it.gh)] ??= []).push(it); });
+  filtered.forEach(it => { (groups[areaOf(nameOf(it))] ??= []).push(it); });
   const areas = Object.keys(groups).sort(compareArea);
   const tracksDone = items.some(it => it.done !== undefined);
   const forceOpen = q !== "" || areas.length <= 1;
@@ -114,7 +116,7 @@ export default function GHPicker({ items, selected, onSelect, loading = false, e
                     onClick={() => onSelect(it.gh)}
                   >
                     <span className="fh-gh-main">
-                      <span className="fh-gh-name">{it.gh}</span>
+                      <span className="fh-gh-name">{nameOf(it)}</span>
                       {it.meta && <span className="fh-gh-meta"><br />{it.meta}</span>}
                     </span>
                     {it.badges?.length > 0 && (

@@ -1,17 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
 import { useDraft } from "../hooks/useDraft";
+import { useAuth } from "../hooks/useAuth";
 import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
-import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
-import { color } from "../styles/tokens";
+import { FormShell, FieldAlert, SuccessState, GHPicker, ReviewTable, Dialog, SegmentTabs, Stepper } from "../components/form";
+import { formatTanggal } from "../lib/format";
 
 const DB_NAME = "HPTOfflineDB";
 
 const SCRIPT_URL = import.meta.env.VITE_GAS_HPT_URL;
 
 const LS_SEMAI_CACHE_KEY = "farmhill_semairef_cache";
-const LS_SEMAI_CACHE_TTL = 1000 * 60 * 30; // 30 menit
 
 function saveSemaiCache(data) {
   try { localStorage.setItem(LS_SEMAI_CACHE_KEY, JSON.stringify({ data, savedAt: Date.now() })); }
@@ -21,9 +21,7 @@ function loadSemaiCache() {
   try {
     const raw = localStorage.getItem(LS_SEMAI_CACHE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (Date.now() - parsed.savedAt < LS_SEMAI_CACHE_TTL) return parsed.data;
-    return parsed.data;
+    return JSON.parse(raw).data;
   } catch { return null; }
 }
 
@@ -46,33 +44,36 @@ function hitungHST(tgl) {
   return Math.floor((nowLocal - tanam) / 86400000);
 }
 
-function hstColor(hst) {
-  if (hst <= 40) return { bg: "rgba(76,175,80,0.15)",  border: "rgba(76,175,80,0.4)",  text: color.brand400 };
-  if (hst <= 50) return { bg: "rgba(255,179,0,0.12)",  border: "rgba(255,179,0,0.35)", text: "#FFB300" };
-  return           { bg: "rgba(229,57,53,0.12)",  border: "rgba(229,57,53,0.35)", text: color.dangerBorder };
+// HST mendekati batas akhir (65) ditandai supaya diprioritaskan
+function hstTone(hst) {
+  if (hst <= 40) return "neutral";
+  if (hst <= 50) return "warning";
+  return "due";
 }
 
+// todayISO dikirim ke sheet (format dd/mm/yyyy) — jangan diubah
 const todayISO   = new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
-const todayLabel = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
+// key & label dikirim/ditampilkan apa adanya — jangan diubah
 const HAMA_LIST = [
-  { key: "kutu_kebul",  label: "Kutu Kebul",     icon: "🦟", color: "#FF7043", unit: "ekor" },
-  { key: "thrips",      label: "Thrips",          icon: "🐛", color: "#FFB300", unit: "ekor" },
-  { key: "ulat_kupu",   label: "Ulat/Kupu-kupu", icon: "🦋", color: "#AB47BC", unit: "ekor" },
-  { key: "tungau",      label: "Tungau",          icon: "🕷️", color: color.danger, unit: "per daun" },
-  { key: "tikus",       label: "Tikus",           icon: "🐭", color: "#795548", unit: "ekor" },
-  { key: "aphids",      label: "Aphids",          icon: "🐜", color: "#26A69A", unit: "ekor" },
-  { key: "ulat_kompos", label: "Ulat Kompos",     icon: "🪱", color: "#8D6E63", unit: "ekor" },
-  { key: "kutu_putih",  label: "Kutu Putih",      icon: "🤍", color: "#B0BEC5", unit: "ekor" },
+  { key: "kutu_kebul",  label: "Kutu Kebul",     unit: "ekor" },
+  { key: "thrips",      label: "Thrips",          unit: "ekor" },
+  { key: "ulat_kupu",   label: "Ulat/Kupu-kupu", unit: "ekor" },
+  { key: "tungau",      label: "Tungau",          unit: "per daun" },
+  { key: "tikus",       label: "Tikus",           unit: "ekor" },
+  { key: "aphids",      label: "Aphids",          unit: "ekor" },
+  { key: "ulat_kompos", label: "Ulat Kompos",     unit: "ekor" },
+  { key: "kutu_putih",  label: "Kutu Putih",      unit: "ekor" },
 ];
 
 const PENYAKIT_SKOR = [
-  { key: "dm", label: "DM", fullLabel: "Downy Mildew",   icon: "💧", color: "#1E88E5", hasSkor: true },
-  { key: "pm", label: "PM", fullLabel: "Powdery Mildew", icon: "⬜", color: color.infoBorder, hasSkor: true },
+  { key: "dm", label: "DM", fullLabel: "Downy Mildew",   hasSkor: true },
+  { key: "pm", label: "PM", fullLabel: "Powdery Mildew", hasSkor: true },
 ];
 const PENYAKIT_SIMPLE = [
-  { key: "gsb", label: "GSB", fullLabel: "Gummy Stem Blight", icon: "⚠️", color: "#EF5350" },
+  { key: "gsb", label: "GSB", fullLabel: "Gummy Stem Blight" },
 ];
+const SKOR_KEYS = ["skor1", "skor2", "skor3", "skor4"];
 
 function initHPTData() {
   const hama = {};
@@ -91,8 +92,6 @@ const TIPE_GH = [
   {
     key: "drip",
     label: "Drip",
-    icon: "💧",
-    color: "#1E88E5",
     pattern: (gh) => {
       const upper = gh.toUpperCase();
       if (upper.startsWith("BERGAS")) {
@@ -113,8 +112,6 @@ const TIPE_GH = [
   {
     key: "kolam",
     label: "Kolam",
-    icon: "🏊",
-    color: "#00897B",
     pattern: (gh) => {
       const upper = gh.toUpperCase();
       if (upper.startsWith("TOHUDAN")) {
@@ -130,16 +127,20 @@ const TIPE_GH = [
   },
 ];
 
+const isFilled = (v) => v !== undefined && v !== "" && v !== "0";
+
 
 export default function HPT() {
-  const [step, setStep]       = useState(1);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-
-  const { produksiData, loading: loadingGH, isDemoMode, refetch: fetchGHData } = useGHData();
-  const { blockedMap } = useGHBlockedList();
-
+  const { user } = useAuth();
   // ── Draft persistence ──
   const { getDraft, saveDraft, clearDraft } = useDraft("hpt");
+  const _draft = getDraft();
+
+  const [step, setStep]       = useState(_draft?.step === 2 || _draft?.step === 3 ? _draft.step : 1);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  const { produksiData, loading: loadingGH, isDemoMode } = useGHData();
+  const { blockedMap } = useGHBlockedList();
 
   // Semai data di-fetch langsung dari VITE_GAS_HPT_URL, terpisah dari useGHData
   const [semaiData,      setSemaiData]      = useState({});
@@ -166,14 +167,12 @@ export default function HPT() {
 
   useEffect(() => { fetchSemaiRef(); }, [fetchSemaiRef]);
 
-  const _draft = getDraft();
   const [selectedGH, setSelectedGH] = useState(_draft?.selectedGH || "");
   const [activeTab, setActiveTab]   = useState(_draft?.activeTab   || "produksi");
-  const [selectedTipe, setSelectedTipe] = useState(_draft?.selectedTipe || "");
-  const [operator, setOperator]     = useState(_draft?.operator    || "");
+  // Operator otomatis dari akun login; bisa diubah di langkah rekap
+  const [operator, setOperator]     = useState(_draft?.operator || user?.nama || "");
   const [hptData, setHptData]       = useState(_draft?.hptData     || initHPTData());
   const [syncing, setSyncing]       = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [savedOffline, setSavedOffline] = useState(false);
 
@@ -183,6 +182,11 @@ export default function HPT() {
 
   const [pendingCount, setPendingCount]         = useState(0);
   const [isSyncingPending, setIsSyncingPending] = useState(false);
+
+  // useAuth membaca sessionStorage setelah render pertama → isi operator begitu nama tersedia
+  useEffect(() => {
+    if (user?.nama) setOperator(prev => prev || user.nama);
+  }, [user?.nama]);
 
   const refreshPendingCount = useCallback(async () => {
     try {
@@ -251,35 +255,38 @@ export default function HPT() {
     setHptData(initHPTData());
     setShowWarning(false);
     setPendingGH("");
+    setStep(2);
   };
 
   const ghInfo = activeTab === "semai" ? semaiData[selectedGH] : produksiData[selectedGH];
   const ghLabel = (activeTab === "semai" && ghInfo?.nama) || selectedGH;
   const hst  = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : null;
-  const hstC = hst !== null ? hstColor(hst) : null;
+  const umurLabel = activeTab === "semai" ? "HSS" : "HST";
 
-  const canProceedStep2 = operator.trim().length >= 2;
+  const loadingRef = activeTab === "semai" ? loadingSemai : loadingGH;
+  // data GH harus sudah termuat — periode & HST diambil dari situ
+  const canSubmit = operator.trim().length >= 2 && !syncing && !loadingRef;
 
   const handleHama = (key, val) => {
     if (val === "" || /^\d+$/.test(val))
       setHptData(d => ({ ...d, hama: { ...d.hama, [key]: val } }));
   };
 
-  const handlePenyakitField = (key, field, val) => {
+  const handlePenyakitField = (key, field, raw) => {
+    const val = raw.replace(",", "."); // koma diterima sebagai desimal
     if (val === "" || /^\d*\.?\d*$/.test(val))
       setHptData(d => ({ ...d, penyakit: { ...d.penyakit, [key]: { ...d.penyakit[key], [field]: val } } }));
   };
 
   // Auto-save draft
   useEffect(() => {
-    if (step === 3) return;
-    saveDraft({ step, selectedGH, activeTab, selectedTipe, operator, hptData });
-  }, [step, selectedGH, activeTab, selectedTipe, operator, hptData]);
+    if (step === 4) return;
+    saveDraft({ step, selectedGH, activeTab, operator, hptData });
+  }, [step, selectedGH, activeTab, operator, hptData]);
 
   const resetForm = () => {
     clearDraft();
-    setStep(1); setSelectedGH(""); setOperator(""); setActiveTab("produksi");
-    setSelectedTipe("");
+    setStep(1); setSelectedGH(""); setOperator(user?.nama || ""); setActiveTab("produksi");
     setHptData(initHPTData()); setSyncing(false);
     setSubmitError(null); setSavedOffline(false);
   };
@@ -312,7 +319,7 @@ export default function HPT() {
     if (isDemoMode) {
       markSubmitted(selectedGH);
       setSubmittedToday(getSubmittedToday());
-      setStep(3);
+      setStep(4);
       return;
     }
 
@@ -328,9 +335,9 @@ export default function HPT() {
         markSubmitted(selectedGH);
         clearDraft(); setSubmittedToday(getSubmittedToday());
         setSavedOffline(true);
-        setStep(3);
+        setStep(4);
       } catch {
-        setSubmitError("Gagal menyimpan data offline. Coba lagi.");
+        setSubmitError("Data belum tersimpan di perangkat. Tekan Simpan offline sekali lagi.");
       } finally {
         setSyncing(false);
       }
@@ -345,414 +352,342 @@ export default function HPT() {
       if (result?.status === "ok" || result?.success) {
         markSubmitted(selectedGH);
         clearDraft(); setSubmittedToday(getSubmittedToday());
-        setStep(3);
+        setStep(4);
       } else {
         throw new Error(result?.message || "Gagal menyimpan");
       }
     } catch (e) {
-      setSubmitError(e.message || "Terjadi kesalahan, coba lagi.");
+      setSubmitError(`Data belum terkirim (${e.message || "koneksi terputus"}). Cek sinyal lalu tekan Kirim lagi.`);
     } finally {
       setSyncing(false);
     }
   };
 
-  const S = {
-    wrap: { minHeight: "100vh", background: "linear-gradient(160deg, #0a0f0a 0%, #0d1a0e 50%, #0a120d 100%)", display: "flex", justifyContent: "center", alignItems: "flex-start", padding: "0 0 40px", fontFamily: "'Segoe UI', system-ui, sans-serif" },
-    card: { width: "100%",background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 20, overflow: "hidden", marginTop: 0 },
-    header: { padding: "16px 16px 12px", background: "rgba(0,0,0,0.3)", borderBottom: "1px solid rgba(255,255,255,0.07)" },
-    body: { padding: "16px" },
-    sectionTitle: { fontSize: 11, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 10 },
-  };
+  // ── Ringkasan isian (rekap & sukses) ──
+  const hamaTerisi = HAMA_LIST.filter(h => isFilled(hptData.hama[h.key]));
+  const penyakitRows = [
+    ...PENYAKIT_SKOR.map(p => {
+      const pd = hptData.penyakit[p.key] || {};
+      return {
+        key: p.key,
+        nama: `${p.label} · ${p.fullLabel}`,
+        insidensi: pd.insidensi || "0",
+        skor: SKOR_KEYS.map(sk => pd[sk] || "0").join(" · "),
+      };
+    }),
+    ...PENYAKIT_SIMPLE.map(p => ({
+      key: p.key,
+      nama: `${p.label} · ${p.fullLabel}`,
+      insidensi: hptData.penyakit[p.key]?.jumlah || "0",
+      skor: "-",
+    })),
+  ];
+
+  // ── Header ──
+  const title = step === 2 || step === 3 ? `HPT · ${ghLabel}` : "HPT";
+  const ghMeta = [ghInfo?.periode && `P${ghInfo.periode}`, hst !== null && `${hst} ${umurLabel}`].filter(Boolean).join(" · ");
+  const subtitle = step === 1
+    ? `${formatTanggal()} · Langkah 1 dari 3`
+    : step === 4
+      ? formatTanggal()
+      : `${ghMeta ? `${ghMeta} · ` : ""}Langkah ${step} dari 3`;
+  const onBack = step === 2 ? () => setStep(1) : step === 3 ? () => { setStep(2); setSubmitError(null); } : undefined;
+
+  // ── Footer ──
+  let footer = null;
+  if (step === 2) {
+    footer = (
+      <button type="button" className="fh-btn fh-btn-primary" onClick={() => setStep(3)}>
+        Lihat rekap
+      </button>
+    );
+  } else if (step === 3) {
+    const sendLabel = syncing ? "Mengirim…"
+      : loadingRef ? "Memuat data GH…"
+      : isDemoMode ? "Kirim demo"
+      : !isOnline ? "Simpan offline"
+      : "Kirim HPT";
+    footer = (
+      <div className="fh-btn-row">
+        <button type="button" className="fh-btn fh-btn-secondary" onClick={() => { setStep(2); setSubmitError(null); }}>Kembali</button>
+        <button type="button" className="fh-btn fh-btn-primary" disabled={!canSubmit} onClick={handleSubmit}>{sendLabel}</button>
+      </div>
+    );
+  } else if (step === 4) {
+    footer = <button type="button" className="fh-btn fh-btn-secondary" onClick={resetForm}>Isi GH lain</button>;
+  }
 
   return (
-    <div style={S.wrap}>
-      <div style={S.card}>
+    <FormShell title={title} subtitle={subtitle} steps={step < 4 ? 3 : 0} step={step} onBack={onBack} footer={footer}>
 
-        {/* ── Header ── */}
-        <div style={S.header}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: color.card, letterSpacing: -0.5 }}>🌿 Form HPT</div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>{todayLabel}</div>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-              {pendingCount > 0 && (
-                <button
-                  onClick={isOnline ? syncPendingData : undefined}
-                  title={isOnline ? "Klik untuk sync sekarang" : "Akan sync otomatis saat online"}
-                  style={{ fontSize: 10, fontWeight: 700, background: isOnline ? "rgba(33,150,243,0.2)" : "rgba(255,179,0,0.15)", border: `1px solid ${isOnline ? "rgba(33,150,243,0.5)" : "rgba(255,179,0,0.4)"}`, color: isOnline ? "#64B5F6" : "#FFB300", padding: "2px 8px", borderRadius: 20, cursor: isOnline ? "pointer" : "default", display: "flex", alignItems: "center", gap: 4 }}
-                >
-                  {isSyncingPending ? "⏳" : "📤"} {pendingCount} pending
-                </button>
-              )}
-              {isDemoMode && (
-                <span style={{ fontSize: 10, background: "rgba(255,179,0,0.15)", border: "1px solid rgba(255,179,0,0.3)", color: "#FFB300", padding: "2px 8px", borderRadius: 20, fontWeight: 700 }}>DEMO</span>
-              )}
-              <span style={{ fontSize: 10, background: isOnline ? "rgba(76,175,80,0.15)" : "rgba(244,67,54,0.15)", border: `1px solid ${isOnline ? "rgba(76,175,80,0.3)" : "rgba(244,67,54,0.3)"}`, color: isOnline ? color.brand400 : color.dangerBorder, padding: "2px 8px", borderRadius: 20, fontWeight: 700 }}>
-                {isOnline ? "● Online" : "● Offline"}
-              </span>
-            </div>
-          </div>
+      {/* ── Status koneksi & antrean ── */}
+      {step < 4 && !isOnline && (
+        <FieldAlert tone="info">Mode offline. Data disimpan di perangkat dan terkirim otomatis saat online.</FieldAlert>
+      )}
+      {step < 4 && pendingCount > 0 && (
+        <FieldAlert
+          tone="warning"
+          action={isOnline && !isSyncingPending ? { label: "Kirim sekarang", onClick: syncPendingData } : undefined}
+        >
+          {isSyncingPending ? "Mengirim data tertunda…" : `${pendingCount} GH tersimpan offline, belum terkirim.`}
+        </FieldAlert>
+      )}
+      {step < 4 && isDemoMode && (
+        <FieldAlert tone="warning">Mode demo. Data tidak dikirim ke sheet.</FieldAlert>
+      )}
 
-          {!isOnline && (
-            <div style={{ marginTop: 10, padding: "7px 12px", background: "rgba(244,67,54,0.1)", border: "1px solid rgba(244,67,54,0.25)", borderRadius: 8, display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 14 }}>📵</span>
-              <span style={{ fontSize: 11, color: color.dangerBorder }}>Mode offline — data tersimpan lokal & sync otomatis saat online</span>
-            </div>
+      {/* ══ STEP 1 — Pilih GH ══ */}
+      {step === 1 && (
+        <>
+          <SegmentTabs
+            label="Jenis GH"
+            value={activeTab}
+            onChange={(key) => { setActiveTab(key); setSelectedGH(""); }}
+            tabs={[
+              { key: "produksi", label: "GH produksi" },
+              { key: "semai", label: "Semai" },
+            ]}
+          />
+
+          {activeTab === "produksi" && (
+            <GHPicker
+              loading={loadingGH}
+              selected={selectedGH}
+              onSelect={handleSelectGH}
+              emptyText="Tidak ada GH produksi aktif."
+              items={ghAktif.flatMap(([gh, info]) => {
+                const tipe = TIPE_GH.find(t => t.pattern(gh));
+                if (!tipe) return [];
+                const h = info.tanam ? hitungHST(info.tanam) : null;
+                const done = submittedToday.includes(gh);
+                const blockedInfo = blockedMap[gh.trim().toUpperCase()];
+                const badges = [];
+                if (blockedInfo) badges.push({ label: blockedInfo.aksi, tone: "danger" });
+                if (done) badges.push({ label: "Sudah diisi", tone: "success" });
+                if (h !== null) badges.push({ label: `${h} HST`, tone: hstTone(h) });
+                return [{
+                  gh,
+                  meta: `${tipe.label}${info.periode ? ` · P${info.periode}` : ""}`,
+                  badges,
+                  done,
+                  sortValue: h,
+                }];
+              })}
+            />
           )}
 
-          <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
-            {["Pilih GH","Input HPT","Selesai"].map((label, i) => {
-              const s = i + 1;
-              const active = step === s, done = step > s;
+          {activeTab === "semai" && (
+            <GHPicker
+              loading={loadingSemai}
+              selected={selectedGH}
+              onSelect={handleSelectGH}
+              emptyText="Tidak ada data semai aktif."
+              items={semaiAktif.map(([nama, info]) => {
+                const done = submittedToday.includes(nama);
+                const hss = info.tanam ? hitungHST(info.tanam) : null;
+                const badges = [];
+                if (done) badges.push({ label: "Sudah diisi", tone: "success" });
+                if (hss !== null) badges.push({ label: `${hss} HSS`, tone: "neutral" });
+                return {
+                  gh: nama,
+                  label: info.nama || nama,
+                  meta: [info.ghTujuan && `Bibit ${info.ghTujuan}`, info.periode && `P${info.periode}`, info.hssRef && `Ref ${info.hssRef} HSS`].filter(Boolean).join(" · "),
+                  badges,
+                  done,
+                  sortValue: hss,
+                };
+              })}
+            />
+          )}
+        </>
+      )}
+
+      {/* ══ STEP 2 — Input HPT ══ */}
+      {step === 2 && (
+        <>
+          <section className="fh-section">
+            <div className="fh-section-head">
+              <span className="fh-label">Populasi hama</span>
+              <span className="fh-meta">{hamaTerisi.length}/{HAMA_LIST.length} ada temuan</span>
+            </div>
+            <div className="fh-grid-2">
+              {HAMA_LIST.map(h => {
+                const val = hptData.hama[h.key];
+                return (
+                  <div key={h.key} className={`fh-card fh-field-card${isFilled(val) ? " is-filled" : ""}`}>
+                    <div>
+                      <div className="fh-field-title">{h.label}</div>
+                      <div className="fh-field-unit">{h.unit}</div>
+                    </div>
+                    <Stepper label={h.label} value={val} onChange={v => handleHama(h.key, v)} />
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="fh-section">
+            <span className="fh-label">Penyakit · insidensi dan skor</span>
+            {PENYAKIT_SKOR.map(p => {
+              const pd = hptData.penyakit[p.key];
+              const active = pd && Object.values(pd).some(isFilled);
               return (
-                <div key={s} style={{ flex: 1, textAlign: "center" }}>
-                  <div style={{ height: 3, borderRadius: 2, marginBottom: 4, background: done ? "#4CAF50" : active ? color.brand400 : "rgba(255,255,255,0.1)", transition: "background 0.3s" }} />
-                  <div style={{ fontSize: 9, color: active ? color.brand400 : done ? "#4CAF50" : "rgba(255,255,255,0.25)", fontWeight: active ? 700 : 500 }}>{label}</div>
+                <div key={p.key} className={`fh-card fh-field-card${active ? " is-filled" : ""}`} style={{ gap: 12 }}>
+                  <div className="fh-field-title">
+                    {p.label} <span className="fh-field-unit" style={{ fontWeight: 400 }}>· {p.fullLabel}</span>
+                  </div>
+                  <label className="fh-section" style={{ gap: 4 }}>
+                    <span className="fh-hint">Insidensi (jumlah tanaman terserang)</span>
+                    <input
+                      className="fh-input is-number"
+                      type="text"
+                      inputMode="decimal"
+                      value={pd?.insidensi || ""}
+                      placeholder="0"
+                      onChange={e => handlePenyakitField(p.key, "insidensi", e.target.value)}
+                    />
+                  </label>
+                  <div>
+                    <span className="fh-hint" style={{ display: "block", marginBottom: 4 }}>Jumlah tanaman per skor</span>
+                    <div className="fh-grid-4">
+                      {SKOR_KEYS.map((sk, i) => (
+                        <label key={sk}>
+                          <span className="fh-mini-label">Skor {i + 1}</span>
+                          <input
+                            className="fh-input is-number"
+                            style={{ textAlign: "center", padding: "0 4px" }}
+                            type="text"
+                            inputMode="decimal"
+                            value={pd?.[sk] || ""}
+                            placeholder="0"
+                            onChange={e => handlePenyakitField(p.key, sk, e.target.value)}
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               );
             })}
-          </div>
-        </div>
 
-        <div style={S.body}>
-
-          {/* ══ STEP 1 — Pilih GH ══ */}
-          {step === 1 && (
-            <div>
-              {/* Tab Produksi / Semai */}
-              <div style={{ display: "flex", gap: 6, marginBottom: 14, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 4 }}>
-                {[{ key: "produksi", label: "🌿 GH Produksi" }, { key: "semai", label: "🌱 Semai" }].map(tab => (
-                  <button key={tab.key} onClick={() => { setActiveTab(tab.key); setSelectedGH(""); setSelectedTipe(""); }} style={{ flex: 1, padding: "8px 0", background: activeTab === tab.key ? "rgba(76,175,80,0.2)" : "transparent", border: `1px solid ${activeTab === tab.key ? "rgba(76,175,80,0.4)" : "transparent"}`, borderRadius: 8, cursor: "pointer", color: activeTab === tab.key ? color.brand400 : "rgba(255,255,255,0.4)", fontSize: 13, fontWeight: 700, transition: "all 0.2s" }}>
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
-              {activeTab === "produksi" && (
-                loadingGH ? (
-                  <div style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.3)", fontSize: 13 }}>⏳ Memuat data GH...</div>
-                ) : (
-                  <>
-                    {/* Pilih Tipe */}
-                    {!selectedTipe && (
-                      <>
-                        <div style={{ fontSize: 11, color: color.brand400, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 10 }}>Pilih Tipe Irigasi</div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          {TIPE_GH.map(tipe => {
-                            const ghDiTipe = ghAktif.filter(([gh]) => tipe.pattern(gh));
-                            return (
-                              <button key={tipe.key} onClick={() => setSelectedTipe(tipe.key)}
-                                style={{ padding: "14px 16px", background: "rgba(255,255,255,0.04)", border: `1px solid rgba(255,255,255,0.1)`, borderRadius: 14, cursor: "pointer", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", transition: "all 0.2s" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                  <span style={{ fontSize: 22 }}>{tipe.icon}</span>
-                                  <div>
-                                    <div style={{ fontSize: 15, fontWeight: 800, color: color.card }}>{tipe.label}</div>
-                                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>{ghDiTipe.length} GH aktif</div>
-                                  </div>
-                                </div>
-                                <span style={{ fontSize: 18, color: "rgba(255,255,255,0.25)" }}>›</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </>
-                    )}
-
-                    {/* GH List setelah tipe dipilih */}
-                    {selectedTipe && (() => {
-                      const tipe = TIPE_GH.find(t => t.key === selectedTipe);
-                      const ghDiTipe = ghAktif.filter(([gh]) => tipe.pattern(gh));
-                      return (
-                        <>
-                          <button onClick={() => { setSelectedTipe(""); setSelectedGH(""); }}
-                            style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.4)", fontSize: 12, padding: 0 }}>
-                            ← Ganti tipe
-                          </button>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                            <span style={{ fontSize: 16 }}>{tipe.icon}</span>
-                            <div style={{ fontSize: 11, color: tipe.color, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase" }}>{tipe.label} — {ghDiTipe.length} GH Aktif</div>
-                          </div>
-                          {ghDiTipe.length === 0 ? (
-                            <div style={{ textAlign: "center", padding: 32, color: "rgba(255,255,255,0.3)", fontSize: 13 }}>Tidak ada GH aktif di tipe ini.</div>
-                          ) : (
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                              {ghDiTipe.map(([gh, info]) => {
-                                const h = info.tanam ? hitungHST(info.tanam) : null;
-                                const hc = h !== null ? hstColor(h) : null;
-                                const done = submittedToday.includes(gh);
-                                const selected = selectedGH === gh;
-                                return (
-                                  <button key={gh} onClick={() => handleSelectGH(gh)} style={{ padding: "12px 12px 10px", background: selected ? "rgba(76,175,80,0.12)" : done ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.04)", border: `1px solid ${selected ? "rgba(76,175,80,0.45)" : done ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.1)"}`, borderRadius: 14, cursor: "pointer", textAlign: "left", transition: "all 0.2s", opacity: done ? 0.7 : 1 }}>
-                                    <div style={{ fontSize: 13, fontWeight: 800, color: selected ? color.brand400 : color.card, marginBottom: 3 }}>{gh}</div>
-                                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginBottom: 10 }}>P{info.periode}</div>
-                                    <div style={{ display: "inline-block", padding: "5px 10px", borderRadius: 8, background: done ? "rgba(76,175,80,0.15)" : (hc ? hc.bg : "rgba(255,255,255,0.06)"), border: `1px solid ${done ? "rgba(76,175,80,0.3)" : (hc ? hc.border : "rgba(255,255,255,0.1)")}` }}>
-                                      {done ? <span style={{ fontSize: 12, fontWeight: 700, color: color.brand400 }}>✓ Done</span>
-                                        : h !== null ? <span style={{ fontSize: 14, fontWeight: 800, color: hc.text }}>{h} HST</span>
-                                        : <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>– HST</span>}
-                                    </div>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </>
-                )
-              )}
-
-              {activeTab === "semai" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {loadingSemai ? (
-                    <div style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.3)", fontSize: 13 }}>⏳ Memuat data semai...</div>
-                  ) : semaiAktif.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: 40, color: "rgba(255,255,255,0.3)", fontSize: 13 }}>Tidak ada data semai aktif.</div>
-                  ) : semaiAktif.map(([nama, info]) => {
-                    const done = submittedToday.includes(nama);
-                    const selected = selectedGH === nama;
-                    const hss = info.tanam ? hitungHST(info.tanam) : null;
-                    return (
-                      <button key={nama} onClick={() => handleSelectGH(nama)} style={{ padding: "12px 14px", background: selected ? "rgba(76,175,80,0.12)" : done ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.04)", border: `1px solid ${selected ? "rgba(76,175,80,0.45)" : done ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.1)"}`, borderRadius: 12, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", transition: "all 0.2s", opacity: done ? 0.6 : 1 }}>
-                        <div style={{ textAlign: "left" }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: selected ? color.brand400 : color.card }}>{info.nama || nama}</div>
-                          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>{info.ghTujuan ? `Bibit ${info.ghTujuan} · ` : ""}Periode {info.periode}{info.hssRef ? ` · Ref: ${info.hssRef} HSS` : ""}</div>
-                        </div>
-                        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                          {done && <span style={{ fontSize: 10, color: color.brand400, background: "rgba(76,175,80,0.1)", border: "1px solid rgba(76,175,80,0.3)", borderRadius: 20, padding: "2px 7px" }}>✓ Done</span>}
-                          {hss !== null && <span style={{ fontSize: 11, fontWeight: 700, color: color.brand400, background: "rgba(76,175,80,0.1)", border: "1px solid rgba(76,175,80,0.25)", borderRadius: 20, padding: "3px 9px" }}>{hss} HSS</span>}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {showWarning && (
-                <div style={{ marginTop: 12, padding: 14, background: "rgba(255,179,0,0.08)", border: "1px solid rgba(255,179,0,0.3)", borderRadius: 12 }}>
-                  <div style={{ fontSize: 13, color: "#FFB300", fontWeight: 600, marginBottom: 8 }}>⚠️ {pendingGH} sudah disubmit hari ini</div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 12 }}>Yakin ingin input ulang?</div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => setShowWarning(false)} style={{ flex: 1, padding: "9px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 9, color: "rgba(255,255,255,0.6)", fontSize: 12, cursor: "pointer" }}>Batal</button>
-                    <button onClick={() => doSelectGH(pendingGH)} style={{ flex: 2, padding: "9px", background: "rgba(255,179,0,0.15)", border: "1px solid rgba(255,179,0,0.4)", borderRadius: 9, color: "#FFB300", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Lanjut Input Ulang</button>
+            {PENYAKIT_SIMPLE.map(p => {
+              const pd = hptData.penyakit[p.key];
+              return (
+                <div key={p.key} className={`fh-card fh-field-card${isFilled(pd?.jumlah) ? " is-filled" : ""}`}>
+                  <div className="fh-field-title">
+                    {p.label} <span className="fh-field-unit" style={{ fontWeight: 400 }}>· {p.fullLabel}</span>
                   </div>
+                  <label className="fh-section" style={{ gap: 4 }}>
+                    <span className="fh-hint">Jumlah tanaman terserang</span>
+                    <input
+                      className="fh-input is-number"
+                      type="text"
+                      inputMode="decimal"
+                      value={pd?.jumlah || ""}
+                      placeholder="0"
+                      onChange={e => handlePenyakitField(p.key, "jumlah", e.target.value)}
+                    />
+                  </label>
                 </div>
-              )}
+              );
+            })}
+          </section>
+
+          <label className="fh-section">
+            <div className="fh-section-head">
+              <span className="fh-label">Keterangan</span>
+              <span className="fh-meta">opsional</span>
             </div>
-          )}
+            <textarea
+              className="fh-textarea"
+              rows={3}
+              value={hptData.keterangan}
+              onChange={e => setHptData(d => ({ ...d, keterangan: e.target.value }))}
+              placeholder="Catatan tambahan"
+            />
+          </label>
+        </>
+      )}
 
-          {/* ══ STEP 2 — Input HPT ══ */}
-          {step === 2 && (
-            <div>
-              <div style={{ padding: "9px 12px", background: "rgba(76,175,80,0.06)", border: "1px solid rgba(76,175,80,0.12)", borderRadius: 10, marginBottom: activeTab === "semai" ? 8 : 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ fontSize: 12, color: color.brand400, fontWeight: 600 }}>{ghLabel}</div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{operator} · {activeTab === "semai" ? `${hst} HSS` : `${hst} HST`}</div>
-              </div>
+      {/* ══ STEP 3 — Rekap ══ */}
+      {step === 3 && (
+        <>
+          <label className="fh-section">
+            <span className="fh-label">Operator</span>
+            <input
+              className={`fh-input${operator.trim().length >= 2 ? "" : " is-error"}`}
+              value={operator}
+              onChange={e => setOperator(e.target.value)}
+              placeholder="Nama operator"
+            />
+            <p className="fh-hint">Terisi dari akun login. Ubah bila yang mengisi orang lain.</p>
+          </label>
 
-              {!isOnline && (
-                <div style={{ marginBottom: 14, padding: "8px 12px", background: "rgba(255,179,0,0.07)", border: "1px solid rgba(255,179,0,0.25)", borderRadius: 9, display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 13 }}>📵</span>
-                  <span style={{ fontSize: 11, color: "#FFB300" }}>Offline — data akan disimpan lokal & dikirim otomatis saat online</span>
-                </div>
-              )}
+          <ReviewTable
+            title="Rekap"
+            info={[
+              ["Tanggal", formatTanggal()],
+              ["GH", ghLabel],
+              ["Jenis", activeTab === "semai" ? "Semai" : "Produksi"],
+              ["Periode", ghInfo?.periode || "-"],
+              [umurLabel, hst ?? "-"],
+              ...(hptData.keterangan.trim() ? [["Keterangan", hptData.keterangan.trim()]] : []),
+            ]}
+          />
 
-                  <div style={S.sectionTitle}>🐛 Populasi Hama</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, marginBottom: 20 }}>
-                {HAMA_LIST.map(h => {
-                  const val = hptData.hama[h.key];
-                  const hasVal = val !== "" && val !== "0";
-                  return (
-                    <div key={h.key} style={{ background: hasVal ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.025)", border: `1px solid ${hasVal ? h.color + "55" : "rgba(255,255,255,0.07)"}`, borderRadius: 10, padding: "9px 10px", transition: "all 0.2s" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 7 }}>
-                        <span style={{ fontSize: 15 }}>{h.icon}</span>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: hasVal ? color.card : "rgba(255,255,255,0.55)" }}>{h.label}</div>
-                          <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)" }}>{h.unit}</div>
-                        </div>
-                      </div>
-                      <input type="number" inputMode="numeric" value={val} onChange={e => handleHama(h.key, e.target.value)} placeholder="0" style={{ width: "100%", padding: "7px 10px", background: "rgba(0,0,0,0.3)", border: `1px solid ${hasVal ? h.color : "rgba(255,255,255,0.12)"}`, borderRadius: 7, color: hasVal ? h.color : color.card, fontSize: 15, fontWeight: 700, outline: "none", textAlign: "center", boxSizing: "border-box" }} />
-                    </div>
-                  );
-                })}
-              </div>
+          <ReviewTable
+            title="Hama"
+            info={hamaTerisi.length > 0
+              ? hamaTerisi.map(h => [h.label, `${hptData.hama[h.key]} ${h.unit}`])
+              : [["Temuan hama", "Tidak ada"]]}
+          />
 
-              <div style={S.sectionTitle}>🦠 Penyakit — Insidensi & Skor</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
-                {PENYAKIT_SKOR.map(p => {
-                  const pd = hptData.penyakit[p.key];
-                  const active = pd && Object.values(pd).some(v => v !== "" && v !== "0");
-                  const inputStyle = (field) => ({ width: "100%", padding: "7px 8px", background: "rgba(0,0,0,0.3)", border: `1px solid ${pd?.[field] && pd[field] !== "0" ? p.color : "rgba(255,255,255,0.1)"}`, borderRadius: 7, color: pd?.[field] && pd[field] !== "0" ? p.color : color.card, fontSize: 14, fontWeight: 700, outline: "none", textAlign: "center", boxSizing: "border-box" });
-                  return (
-                    <div key={p.key} style={{ background: active ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.025)", border: `1px solid ${active ? p.color + "44" : "rgba(255,255,255,0.07)"}`, borderRadius: 12, padding: "12px 14px", transition: "all 0.2s" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                        <span style={{ fontSize: 18 }}>{p.icon}</span>
-                        <span style={{ fontSize: 14, fontWeight: 800, color: active ? p.color : color.card }}>{p.label}</span>
-                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{p.fullLabel}</span>
-                      </div>
-                      <div style={{ marginBottom: 10 }}>
-                        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginBottom: 5, letterSpacing: 1, textTransform: "uppercase" }}>Insidensi (jumlah tanaman terserang)</div>
-                        <input type="number" inputMode="numeric" value={pd?.insidensi || ""} onChange={e => handlePenyakitField(p.key, "insidensi", e.target.value)} placeholder="0" style={inputStyle("insidensi")} />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginBottom: 6, letterSpacing: 1, textTransform: "uppercase" }}>Intensitas — Jumlah Tanaman per Skor</div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 6 }}>
-                          {["skor1","skor2","skor3","skor4"].map((sk, i) => (
-                            <div key={sk}>
-                              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", textAlign: "center", marginBottom: 3 }}>Skor {i+1}</div>
-                              <input type="number" inputMode="numeric" value={pd?.[sk] || ""} onChange={e => handlePenyakitField(p.key, sk, e.target.value)} placeholder="0" style={inputStyle(sk)} />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+          <ReviewTable
+            title="Penyakit"
+            columns={[
+              { key: "nama", label: "Penyakit" },
+              { key: "insidensi", label: "Insid.", num: true },
+              { key: "skor", label: "S1 · S2 · S3 · S4", num: true },
+            ]}
+            rows={penyakitRows}
+          />
 
-              <div style={S.sectionTitle}>⚠️ GSB — Gummy Stem Blight</div>
-              <div style={{ marginBottom: 20 }}>
-                {PENYAKIT_SIMPLE.map(p => {
-                  const pd = hptData.penyakit[p.key];
-                  const active = pd?.jumlah && pd.jumlah !== "0";
-                  return (
-                    <div key={p.key} style={{ background: active ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.025)", border: `1px solid ${active ? p.color + "44" : "rgba(255,255,255,0.07)"}`, borderRadius: 12, padding: "12px 14px", transition: "all 0.2s" }}>
-                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>Jumlah Tanaman Terserang</div>
-                      <input type="number" inputMode="numeric" value={pd?.jumlah || ""} onChange={e => handlePenyakitField(p.key, "jumlah", e.target.value)} placeholder="0 tanaman" style={{ width: "100%", padding: "9px 12px", background: "rgba(0,0,0,0.3)", border: `1px solid ${active ? p.color : "rgba(255,255,255,0.1)"}`, borderRadius: 8, color: active ? p.color : color.card, fontSize: 15, fontWeight: 700, outline: "none", textAlign: "center", boxSizing: "border-box" }} />
-                    </div>
-                  );
-                })}
-              </div>
+          {submitError && <FieldAlert tone="danger">{submitError}</FieldAlert>}
+        </>
+      )}
 
-              <div style={S.sectionTitle}>👤 Nama Operator</div>
-              <input
-                type="text" value={operator}
-                onChange={e => setOperator(e.target.value)}
-                placeholder="Masukkan nama operator..."
-                style={{ width: "100%", marginBottom: 16, padding: "13px 14px", background: "rgba(255,255,255,0.05)", border: `1px solid ${operator.length >= 2 ? "rgba(76,175,80,0.4)" : "rgba(255,255,255,0.1)"}`, borderRadius: 12, color: color.card, fontSize: 15, outline: "none", boxSizing: "border-box" }}
-              />
-
-              <div style={{ ...S.sectionTitle, marginTop: 16 }}>📝 Keterangan (opsional)</div>
-              <textarea value={hptData.keterangan} onChange={e => setHptData(d => ({ ...d, keterangan: e.target.value }))} placeholder="Catatan tambahan..." rows={3} style={{ width: "100%", padding: "11px 13px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: color.card, fontSize: 13, outline: "none", resize: "none", boxSizing: "border-box" }} />
-
-              {submitError && (
-                <div style={{ padding: 12, background: "rgba(244,67,54,0.1)", border: "1px solid rgba(244,67,54,0.3)", borderRadius: 10, fontSize: 13, color: color.dangerBorder, marginTop: 12 }}>
-                  ⚠️ {submitError}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ══ STEP 3 — Sukses ══ */}
-          {step === 3 && (
-            <div style={{ textAlign: "center", paddingTop: 32 }}>
-              <div style={{ fontSize: 60, marginBottom: 12 }}>
-                {isDemoMode ? "🧪" : savedOffline ? "💾" : "✅"}
-              </div>
-              <h2 style={{ fontSize: 22, fontWeight: 800, color: isDemoMode ? "#FFB300" : savedOffline ? "#64B5F6" : "#4CAF50", margin: "0 0 6px" }}>
-                {isDemoMode ? "Demo Selesai!" : savedOffline ? "Tersimpan Lokal!" : "Data Tersimpan!"}
-              </h2>
-              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", margin: "0 0 20px" }}>
-                {isDemoMode ? "Data tidak dikirim (mode demo)" : savedOffline ? "Data disimpan di perangkat. Otomatis terkirim ke Google Sheets saat online." : "Data HPT berhasil dikirim ke Google Sheets"}
-              </p>
-
-              {savedOffline && (
-                <div style={{ background: "rgba(33,150,243,0.08)", border: "1px solid rgba(33,150,243,0.25)", borderRadius: 10, padding: "10px 14px", marginBottom: 16, textAlign: "left" }}>
-                  <div style={{ fontSize: 12, color: "#64B5F6", fontWeight: 600, marginBottom: 4 }}>📡 Cara sync:</div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>Biarkan app terbuka saat koneksi kembali — data terkirim otomatis. Atau klik badge "pending" di header.</div>
-                  {pendingCount > 0 && <div style={{ fontSize: 12, color: "#64B5F6", marginTop: 6 }}>{pendingCount} record menunggu sync.</div>}
-                </div>
-              )}
-
-              <div style={{ background: isDemoMode ? "rgba(255,179,0,0.07)" : savedOffline ? "rgba(33,150,243,0.08)" : "rgba(76,175,80,0.08)", border: `1px solid ${isDemoMode ? "rgba(255,179,0,0.25)" : savedOffline ? "rgba(33,150,243,0.3)" : "rgba(76,175,80,0.25)"}`, borderRadius: 14, padding: "14px 16px", textAlign: "left", marginBottom: 20 }}>
-                <div style={{ fontSize: 12, color: isDemoMode ? "#FFB300" : savedOffline ? "#64B5F6" : color.brand400, fontWeight: 700, marginBottom: 10 }}>Ringkasan</div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>{selectedGH} · Periode {ghInfo?.periode} · {hst} HST</div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 10 }}>Operator: {operator}</div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 5 }}>Hama</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 12 }}>
-                  {HAMA_LIST.filter(h => hptData.hama[h.key] && hptData.hama[h.key] !== "0").map(h => (
-                    <span key={h.key} style={{ fontSize: 12, background: "rgba(255,255,255,0.06)", border: `1px solid ${h.color}44`, borderRadius: 20, padding: "3px 9px", color: h.color }}>{h.icon} {h.label}: {hptData.hama[h.key]} {h.unit}</span>
-                  ))}
-                  {HAMA_LIST.every(h => !hptData.hama[h.key] || hptData.hama[h.key] === "0") && <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>Tidak ada hama</span>}
-                </div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 5 }}>Penyakit</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                  {PENYAKIT_SKOR.map(p => {
-                    const pd = hptData.penyakit[p.key];
-                    return (
-                      <div key={p.key} style={{ fontSize: 12 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between" }}>
-                          <span style={{ color: "rgba(255,255,255,0.5)" }}>{p.icon} {p.label}</span>
-                          <span style={{ color: p.color, fontWeight: 700 }}>Insidensi: {pd?.insidensi || "0"}</span>
-                        </div>
-                        <div style={{ display: "flex", gap: 8, marginTop: 2, paddingLeft: 20 }}>
-                          {["skor1","skor2","skor3","skor4"].map((sk, i) => (
-                            <span key={sk} style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>S{i+1}: {pd?.[sk] || "0"}</span>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {PENYAKIT_SIMPLE.map(p => {
-                    const pd = hptData.penyakit[p.key];
-                    return (
-                      <div key={p.key} style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-                        <span style={{ color: "rgba(255,255,255,0.5)" }}>{p.icon} {p.label}</span>
-                        <span style={{ color: p.color, fontWeight: 700 }}>{pd?.jumlah || "0"} tanaman</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <button onClick={resetForm} style={{ width: "100%", padding: 16, background: isDemoMode ? "rgba(255,179,0,0.12)" : savedOffline ? "rgba(33,150,243,0.15)" : "rgba(76,175,80,0.15)", border: `2px solid ${isDemoMode ? "rgba(255,179,0,0.35)" : savedOffline ? "rgba(33,150,243,0.4)" : "rgba(76,175,80,0.35)"}`, borderRadius: 13, color: isDemoMode ? "#FFB300" : savedOffline ? "#64B5F6" : "#4CAF50", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-                + Input GH Berikutnya
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* ── Bottom Nav ── */}
-        {step < 3 && (
-          <div style={{ padding: "12px 16px 20px", borderTop: "1px solid rgba(255,255,255,0.07)", background: "rgba(0,0,0,0.3)", display: "flex", gap: 10 }}>
-            {step > 1 && (
-              <button onClick={() => setStep(s => s - 1)} style={{ flex: 1, padding: 14, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "rgba(255,255,255,0.65)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>← Kembali</button>
-            )}
-            {step === 1 && (
-              <button onClick={() => setStep(2)} disabled={!selectedGH} style={{ flex: 2, padding: 14, border: "none", borderRadius: 12, background: selectedGH ? `linear-gradient(135deg, ${color.brand700}, #43a047)` : "rgba(255,255,255,0.05)", color: selectedGH ? color.card : "rgba(255,255,255,0.25)", fontSize: 15, fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}>
-                Lanjut →
-              </button>
-            )}
-            {step === 2 && (
-              <button onClick={() => setConfirmOpen(true)} disabled={syncing || !canProceedStep2} style={{ flex: 2, padding: 14, background: syncing || !canProceedStep2 ? "rgba(255,255,255,0.05)" : isDemoMode ? "linear-gradient(135deg, #5d4037, #795548)" : !isOnline ? `linear-gradient(135deg, ${color.info}, #1976D2)` : `linear-gradient(135deg, ${color.brand900}, ${color.brand700})`, border: "none", borderRadius: 12, color: syncing || !canProceedStep2 ? "rgba(255,255,255,0.25)" : color.card, fontSize: 15, fontWeight: 700, cursor: syncing || !canProceedStep2 ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                {syncing ? "⏳ Menyimpan..." : isDemoMode ? "Submit Demo 🧪" : !isOnline ? "💾 Simpan Offline" : "Submit HPT ✓"}
-              </button>
-            )}
-          </div>
-        )}
-
-        <ConfirmSubmitModal
-          open={confirmOpen}
-          onCancel={() => setConfirmOpen(false)}
-          onConfirm={() => { setConfirmOpen(false); handleSubmit(); }}
-          color="#FF7043"
-          isOffline={!isOnline}
-          isDemoMode={isDemoMode}
+      {/* ══ STEP 4 — Sukses ══ */}
+      {step === 4 && (
+        <SuccessState
+          offline={savedOffline}
+          title={isDemoMode ? "Demo selesai" : savedOffline ? "Tersimpan di perangkat" : `HPT ${ghLabel} terkirim`}
+          description={isDemoMode
+            ? "Data tidak dikirim (mode demo)."
+            : savedOffline
+              ? `Terkirim otomatis ke sheet saat online.${pendingCount > 0 ? ` ${pendingCount} GH menunggu.` : ""}`
+              : "Data masuk ke sheet."}
           summary={[
-            { label: "Tanggal",  value: todayISO },
-            { label: "GH",       value: ghLabel },
-            { label: "Tipe",     value: activeTab === "semai" ? "Semai" : "Produksi" },
-            { label: "Operator", value: operator },
+            ["GH", ghLabel],
+            [umurLabel, hst ?? "-"],
+            ["Hama", hamaTerisi.length > 0 ? hamaTerisi.map(h => `${h.label} ${hptData.hama[h.key]}`).join(", ") : "Tidak ada"],
+            ["Operator", operator],
           ]}
         />
+      )}
 
-        <style>{`
-          input[type=number]::-webkit-outer-spin-button,
-          input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-          * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-          textarea::placeholder, input::placeholder { color: rgba(255,255,255,0.2); }
-        `}</style>
-      </div>
-    </div>
+      <Dialog
+        open={showWarning}
+        title="GH sudah diisi hari ini"
+        onClose={() => { setShowWarning(false); setPendingGH(""); }}
+        actions={
+          <div className="fh-btn-row">
+            <button type="button" className="fh-btn fh-btn-secondary" onClick={() => { setShowWarning(false); setPendingGH(""); }}>Batal</button>
+            <button type="button" className="fh-btn fh-btn-primary" onClick={() => doSelectGH(pendingGH)}>Isi ulang</button>
+          </div>
+        }
+      >
+        {pendingGH} sudah dikirim hari ini. Isi ulang akan menambah baris baru di sheet, data lama tidak terhapus.
+      </Dialog>
+    </FormShell>
   );
 }

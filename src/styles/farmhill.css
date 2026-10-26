@@ -392,3 +392,43 @@
 .fh-group-title { flex: 1; font-size: 15px; font-weight: 600; }
 .fh-group-head:disabled .fh-group-title { font-size: 12px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-500); }
 .fh-group-head svg { color: var(--ink-500); flex-shrink: 0; }
+
+/* ─── SegmentTabs ─── */
+.fh-tabs {
+  display: flex; gap: 4px; padding: 4px;
+  background: var(--surface-sunken); border: 1px solid var(--border-default); border-radius: var(--radius-card);
+  overflow-x: auto;
+}
+.fh-tab {
+  flex: 1; min-height: var(--touch-min); padding: 0 12px; white-space: nowrap;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  background: transparent; border: 1px solid transparent; border-radius: var(--radius-input);
+  color: var(--ink-500); font-size: 15px; font-weight: 600; cursor: pointer;
+}
+.fh-tab.is-active { background: var(--surface); border-color: var(--border-default); color: var(--leaf-700); }
+.fh-tab-count {
+  min-width: 20px; height: 20px; padding: 0 5px; border-radius: var(--radius-badge);
+  background: var(--cream-200); color: var(--ink-700); font-size: 12px; font-variant-numeric: tabular-nums;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.fh-tab.is-active .fh-tab-count { background: var(--leaf-50); color: var(--leaf-700); }
+
+/* ─── Stepper ─── */
+.fh-stepper { display: flex; gap: 4px; }
+.fh-stepper .fh-input { flex: 1; min-width: 0; padding: 0 4px; text-align: center; }
+.fh-stepper-btn {
+  width: var(--touch-min); height: var(--touch); flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--surface-sunken); color: var(--ink-700);
+  border: 1px solid var(--border-default); border-radius: var(--radius-input); cursor: pointer;
+}
+.fh-stepper-btn:disabled { color: var(--ink-400); cursor: not-allowed; }
+
+/* ─── Grid kartu input (HPT) ─── */
+.fh-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fh-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.fh-field-card { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.fh-field-card.is-filled { border-color: var(--melon-400); box-shadow: inset 0 0 0 1px var(--melon-400); }
+.fh-field-title { font-size: 15px; font-weight: 600; line-height: 1.25; }
+.fh-field-unit { font-size: 13px; color: var(--ink-500); }
+.fh-mini-label { font-size: 13px; color: var(--ink-500); text-align: center; display: block; margin-bottom: 4px; }
