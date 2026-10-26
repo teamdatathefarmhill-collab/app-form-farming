@@ -1,24 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { useDraft } from "../hooks/useDraft";
+import { useAuth } from "../hooks/useAuth";
 import { idbAdd, idbGetAll, idbDelete, idbCount, gasPost } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
-import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
-import { color } from "../styles/tokens";
+import { FormShell, FieldAlert, SuccessState, GHPicker, ReviewTable, Dialog, Icon } from "../components/form";
+import { formatTanggal } from "../lib/format";
 
 const DB_NAME    = "PenyemprotanOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_PENYEMPROTAN_URL;
-
-// ─── Warna per area GH ────────────────────────────────────────────────────────
-const AREA_COLORS = {
-  "BERGAS":        "#FF7043",
-  "TOHUDAN":       "#1E88E5",
-  "SAWAHAN":       "#43A047",
-  "COLOMADU":      "#AB47BC",
-  "NURSERY":       "#00897B",
-  "SEMAI SAWAHAN": "#FFB300",
-  "SEMAI":         "#FFB300",
-};
 
 // GH Nursery selalu tampil di Penyemprotan (tidak bergantung data sheet REF)
 const NURSERY_GH = [
@@ -34,7 +24,7 @@ function buildGHGroups(ghData) {
     const num   = parseInt(match[2]);
     const extra = match[3] ? match[3].trim() : "";
     if (!areaMap[area]) {
-      areaMap[area] = { area, color: AREA_COLORS[area] || "#607D8B", items: [] };
+      areaMap[area] = { area, items: [] };
     }
     const name = extra ? `${area} ${num} ${extra}` : `${area} ${num}`;
     if (!areaMap[area].items.some(i => i.name === name)) {
@@ -86,11 +76,22 @@ const KONSENTRASI_GSB = ["50 g/L","100 g/L"];
 // ─── Peruntukan Gas (shared) ──────────────────────────────────────────────────
 const PERUNTUKAN_LIST = ["Kocor Media","Cuci Insecnet","Penyemprotan Pestisida","Penyemprotan Air Baku"];
 
+// ─── Kegiatan ─────────────────────────────────────────────────────────────────
+const KEGIATAN = [
+  { key: "penggunaan_ambil", icon: "SprayCan",   label: "Penggunaan & pengambilan obat", desc: "Catat pengambilan stok dan/atau penggunaan pestisida" },
+  { key: "oles_gsb",         icon: "Paintbrush", label: "Oles GSB",                      desc: "Pengolesan pestisida untuk pengendalian GSB" },
+  { key: "pemakaian_gas",    icon: "Flame",      label: "Pemakaian gas",                 desc: "Catat penggunaan tabung gas untuk kegiatan penyemprotan" },
+];
+const kegiatanLabel = (key) => KEGIATAN.find(k => k.key === key)?.label || "";
+
+// todayISO dikirim ke sheet (format dd/mm/yyyy) — jangan diubah
 const todayISO   = new Date().toLocaleDateString("id-ID",{day:"2-digit",month:"2-digit",year:"numeric"});
-const todayLabel = new Date().toLocaleDateString("id-ID",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+
+// Angka desimal: koma diterima, disimpan dengan titik seperti input number lama
+const desimal = (raw) => raw.replace(",", ".").replace(/[^\d.]/g, "");
 
 // ─── Komponen: Searchable Pestisida Picker (dengan opsi "Lainnya" manual) ────
-function PestisidaPicker({ value, onChange, accentColor = "#64B5F6" }) {
+function PestisidaPicker({ value, onChange, label }) {
   const [search, setSearch] = useState("");
   const [open, setOpen]     = useState(false);
   const [manual, setManual] = useState(() => value !== "" && !PESTISIDA_LIST.includes(value));
@@ -103,15 +104,13 @@ function PestisidaPicker({ value, onChange, accentColor = "#64B5F6" }) {
 
   if (isCustom) {
     return (
-      <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:8 }}>
+      <div style={{ display: "flex", gap: 6 }}>
         <input
-          type="text" value={value} onChange={e => onChange(e.target.value)} autoFocus
-          placeholder="Tulis nama pestisida..."
-          style={{ flex:1, padding:"11px 14px", background:"rgba(255,255,255,0.06)", border:`1px solid ${accentColor}66`, borderRadius:10, color:color.card, fontSize:14, outline:"none", boxSizing:"border-box", fontFamily:"inherit" }}
+          className="fh-input" value={value} onChange={e => onChange(e.target.value)} autoFocus
+          placeholder="Tulis nama pestisida" aria-label={label}
         />
-        <button onClick={() => { onChange(""); setManual(false); }}
-          style={{ width:36, height:36, borderRadius:8, border:"1px solid rgba(255,255,255,0.15)", background:"rgba(255,255,255,0.06)", color:"rgba(255,255,255,0.5)", fontSize:16, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-          ✕
+        <button type="button" className="fh-icon-btn" style={{ height: 48, width: 48 }} onClick={() => { onChange(""); setManual(false); }} aria-label="Batal isi manual">
+          <Icon name="X" />
         </button>
       </div>
     );
@@ -119,43 +118,36 @@ function PestisidaPicker({ value, onChange, accentColor = "#64B5F6" }) {
 
   if (value) {
     return (
-      <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:8 }}>
-        <div style={{ flex:1, padding:"11px 14px", background:`${accentColor}18`, border:`1px solid ${accentColor}55`, borderRadius:10, color:accentColor, fontSize:13, fontWeight:700 }}>
-          {value}
-        </div>
-        <button onClick={() => onChange("")}
-          style={{ width:36, height:36, borderRadius:8, border:"1px solid rgba(255,255,255,0.15)", background:"rgba(255,255,255,0.06)", color:"rgba(255,255,255,0.5)", fontSize:16, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-          ✕
+      <div className="fh-picked">
+        <span>{value}</span>
+        <button type="button" className="fh-icon-btn" style={{ border: "none", background: "transparent", color: "inherit" }} onClick={() => onChange("")} aria-label={`Ganti ${label}`}>
+          <Icon name="X" />
         </button>
       </div>
     );
   }
 
   return (
-    <div style={{ position:"relative", marginTop:8 }}>
-      <input
-        type="text" value={search}
-        onChange={e => { setSearch(e.target.value); setOpen(true); }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-        placeholder="Ketik nama pestisida..."
-        style={{ width:"100%", padding:"11px 14px", background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.14)", borderRadius:10, color:color.card, fontSize:14, outline:"none", boxSizing:"border-box", fontFamily:"inherit" }}
-      />
+    <div className="fh-combo">
+      <div className="fh-search">
+        <Icon name="Search" size={18} />
+        <input
+          className="fh-input" value={search}
+          onChange={e => { setSearch(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          placeholder="Cari nama pestisida" aria-label={label}
+        />
+      </div>
       {open && (
-        <div style={{ position:"absolute", top:"100%", left:0, right:0, zIndex:30, background:"#0d2d45", border:"1px solid rgba(255,255,255,0.15)", borderTop:"none", borderRadius:"0 0 12px 12px", maxHeight:220, overflowY:"auto" }}>
+        <div className="fh-combo-list" role="listbox">
           {filtered.map(p => (
-            <button key={p} onMouseDown={() => { onChange(p); setSearch(""); setOpen(false); }}
-              style={{ width:"100%", padding:"10px 14px", background:"transparent", border:"none", borderBottom:"1px solid rgba(255,255,255,0.05)", color:"rgba(255,255,255,0.8)", fontSize:13, cursor:"pointer", textAlign:"left", fontFamily:"inherit" }}
-              onMouseEnter={e => e.currentTarget.style.background="rgba(255,255,255,0.07)"}
-              onMouseLeave={e => e.currentTarget.style.background="transparent"}>
+            <button key={p} type="button" className="fh-combo-item" onMouseDown={() => { onChange(p); setSearch(""); setOpen(false); }}>
               {p}
             </button>
           ))}
-          <button onMouseDown={() => { setManual(true); setSearch(""); setOpen(false); }}
-            style={{ width:"100%", padding:"10px 14px", background:"rgba(255,255,255,0.03)", border:"none", color:accentColor, fontSize:13, fontWeight:700, cursor:"pointer", textAlign:"left", fontFamily:"inherit" }}
-            onMouseEnter={e => e.currentTarget.style.background="rgba(255,255,255,0.08)"}
-            onMouseLeave={e => e.currentTarget.style.background="rgba(255,255,255,0.03)"}>
-            ✏️ Lainnya — isi manual
+          <button type="button" className="fh-combo-item is-manual" onMouseDown={() => { setManual(true); setSearch(""); setOpen(false); }}>
+            <Icon name="PenLine" size={16} /> Lainnya, isi manual
           </button>
         </div>
       )}
@@ -164,114 +156,96 @@ function PestisidaPicker({ value, onChange, accentColor = "#64B5F6" }) {
 }
 
 // ─── Komponen: Pilihan chip dengan opsi "Lainnya" (isi manual) ───────────────
-function ChoiceChips({ list, value, onChange, accentColor = "#64B5F6", placeholder = "Tulis pilihan lain..." }) {
+function ChoiceChips({ list, value, onChange, placeholder = "Tulis pilihan lain", withLainnya = true }) {
   const [manual, setManual] = useState(() => value !== "" && !list.includes(value));
-  const isCustom = manual || (value !== "" && !list.includes(value));
+  const isCustom = withLainnya && (manual || (value !== "" && !list.includes(value)));
 
   return (
-    <div style={{ marginTop:10 }}>
-      <div style={{ display:"flex", flexWrap:"wrap", gap:7 }}>
+    <div className="fh-section">
+      <div className="fh-chips">
         {list.map(item => (
-          <button key={item} onClick={() => { onChange(value===item ? "" : item); setManual(false); }}
-            style={{ padding:"8px 14px", borderRadius:20, border: value===item ? `2px solid ${accentColor}` : "1px solid rgba(255,255,255,0.14)", background: value===item ? `${accentColor}30` : "rgba(255,255,255,0.04)", color: value===item ? accentColor : "rgba(255,255,255,0.65)", fontSize:12, fontWeight: value===item ? 700 : 500, cursor:"pointer", transition:"all 0.15s" }}>
+          <button key={item} type="button" aria-pressed={value === item}
+            className={`fh-chip${value === item ? " is-active" : ""}`}
+            onClick={() => { onChange(value === item ? "" : item); setManual(false); }}>
             {item}
           </button>
         ))}
-        <button onClick={() => { setManual(true); onChange(""); }}
-          style={{ padding:"8px 14px", borderRadius:20, border: isCustom ? `2px solid ${accentColor}` : "1px dashed rgba(255,255,255,0.25)", background: isCustom ? `${accentColor}30` : "rgba(255,255,255,0.04)", color: isCustom ? accentColor : "rgba(255,255,255,0.5)", fontSize:12, fontWeight: isCustom ? 700 : 500, cursor:"pointer" }}>
-          ✏️ Lainnya
-        </button>
+        {withLainnya && (
+          <button type="button" className={`fh-chip is-dashed${isCustom ? " is-active" : ""}`} onClick={() => { setManual(true); onChange(""); }}>
+            <Icon name="PenLine" size={16} /> Lainnya
+          </button>
+        )}
       </div>
       {isCustom && (
-        <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} autoFocus
-          style={{ width:"100%", marginTop:8, padding:"10px 14px", background:"rgba(255,255,255,0.06)", border:`1px solid ${accentColor}66`, borderRadius:10, color:color.card, fontSize:13, outline:"none", boxSizing:"border-box", fontFamily:"inherit" }} />
+        <input className="fh-input" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} autoFocus />
       )}
     </div>
   );
 }
 
-// ─── Komponen: GH Picker ──────────────────────────────────────────────────────
-function GHPicker({ value, onChange, groups }) {
+// ─── Komponen: Segmented — pilihan sejajar; allowClear = tekan lagi untuk kosongkan ──
+function Segmented({ options, value, onChange, allowClear = false, label }) {
   return (
-    <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-      {groups.map(group => (
-        <div key={group.area}>
-          <div style={{ fontSize:10, color:group.color, letterSpacing:1.5, textTransform:"uppercase", fontWeight:700, marginBottom:8 }}>
-            {group.area}
-          </div>
-          <div style={{ display:"flex", flexWrap:"wrap", gap:7 }}>
-            {group.items.map(item => {
-              const ghName  = item.name;
-              const selected = value === ghName;
-              return (
-                <button key={ghName} onClick={() => onChange(ghName)}
-                  style={{ minWidth:44, height:44, padding: item.extra ? "0 12px" : 0, borderRadius:10, border: selected ? `2px solid ${group.color}` : "1px solid rgba(255,255,255,0.12)", background: selected ? `${group.color}30` : "rgba(255,255,255,0.04)", color: selected ? group.color : "rgba(255,255,255,0.7)", fontSize:14, fontWeight: selected ? 800 : 500, cursor:"pointer", transition:"all 0.15s", whiteSpace:"nowrap" }}>
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ))}
+    <div className="fh-seg" role="radiogroup" aria-label={label}>
+      {options.map(opt => {
+        const active = value === opt.v;
+        return (
+          <button key={String(opt.v)} type="button" role="radio" aria-checked={active}
+            className={`fh-chip${active ? " is-active" : ""}`}
+            onClick={() => onChange(allowClear && active ? (opt.clear ?? "") : opt.v)}>
+            {opt.l}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Komponen: Field dengan label ─────────────────────────────────────────────
+function Field({ label, required, children }) {
+  return (
+    <div className="fh-section">
+      <span className="fh-label">{label}{required ? "" : <span className="fh-meta" style={{ fontWeight: 400 }}> · opsional</span>}</span>
+      {children}
+    </div>
+  );
+}
+
+// ─── Komponen: Input angka dengan satuan di dalam ─────────────────────────────
+function UnitInput({ value, onChange, unit, label }) {
+  return (
+    <div className="fh-unit">
+      <input className="fh-input is-number" type="text" inputMode="decimal" value={value}
+        onChange={e => onChange(desimal(e.target.value))} placeholder="0" aria-label={label} />
+      <span className="fh-unit-label">{unit}</span>
     </div>
   );
 }
 
 // ─── Komponen: Isian Gas (Nomor Gas / Gas Baru? / Peruntukan) ─────────────────
-function GasFields({ data, setData, accentColor = "#64B5F6" }) {
+// required — wajib di form Pemakaian gas; opsional di form Penggunaan
+function GasFields({ data, setData, required = false, peruntukanLainnya = true }) {
   return (
     <>
-      <div style={{ marginBottom:14 }}>
-        <FieldLabel color={accentColor}>Nomor Gas</FieldLabel>
-        <input type="text" value={data.nomorGas} onChange={e => setData(d => ({...d, nomorGas:e.target.value}))}
-          placeholder="contoh: G-01"
-          style={{ width:"100%", marginTop:8, padding:"11px 14px", background:"rgba(255,255,255,0.06)", border:`1px solid ${data.nomorGas ? `${accentColor}66` : "rgba(255,255,255,0.12)"}`, borderRadius:10, color:color.card, fontSize:14, outline:"none", boxSizing:"border-box", fontFamily:"inherit" }} />
-      </div>
-
-      <div style={{ marginBottom:14 }}>
-        <FieldLabel color={accentColor}>Apakah Gas Baru?</FieldLabel>
-        <div style={{ display:"flex", gap:10, marginTop:10 }}>
-          {[{v:true,l:"Ya"},{v:false,l:"Tidak"}].map(opt => (
-            <button key={String(opt.v)} onClick={() => setData(d => ({...d, gasBaru: d.gasBaru===opt.v ? null : opt.v}))}
-              style={{ flex:1, padding:"12px 0", borderRadius:12, border: data.gasBaru===opt.v ? `2px solid ${accentColor}` : "1px solid rgba(255,255,255,0.14)", background: data.gasBaru===opt.v ? `${accentColor}30` : "rgba(255,255,255,0.04)", color: data.gasBaru===opt.v ? accentColor : "rgba(255,255,255,0.65)", fontSize:14, fontWeight: data.gasBaru===opt.v ? 700 : 500, cursor:"pointer" }}>
-              {opt.l}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ marginBottom:14 }}>
-        <FieldLabel color={accentColor}>Peruntukan</FieldLabel>
-        <ChoiceChips list={PERUNTUKAN_LIST} value={data.peruntukan} onChange={v => setData(d => ({...d, peruntukan:v}))} accentColor={accentColor} placeholder="Tulis peruntukan lain..." />
-      </div>
+      <Field label="Nomor gas" required={required}>
+        <input className="fh-input" value={data.nomorGas} onChange={e => setData(d => ({ ...d, nomorGas: e.target.value }))} placeholder="Contoh: G-01" />
+      </Field>
+      <Field label="Apakah gas baru?" required={required}>
+        <Segmented label="Gas baru" allowClear value={data.gasBaru}
+          options={[{ v: true, l: "Ya", clear: null }, { v: false, l: "Tidak", clear: null }]}
+          onChange={v => setData(d => ({ ...d, gasBaru: v }))} />
+      </Field>
+      <Field label="Peruntukan" required={required}>
+        <ChoiceChips list={PERUNTUKAN_LIST} value={data.peruntukan} withLainnya={peruntukanLainnya}
+          onChange={v => setData(d => ({ ...d, peruntukan: v }))} placeholder="Tulis peruntukan lain" />
+      </Field>
     </>
-  );
-}
-
-// ─── Komponen: Field label ────────────────────────────────────────────────────
-function FieldLabel({ children, required, color = "#64B5F6" }) {
-  return (
-    <label style={{ fontSize:11, color, letterSpacing:1.5, textTransform:"uppercase", fontWeight:600 }}>
-      {children} {required && <span style={{ color:color.dangerBorder }}>*</span>}
-    </label>
-  );
-}
-
-// ─── Komponen: Input teks/angka ───────────────────────────────────────────────
-function Field({ type="text", value, onChange, placeholder, active, ...rest }) {
-  return (
-    <input
-      type={type} inputMode={type==="number" ? "numeric" : undefined}
-      value={value} onChange={e => onChange(e.target.value)}
-      placeholder={placeholder}
-      style={{ width:"100%", marginTop:8, padding:"11px 14px", background:"rgba(255,255,255,0.06)", border:`1px solid ${active||value ? "rgba(100,181,246,0.4)" : "rgba(255,255,255,0.12)"}`, borderRadius:10, color:color.card, fontSize:14, outline:"none", boxSizing:"border-box", fontFamily:"inherit", ...rest?.style }}
-      {...rest}
-    />
   );
 }
 
 // ─── App utama ─────────────────────────────────────────────────────────────────
 export default function Penyemprotan() {
+  const { user } = useAuth();
   const { getDraft, saveDraft, clearDraft } = useDraft("penyemprotan");
   const _draft = getDraft();
 
@@ -280,7 +254,8 @@ export default function Penyemprotan() {
 
   const [activity, setActivity]     = useState(_draft?.activity   || "");
   const [selectedGH, setSelectedGH] = useState(_draft?.selectedGH || "");
-  const [operator, setOperator]     = useState(_draft?.operator   || "");
+  // Operator otomatis dari akun login; bisa diubah di langkah rekap
+  const [operator, setOperator]     = useState(_draft?.operator || user?.nama || "");
 
   // ── Oles GSB ──
   const [pestisidaGSB, setPestisidaGSB]     = useState(_draft?.pestisidaGSB   || "");
@@ -307,6 +282,11 @@ export default function Penyemprotan() {
   const [gas, setGas] = useState({
     waktuMulai: "", waktuSelesai: "", nomorGas: "", gasBaru: null, peruntukan: "",
   });
+
+  // useAuth membaca sessionStorage setelah render pertama → isi operator begitu nama tersedia
+  useEffect(() => {
+    if (user?.nama) setOperator(prev => prev || user.nama);
+  }, [user?.nama]);
 
   // ── Offline ──
   useEffect(() => {
@@ -341,8 +321,6 @@ export default function Penyemprotan() {
     return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
   }, []);
 
-  useEffect(() => { if (isOnline) syncPendingData(); }, [isOnline]);
-
   const syncPendingData = useCallback(async () => {
     const all = await idbGetAll(DB_NAME);
     if (!all.length) return;
@@ -357,6 +335,9 @@ export default function Penyemprotan() {
     await refreshPendingCount();
     setIsSyncingPending(false);
   }, [refreshPendingCount]);
+
+  // ── Auto-sync saat kembali online ──
+  useEffect(() => { if (isOnline) syncPendingData(); }, [isOnline]);
 
   // ── Navigasi ──
   const navigateTo = (next) => { setNavHistory(h => [...h, step]); setStep(next); };
@@ -429,20 +410,20 @@ export default function Penyemprotan() {
       try {
         await idbAdd(DB_NAME, { tanggal:todayISO, gh:selectedGH, createdAt:Date.now(), payload, sessionKey });
         await refreshPendingCount(); setSavedOffline(true);
-      } catch { setSubmitError("Gagal menyimpan offline. Coba lagi."); setSyncing(false); return; }
+      } catch { setSubmitError("Data belum tersimpan di perangkat. Tekan Simpan offline sekali lagi."); setSyncing(false); return; }
       navigateTo("sukses"); setSyncing(false); return;
     }
     try {
       const res = await gasPost(SCRIPT_URL, payload);
-      if (!res?.success) { setSubmitError(`Ditolak server: ${res?.error || "alasan tidak diketahui"}`); setSyncing(false); return; }
-    } catch { setSubmitError("Gagal mengirim, cek koneksi."); setSyncing(false); return; }
+      if (!res?.success) { setSubmitError(`Ditolak server: ${res?.error || "alasan tidak diketahui"}. Periksa isian lalu kirim lagi.`); setSyncing(false); return; }
+    } catch { setSubmitError("Data belum terkirim karena koneksi terputus. Cek sinyal lalu tekan Kirim lagi."); setSyncing(false); return; }
     navigateTo("sukses"); setSyncing(false);
   };
 
   const resetForm = () => {
     clearDraft();
     setStep("start"); setNavHistory([]);
-    setActivity(""); setSelectedGH(""); setOperator("");
+    setActivity(""); setSelectedGH(""); setOperator(user?.nama || "");
     setPestisidaGSB(""); setKonsentrasiGSB(""); setPenggunaanGram("");
     setAdaPengambilan(null);
     setAmbil({ namaPestisida:"", jumlah:"" });
@@ -452,646 +433,364 @@ export default function Penyemprotan() {
   };
 
   // ── Validasi ──
-  const canStart   = operator.trim() !== "" && activity !== "" && selectedGH !== "";
+  const canStart   = activity !== "" && selectedGH !== "";
   const canOlesGSB = pestisidaGSB !== "" && konsentrasiGSB !== "" && penggunaanGram !== "";
   const canAmbil   = adaPengambilan === true ? (ambil.namaPestisida !== "" && ambil.jumlah !== "") : true;
   const canGuna    = guna.namaPestisida !== "" && guna.konsentrasi !== "" && guna.jumlahPemakaian !== ""
     && (guna.jenisCampuran !== "campuran" || (guna.namaPestisida2 !== "" && guna.konsentrasi2 !== "" && guna.jumlahPemakaian2 !== ""));
   const canGas     = gas.nomorGas.trim() !== "" && gas.gasBaru !== null && gas.peruntukan !== "";
-  const canSubmit  = operator.trim() !== "";
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const canSubmit  = operator.trim() !== "" && !syncing;
 
-  const actColor = activity === "oles_gsb" ? "#FF7043" : activity === "pemakaian_gas" ? "#8E24AA" : "#1E88E5";
-  const ghGroup  = ghGroups.find(g => selectedGH.startsWith(g.area));
-  const ghColor  = ghGroup?.color || "#64B5F6";
+  const setG = (field) => (v) => setGuna(d => ({ ...d, [field]: v }));
 
-  // ── Shared input style helper ──
-  const inp = (filled) => ({
-    width:"100%", marginTop:8, padding:"11px 14px",
-    background:"rgba(255,255,255,0.06)",
-    border:`1px solid ${filled ? "rgba(100,181,246,0.4)" : "rgba(255,255,255,0.12)"}`,
-    borderRadius:10, color:color.card, fontSize:14, outline:"none",
-    boxSizing:"border-box", fontFamily:"inherit",
-  });
+  // ── Header ──
+  const stepNo = step === "start" ? 1 : step === "rekap" ? 3 : 2;
+  const title = step === "start" || step === "sukses" ? "Penyemprotan" : `Penyemprotan · ${selectedGH}`;
+  const subtitle = step === "start"
+    ? `${formatTanggal()} · Langkah 1 dari 3`
+    : step === "sukses"
+      ? formatTanggal()
+      : `${kegiatanLabel(activity)} · Langkah ${stepNo} dari 3`;
 
-  const twoCol = { display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 };
+  // ── Footer ──
+  let footer = null;
+  if (step === "start") {
+    footer = (
+      <button type="button" className="fh-btn fh-btn-primary" disabled={!canStart}
+        onClick={() => navigateTo(activity === "oles_gsb" ? "form_oles" : activity === "pemakaian_gas" ? "form_gas" : "form_ambil")}>
+        {!activity ? "Pilih kegiatan" : !selectedGH ? "Pilih GH" : "Lanjut"}
+      </button>
+    );
+  } else if (step === "form_oles") {
+    footer = <button type="button" className="fh-btn fh-btn-primary" disabled={!canOlesGSB} onClick={() => navigateTo("rekap")}>Lihat rekap</button>;
+  } else if (step === "form_ambil" && adaPengambilan === true) {
+    footer = (
+      <div className="fh-btn-row">
+        <button type="button" className="fh-btn fh-btn-secondary" disabled={!canAmbil} onClick={() => navigateTo("rekap")}>Langsung rekap</button>
+        <button type="button" className="fh-btn fh-btn-primary" disabled={!canAmbil} onClick={() => navigateTo("form_guna")}>Lanjut ke penggunaan</button>
+      </div>
+    );
+  } else if (step === "form_guna") {
+    footer = <button type="button" className="fh-btn fh-btn-primary" disabled={!canGuna} onClick={() => navigateTo("rekap")}>Lihat rekap</button>;
+  } else if (step === "form_gas") {
+    footer = <button type="button" className="fh-btn fh-btn-primary" disabled={!canGas} onClick={() => navigateTo("rekap")}>Lihat rekap</button>;
+  } else if (step === "rekap") {
+    footer = (
+      <div className="fh-btn-row">
+        <button type="button" className="fh-btn fh-btn-secondary" onClick={goBack}>Kembali</button>
+        <button type="button" className="fh-btn fh-btn-primary" disabled={!canSubmit} onClick={handleSubmit}>
+          {syncing ? "Mengirim…" : isDemoMode ? "Kirim demo" : !isOnline ? "Simpan offline" : "Kirim"}
+        </button>
+      </div>
+    );
+  } else if (step === "sukses") {
+    footer = <button type="button" className="fh-btn fh-btn-secondary" onClick={resetForm}>Isi GH lain</button>;
+  }
 
   // ─────────────────────────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(160deg,#0a1e2e 0%,#0d2d45 60%,#0a1a2e 100%)", fontFamily:"'DM Sans','Segoe UI',sans-serif", color:color.infoBg, display:"flex", flexDirection:"column" }}>
+    <FormShell
+      title={title}
+      subtitle={subtitle}
+      steps={step === "sukses" ? 0 : 3}
+      step={stepNo}
+      onBack={step !== "sukses" && navHistory.length > 0 ? goBack : undefined}
+      footer={footer}
+    >
 
-      {/* ── Header ── */}
-      <div style={{ padding:"14px 16px 10px", borderBottom:"1px solid rgba(255,255,255,0.08)", background:"rgba(0,0,0,0.25)", position:"sticky", top:0, zIndex:10 }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <div>
-            <div style={{ fontSize:11, color:"#64B5F6", letterSpacing:2, textTransform:"uppercase", fontWeight:600 }}>Form Penyemprotan</div>
-            <div style={{ fontSize:12, color:"rgba(255,255,255,0.45)", marginTop:1 }}>{todayLabel}</div>
-          </div>
-          <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-            {pendingCount > 0 && (
-              <button onClick={isOnline ? syncPendingData : undefined}
-                style={{ fontSize:10, fontWeight:700, background: isOnline ? "rgba(33,150,243,0.2)" : "rgba(255,179,0,0.15)", border:`1px solid ${isOnline ? "rgba(33,150,243,0.5)" : "rgba(255,179,0,0.4)"}`, borderRadius:20, padding:"3px 9px", color: isOnline ? "#64B5F6" : "#FFB300", cursor: isOnline ? "pointer" : "default", display:"flex", alignItems:"center", gap:4 }}>
-                {isSyncingPending ? "⏳" : "📤"} {pendingCount} pending
-              </button>
-            )}
-            {isDemoMode && <div style={{ fontSize:10, fontWeight:700, background:"rgba(255,179,0,0.15)", border:"1px solid rgba(255,179,0,0.4)", borderRadius:20, padding:"3px 8px", color:"#FFB300" }}>DEMO</div>}
-            <div style={{ width:8, height:8, borderRadius:"50%", background: isOnline ? "#4CAF50" : "#f44336", boxShadow: isOnline ? "0 0 8px #4CAF50" : "0 0 8px #f44336" }} />
-          </div>
-        </div>
-
-        {!isOnline && (
-          <div style={{ marginTop:8, padding:"6px 10px", background:"rgba(244,67,54,0.1)", border:"1px solid rgba(244,67,54,0.2)", borderRadius:7, display:"flex", alignItems:"center", gap:7 }}>
-            <span style={{ fontSize:13 }}>📵</span>
-            <span style={{ fontSize:11, color:color.dangerBorder }}>Offline — tersimpan lokal & sync otomatis saat online</span>
-          </div>
-        )}
-
-        {step !== "sukses" && (
-          <div style={{ marginTop:10, display:"flex", alignItems:"center", gap:6 }}>
-            {navHistory.length > 0 && (
-              <button onClick={goBack} style={{ background:"none", border:"none", color:"rgba(255,255,255,0.4)", fontSize:16, cursor:"pointer", padding:0, lineHeight:1 }}>←</button>
-            )}
-            {selectedGH && step !== "start" && (
-              <div style={{ fontSize:11, background:`${ghColor}22`, border:`1px solid ${ghColor}55`, borderRadius:20, padding:"2px 9px", color:ghColor, fontWeight:600 }}>{selectedGH}</div>
-            )}
-            {activity && step !== "start" && (
-              <div style={{ fontSize:11, background:`${actColor}22`, border:`1px solid ${actColor}55`, borderRadius:20, padding:"2px 9px", color:actColor, fontWeight:600 }}>
-                {activity === "oles_gsb" ? "🖌️ Oles GSB" : activity === "pemakaian_gas" ? "🛢️ Pemakaian Gas" : "💊 Penggunaan & Pengambilan"}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* ── Content ── */}
-      <div style={{ flex:1, padding:"20px 16px", overflowY:"auto", position:"relative" }}>
-
-        {/* ══ MODAL: Ada Pengambilan? ════════════════════════════════════════════ */}
-        {step === "form_ambil" && adaPengambilan === null && (
-          <div style={{ position:"absolute", inset:0, background:"rgba(8,18,30,0.96)", zIndex:20, display:"flex", alignItems:"center", justifyContent:"center", padding:24, backdropFilter:"blur(4px)" }}>
-            <div style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.14)", borderRadius:20, padding:"28px 24px", maxWidth:340, width:"100%", textAlign:"center" }}>
-              <div style={{ fontSize:44, marginBottom:14 }}>💊</div>
-              <h3 style={{ fontSize:18, fontWeight:800, color:color.card, margin:"0 0 8px" }}>Ada Pengambilan Obat?</h3>
-              <p style={{ fontSize:13, color:"rgba(255,255,255,0.45)", margin:"0 0 24px", lineHeight:1.5 }}>
-                Hari ini apakah ada pengambilan pestisida dari gudang / supplier?
-              </p>
-              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-                <button onClick={() => handleAnswerAmbil(true)}
-                  style={{ padding:"14px", background:`linear-gradient(135deg,${color.info},#1E88E5)`, border:"none", borderRadius:12, color:color.card, fontSize:15, fontWeight:700, cursor:"pointer" }}>
-                  ✓ Ya, Ada Pengambilan
-                </button>
-                <button onClick={() => handleAnswerAmbil(false)}
-                  style={{ padding:"14px", background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.14)", borderRadius:12, color:"rgba(255,255,255,0.65)", fontSize:14, fontWeight:600, cursor:"pointer" }}>
-                  Tidak Ada → Langsung ke Penggunaan
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ══ START ══════════════════════════════════════════════════════════════ */}
-        {step === "start" && (
-          <div>
-            <div style={{ marginBottom:24 }}>
-              <FieldLabel required>👤 Nama Operator</FieldLabel>
-              <input type="text" value={operator} onChange={e => setOperator(e.target.value)}
-                placeholder="Tulis nama lengkap..."
-                style={inp(operator.trim())} />
-            </div>
-
-            <h2 style={{ fontSize:20, fontWeight:700, margin:"0 0 4px", color:color.card }}>Pilih Kegiatan</h2>
-            <p style={{ fontSize:13, color:"rgba(255,255,255,0.4)", marginBottom:16 }}>Pilih jenis kegiatan penyemprotan hari ini</p>
-
-            <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:28 }}>
-              {[
-                { key:"penggunaan_ambil", icon:"💊", color:"#1E88E5", label:"Penggunaan & Pengambilan Obat Baru", desc:"Catat pengambilan stok dan/atau penggunaan pestisida" },
-                { key:"oles_gsb",         icon:"🖌️", color:"#FF7043", label:"Oles GSB",                            desc:"Pengolesan pestisida untuk pengendalian GSB" },
-                { key:"pemakaian_gas",    icon:"🛢️", color:"#8E24AA", label:"Pemakaian Gas",                       desc:"Catat penggunaan tabung gas untuk kegiatan penyemprotan" },
-              ].map(opt => (
-                <button key={opt.key} onClick={() => { setActivity(opt.key); setSelectedGH(""); }}
-                  style={{ padding:"14px 16px", borderRadius:14, cursor:"pointer", textAlign:"left", border: activity === opt.key ? `2px solid ${opt.color}` : "1px solid rgba(255,255,255,0.09)", background: activity === opt.key ? `${opt.color}1a` : "rgba(255,255,255,0.03)", transition:"all 0.2s", display:"flex", alignItems:"center", gap:12 }}>
-                  <span style={{ fontSize:26 }}>{opt.icon}</span>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:14, fontWeight:700, color: activity === opt.key ? opt.color : color.card }}>{opt.label}</div>
-                    <div style={{ fontSize:12, color:"rgba(255,255,255,0.4)", marginTop:2 }}>{opt.desc}</div>
-                  </div>
-                  {activity === opt.key && <span style={{ color:opt.color, fontSize:18 }}>✓</span>}
-                </button>
-              ))}
-            </div>
-
-            {activity && (
-              <>
-                <h3 style={{ fontSize:15, fontWeight:700, margin:"0 0 14px", color:color.card }}>Pilih Greenhouse</h3>
-                {loadingGH
-                  ? <div style={{ color:"rgba(255,255,255,0.4)", fontSize:13, padding:"12px 0" }}>Memuat data GH...</div>
-                  : <GHPicker value={selectedGH} onChange={(g) => { if (!warnIfGHBlocked(g, blockedMap)) setSelectedGH(g); }} groups={ghGroups} />
-                }
-                {selectedGH && (
-                  <div style={{ marginTop:14, padding:"9px 14px", background:`${ghColor}18`, border:`1px solid ${ghColor}44`, borderRadius:10, fontSize:13, color:ghColor, fontWeight:600 }}>
-                    ✓ {selectedGH} dipilih
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* ══ FORM OLES GSB ══════════════════════════════════════════════════════ */}
-        {step === "form_oles" && (
-          <div>
-            <h2 style={{ fontSize:20, fontWeight:700, margin:"0 0 20px", color:color.card }}>Isian Oles GSB</h2>
-
-            <div style={{ marginBottom:20 }}>
-              <FieldLabel required color="#FF7043">Pestisida</FieldLabel>
-              <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginTop:10 }}>
-                {PESTISIDA_GSB.map(p => (
-                  <button key={p} onClick={() => setPestisidaGSB(p)}
-                    style={{ padding:"9px 16px", borderRadius:20, border: pestisidaGSB===p ? "2px solid #FF7043" : "1px solid rgba(255,255,255,0.14)", background: pestisidaGSB===p ? "rgba(255,112,67,0.2)" : "rgba(255,255,255,0.04)", color: pestisidaGSB===p ? "#FF7043" : "rgba(255,255,255,0.65)", fontSize:13, fontWeight: pestisidaGSB===p ? 700 : 500, cursor:"pointer", transition:"all 0.15s" }}>
-                    {p}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ marginBottom:20 }}>
-              <FieldLabel required color="#FF7043">Konsentrasi</FieldLabel>
-              <div style={{ display:"flex", gap:10, marginTop:10 }}>
-                {KONSENTRASI_GSB.map(k => (
-                  <button key={k} onClick={() => setKonsentrasiGSB(k)}
-                    style={{ flex:1, padding:"16px 0", borderRadius:12, border: konsentrasiGSB===k ? "2px solid #FF7043" : "1px solid rgba(255,255,255,0.14)", background: konsentrasiGSB===k ? "rgba(255,112,67,0.2)" : "rgba(255,255,255,0.04)", color: konsentrasiGSB===k ? "#FF7043" : "rgba(255,255,255,0.65)", fontSize:15, fontWeight: konsentrasiGSB===k ? 800 : 500, cursor:"pointer" }}>
-                    {k}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ marginBottom:20 }}>
-              <FieldLabel required color="#FF7043">Penggunaan</FieldLabel>
-              <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:10 }}>
-                <input type="number" inputMode="numeric" value={penggunaanGram} onChange={e => setPenggunaanGram(e.target.value)} placeholder="0"
-                  style={{ flex:1, padding:"16px", background:"rgba(255,255,255,0.06)", border:`1px solid ${penggunaanGram ? "rgba(255,112,67,0.5)" : "rgba(255,255,255,0.12)"}`, borderRadius:12, color:color.card, fontSize:24, fontWeight:700, outline:"none", textAlign:"center" }} />
-                <div style={{ padding:"16px 14px", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:12, color:"rgba(255,255,255,0.5)", fontSize:14, whiteSpace:"nowrap" }}>gram</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ══ FORM PENGAMBILAN PESTISIDA ═════════════════════════════════════════ */}
-        {step === "form_ambil" && adaPengambilan === true && (
-          <div>
-            <h2 style={{ fontSize:20, fontWeight:700, margin:"0 0 20px", color:color.card }}>Pengambilan Pestisida</h2>
-
-            {/* 1. Nama Pestisida */}
-            <div style={{ marginBottom:14 }}>
-              <FieldLabel required>Nama Pestisida</FieldLabel>
-              <PestisidaPicker value={ambil.namaPestisida} onChange={v => setAmbil(d => ({...d, namaPestisida:v}))} />
-            </div>
-
-            {/* 2. Jumlah */}
-            <div style={{ marginBottom:8 }}>
-              <FieldLabel required>Jumlah Pengambilan</FieldLabel>
-              <input type="text" value={ambil.jumlah} onChange={e => setAmbil(d => ({...d, jumlah:e.target.value}))}
-                placeholder="contoh: 500 ml, 1 botol, 2 kg..."
-                style={inp(ambil.jumlah)} />
-            </div>
-          </div>
-        )}
-
-        {/* ══ FORM PENGGUNAAN PESTISIDA ══════════════════════════════════════════ */}
-        {step === "form_guna" && (
-          <div>
-            <h2 style={{ fontSize:20, fontWeight:700, margin:"0 0 6px", color:color.card }}>Penggunaan Pestisida</h2>
-            {adaPengambilan && (
-              <div style={{ fontSize:12, color:"rgba(100,181,246,0.7)", marginBottom:16 }}>
-                💊 Pengambilan: {ambil.namaPestisida} — {ambil.jumlah}
-              </div>
-            )}
-
-            {/* 1. Nama Pestisida */}
-            <div style={{ marginBottom:14 }}>
-              <FieldLabel required>Nama Pestisida</FieldLabel>
-              <PestisidaPicker value={guna.namaPestisida} onChange={v => setGuna(d => ({...d, namaPestisida:v}))} />
-            </div>
-
-            {/* 2. Konsentrasi */}
-            <div style={{ marginBottom:14 }}>
-              <FieldLabel required>Konsentrasi</FieldLabel>
-              <ChoiceChips list={KONSENTRASI_LIST} value={guna.konsentrasi} onChange={v => setGuna(d => ({...d, konsentrasi:v}))} placeholder="Tulis konsentrasi lain..." />
-            </div>
-
-            {/* 3. Jumlah Pemakaian */}
-            <div style={{ marginBottom:14 }}>
-              <FieldLabel required>Jumlah Pemakaian</FieldLabel>
-              <input type="text" value={guna.jumlahPemakaian} onChange={e => setGuna(d => ({...d, jumlahPemakaian:e.target.value}))}
-                placeholder="contoh: 2 L, 500 ml, 200 g..."
-                style={inp(guna.jumlahPemakaian)} />
-            </div>
-
-            {/* Pencampuran: Tanpa Campuran / Campuran (maks 2 jenis) */}
-            <div style={{ marginBottom:14 }}>
-              <FieldLabel required>Pencampuran</FieldLabel>
-              <div style={{ display:"flex", gap:10, marginTop:10 }}>
-                {[{v:"tanpa",l:"Tanpa Campuran"},{v:"campuran",l:"Campuran"}].map(opt => (
-                  <button key={opt.v} onClick={() => setGuna(d => ({...d, jenisCampuran:opt.v}))}
-                    style={{ flex:1, padding:"12px 0", borderRadius:12, border: guna.jenisCampuran===opt.v ? "2px solid #64B5F6" : "1px solid rgba(255,255,255,0.14)", background: guna.jenisCampuran===opt.v ? "rgba(100,181,246,0.18)" : "rgba(255,255,255,0.04)", color: guna.jenisCampuran===opt.v ? "#64B5F6" : "rgba(255,255,255,0.65)", fontSize:14, fontWeight: guna.jenisCampuran===opt.v ? 700 : 500, cursor:"pointer" }}>
-                    {opt.l}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {guna.jenisCampuran === "campuran" && (
-              <div style={{ marginBottom:14, padding:"14px", background:"rgba(100,181,246,0.06)", border:"1px solid rgba(100,181,246,0.25)", borderRadius:14 }}>
-                <div style={{ fontSize:12, color:"#64B5F6", fontWeight:700, marginBottom:12 }}>
-                  ➕ Dicampur dengan (Pestisida ke-2)
-                </div>
-
-                <div style={{ marginBottom:14 }}>
-                  <FieldLabel required>Nama Pestisida ke-2</FieldLabel>
-                  <PestisidaPicker value={guna.namaPestisida2} onChange={v => setGuna(d => ({...d, namaPestisida2:v}))} />
-                </div>
-
-                <div style={{ marginBottom:14 }}>
-                  <FieldLabel required>Konsentrasi ke-2</FieldLabel>
-                  <ChoiceChips list={KONSENTRASI_LIST} value={guna.konsentrasi2} onChange={v => setGuna(d => ({...d, konsentrasi2:v}))} placeholder="Tulis konsentrasi lain..." />
-                </div>
-
-                <div>
-                  <FieldLabel required>Jumlah Pemakaian ke-2</FieldLabel>
-                  <input type="text" value={guna.jumlahPemakaian2} onChange={e => setGuna(d => ({...d, jumlahPemakaian2:e.target.value}))}
-                    placeholder="contoh: 2 L, 500 ml, 200 g..."
-                    style={inp(guna.jumlahPemakaian2)} />
-                </div>
-              </div>
-            )}
-
-            {/* Suhu & RH Mulai */}
-            <div style={twoCol}>
-              <div>
-                <FieldLabel>Suhu Mulai</FieldLabel>
-                <input type="number" inputMode="decimal" value={guna.suhuMulai} onChange={e => setGuna(d => ({...d, suhuMulai:e.target.value}))}
-                  placeholder="°C" style={{ ...inp(guna.suhuMulai), marginTop:8, textAlign:"center" }} />
-              </div>
-              <div>
-                <FieldLabel>RH Mulai</FieldLabel>
-                <input type="number" inputMode="decimal" value={guna.rhMulai} onChange={e => setGuna(d => ({...d, rhMulai:e.target.value}))}
-                  placeholder="%" style={{ ...inp(guna.rhMulai), marginTop:8, textAlign:"center" }} />
-              </div>
-            </div>
-
-            {/* Suhu & RH Selesai */}
-            <div style={twoCol}>
-              <div>
-                <FieldLabel>Suhu Selesai</FieldLabel>
-                <input type="number" inputMode="decimal" value={guna.suhuSelesai} onChange={e => setGuna(d => ({...d, suhuSelesai:e.target.value}))}
-                  placeholder="°C" style={{ ...inp(guna.suhuSelesai), marginTop:8, textAlign:"center" }} />
-              </div>
-              <div>
-                <FieldLabel>RH Selesai</FieldLabel>
-                <input type="number" inputMode="decimal" value={guna.rhSelesai} onChange={e => setGuna(d => ({...d, rhSelesai:e.target.value}))}
-                  placeholder="%" style={{ ...inp(guna.rhSelesai), marginTop:8, textAlign:"center" }} />
-              </div>
-            </div>
-
-            {/* Waktu Mulai & Selesai */}
-            <div style={twoCol}>
-              <div>
-                <FieldLabel>Waktu Mulai</FieldLabel>
-                <input type="time" value={guna.waktuMulai} onChange={e => setGuna(d => ({...d, waktuMulai:e.target.value}))}
-                  style={{ ...inp(guna.waktuMulai), marginTop:8, colorScheme:"dark" }} />
-              </div>
-              <div>
-                <FieldLabel>Waktu Selesai</FieldLabel>
-                <input type="time" value={guna.waktuSelesai} onChange={e => setGuna(d => ({...d, waktuSelesai:e.target.value}))}
-                  style={{ ...inp(guna.waktuSelesai), marginTop:8, colorScheme:"dark" }} />
-              </div>
-            </div>
-
-            {/* Waktu (Pagi/Siang/Sore) */}
-            <div style={{ marginBottom:14 }}>
-              <FieldLabel>Waktu</FieldLabel>
-              <div style={{ display:"flex", gap:8, marginTop:10 }}>
-                {WAKTU_PERIODE_LIST.map(w => (
-                  <button key={w} onClick={() => setGuna(d => ({...d, waktuPeriode: d.waktuPeriode===w ? "" : w}))}
-                    style={{ flex:1, padding:"10px 0", borderRadius:12, border: guna.waktuPeriode===w ? "2px solid #64B5F6" : "1px solid rgba(255,255,255,0.14)", background: guna.waktuPeriode===w ? "rgba(100,181,246,0.18)" : "rgba(255,255,255,0.04)", color: guna.waktuPeriode===w ? "#64B5F6" : "rgba(255,255,255,0.65)", fontSize:13, fontWeight: guna.waktuPeriode===w ? 700 : 500, cursor:"pointer" }}>
-                    {w}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Varian tidak disemprot */}
-            <div style={{ marginBottom:14 }}>
-              <FieldLabel>Varian yang Tidak Disemprot</FieldLabel>
-              <input type="text" value={guna.varianTidakDisemprot} onChange={e => setGuna(d => ({...d, varianTidakDisemprot:e.target.value}))}
-                placeholder="Tulis nama varian (jika ada)..."
-                style={inp(guna.varianTidakDisemprot)} />
-            </div>
-
-            {/* 4. Sterilisasi */}
-            <div style={{ marginBottom:14 }}>
-              <FieldLabel>Sterilisasi</FieldLabel>
-              <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginTop:10 }}>
-                {STERILISASI_LIST.map(s => (
-                  <button key={s} onClick={() => setGuna(d => ({...d, sterilisasi: guna.sterilisasi===s ? "" : s}))}
-                    style={{ padding:"8px 14px", borderRadius:20, border: guna.sterilisasi===s ? "2px solid #43A047" : "1px solid rgba(255,255,255,0.14)", background: guna.sterilisasi===s ? "rgba(67,160,71,0.18)" : "rgba(255,255,255,0.04)", color: guna.sterilisasi===s ? color.brand400 : "rgba(255,255,255,0.65)", fontSize:12, fontWeight: guna.sterilisasi===s ? 700 : 500, cursor:"pointer", transition:"all 0.15s" }}>
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Nomor Gas / Gas Baru / Peruntukan */}
-            <GasFields data={guna} setData={setGuna} />
-
-            {/* Keterangan */}
-            <div style={{ marginBottom:8 }}>
-              <FieldLabel>Keterangan</FieldLabel>
-              <textarea value={guna.keterangan} onChange={e => setGuna(d => ({...d, keterangan:e.target.value}))}
-                placeholder="Catatan tambahan..."
-                rows={2}
-                style={{ width:"100%", marginTop:8, padding:"9px 12px", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.09)", borderRadius:8, color:color.card, fontSize:13, outline:"none", resize:"none", boxSizing:"border-box", fontFamily:"inherit" }} />
-            </div>
-          </div>
-        )}
-
-        {/* ══ FORM PEMAKAIAN GAS ═════════════════════════════════════════════════ */}
-        {step === "form_gas" && (
-          <div>
-            <h2 style={{ fontSize:20, fontWeight:700, margin:"0 0 20px", color:color.card }}>Isian Pemakaian Gas</h2>
-
-            {/* Waktu Mulai & Selesai */}
-            <div style={twoCol}>
-              <div>
-                <FieldLabel color="#8E24AA">Waktu Mulai</FieldLabel>
-                <input type="time" value={gas.waktuMulai} onChange={e => setGas(d => ({...d, waktuMulai:e.target.value}))}
-                  style={{ ...inp(gas.waktuMulai), marginTop:8, colorScheme:"dark" }} />
-              </div>
-              <div>
-                <FieldLabel color="#8E24AA">Waktu Selesai</FieldLabel>
-                <input type="time" value={gas.waktuSelesai} onChange={e => setGas(d => ({...d, waktuSelesai:e.target.value}))}
-                  style={{ ...inp(gas.waktuSelesai), marginTop:8, colorScheme:"dark" }} />
-              </div>
-            </div>
-
-            {/* Nomor Gas */}
-            <div style={{ marginBottom:14 }}>
-              <FieldLabel required color="#8E24AA">Nomor Gas</FieldLabel>
-              <input type="text" value={gas.nomorGas} onChange={e => setGas(d => ({...d, nomorGas:e.target.value}))}
-                placeholder="contoh: G-01"
-                style={inp(gas.nomorGas)} />
-            </div>
-
-            {/* Apakah Gas Baru? */}
-            <div style={{ marginBottom:14 }}>
-              <FieldLabel required color="#8E24AA">Apakah Gas Baru?</FieldLabel>
-              <div style={{ display:"flex", gap:10, marginTop:10 }}>
-                {[{v:true,l:"Ya"},{v:false,l:"Tidak"}].map(opt => (
-                  <button key={String(opt.v)} onClick={() => setGas(d => ({...d, gasBaru: d.gasBaru===opt.v ? null : opt.v}))}
-                    style={{ flex:1, padding:"12px 0", borderRadius:12, border: gas.gasBaru===opt.v ? "2px solid #8E24AA" : "1px solid rgba(255,255,255,0.14)", background: gas.gasBaru===opt.v ? "rgba(142,36,170,0.2)" : "rgba(255,255,255,0.04)", color: gas.gasBaru===opt.v ? "#CE93D8" : "rgba(255,255,255,0.65)", fontSize:14, fontWeight: gas.gasBaru===opt.v ? 700 : 500, cursor:"pointer" }}>
-                    {opt.l}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Peruntukan */}
-            <div style={{ marginBottom:8 }}>
-              <FieldLabel required color="#8E24AA">Peruntukan</FieldLabel>
-              <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginTop:10 }}>
-                {PERUNTUKAN_LIST.map(p => (
-                  <button key={p} onClick={() => setGas(d => ({...d, peruntukan: d.peruntukan===p ? "" : p}))}
-                    style={{ padding:"8px 14px", borderRadius:20, border: gas.peruntukan===p ? "2px solid #8E24AA" : "1px solid rgba(255,255,255,0.14)", background: gas.peruntukan===p ? "rgba(142,36,170,0.2)" : "rgba(255,255,255,0.04)", color: gas.peruntukan===p ? "#CE93D8" : "rgba(255,255,255,0.65)", fontSize:12, fontWeight: gas.peruntukan===p ? 700 : 500, cursor:"pointer", transition:"all 0.15s" }}>
-                    {p}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ══ REKAP ══════════════════════════════════════════════════════════════ */}
-        {step === "rekap" && (
-          <div>
-            <h2 style={{ fontSize:20, fontWeight:700, margin:"0 0 4px", color:color.card }}>Konfirmasi Data</h2>
-            <p style={{ fontSize:13, color:"rgba(255,255,255,0.4)", marginBottom:18 }}>Periksa kembali sebelum submit</p>
-
-            {isDemoMode && <div style={{ background:"rgba(255,179,0,0.08)", border:"1px solid rgba(255,179,0,0.25)", borderRadius:10, padding:"10px 14px", marginBottom:14, fontSize:12, color:"#FFB300" }}>⚠️ Mode Demo — data tidak dikirim ke Sheets</div>}
-            {!isOnline && <div style={{ background:"rgba(255,179,0,0.08)", border:"1px solid rgba(255,179,0,0.25)", borderRadius:10, padding:"10px 14px", marginBottom:14, fontSize:12, color:"#FFB300" }}>📵 Offline — akan disimpan lokal & dikirim saat online</div>}
-
-            {/* Info umum */}
-            <RekapSection title="Umum" color="#64B5F6" rows={[
-              { label:"Operator", value: operator },
-              { label:"Tanggal",  value: todayISO },
-              { label:"GH",       value: selectedGH },
-              { label:"Kegiatan", value: activity === "oles_gsb" ? "🖌️ Oles GSB" : activity === "pemakaian_gas" ? "🛢️ Pemakaian Gas" : "💊 Penggunaan & Pengambilan" },
-            ]} />
-
-            {/* Oles GSB */}
-            {activity === "oles_gsb" && (
-              <RekapSection title="Oles GSB" color="#FF7043" rows={[
-                { label:"Pestisida",    value: pestisidaGSB },
-                { label:"Konsentrasi", value: konsentrasiGSB },
-                { label:"Penggunaan",  value: `${penggunaanGram} gram` },
-              ]} />
-            )}
-
-            {/* Pengambilan */}
-            {activity === "penggunaan_ambil" && (
-              <RekapSection title={`Pengambilan${adaPengambilan ? "" : " — Tidak Ada"}`} color="#1E88E5" rows={[
-                { label:"Ada Pengambilan", value: adaPengambilan ? "Ya" : "Tidak" },
-                ...(adaPengambilan ? [
-                  { label:"Pestisida",  value: ambil.namaPestisida },
-                  { label:"Jumlah",     value: ambil.jumlah },
-                ] : []),
-              ]} />
-            )}
-
-            {/* Pemakaian Gas */}
-            {activity === "pemakaian_gas" && (
-              <RekapSection title="Pemakaian Gas" color="#8E24AA" rows={[
-                ...(gas.waktuMulai   ? [{ label:"Waktu Mulai",   value: gas.waktuMulai }] : []),
-                ...(gas.waktuSelesai ? [{ label:"Waktu Selesai", value: gas.waktuSelesai }] : []),
-                { label:"Nomor Gas",  value: gas.nomorGas },
-                { label:"Gas Baru",   value: gas.gasBaru ? "Ya" : "Tidak" },
-                { label:"Peruntukan", value: gas.peruntukan },
-              ]} />
-            )}
-
-            {/* Penggunaan */}
-            {activity === "penggunaan_ambil" && guna.namaPestisida && (
-              <RekapSection title="Penggunaan" color="#43A047" rows={[
-                { label:"Pestisida",   value: guna.namaPestisida },
-                { label:"Konsentrasi",value: guna.konsentrasi },
-                { label:"Pemakaian",  value: guna.jumlahPemakaian },
-                { label:"Pencampuran", value: guna.jenisCampuran === "campuran" ? "Campuran" : "Tanpa Campuran" },
-                ...(guna.jenisCampuran === "campuran" ? [
-                  { label:"Pestisida ke-2",   value: guna.namaPestisida2 },
-                  { label:"Konsentrasi ke-2", value: guna.konsentrasi2 },
-                  { label:"Pemakaian ke-2",   value: guna.jumlahPemakaian2 },
-                ] : []),
-                ...(guna.suhuMulai   ? [{ label:"Suhu Mulai",    value:`${guna.suhuMulai} °C` }] : []),
-                ...(guna.rhMulai     ? [{ label:"RH Mulai",      value:`${guna.rhMulai} %` }] : []),
-                ...(guna.suhuSelesai ? [{ label:"Suhu Selesai",  value:`${guna.suhuSelesai} °C` }] : []),
-                ...(guna.rhSelesai   ? [{ label:"RH Selesai",    value:`${guna.rhSelesai} %` }] : []),
-                ...(guna.waktuMulai  ? [{ label:"Waktu Mulai",   value: guna.waktuMulai }] : []),
-                ...(guna.waktuSelesai? [{ label:"Waktu Selesai", value: guna.waktuSelesai }] : []),
-                ...(guna.waktuPeriode ? [{ label:"Waktu", value: guna.waktuPeriode }] : []),
-                ...(guna.varianTidakDisemprot ? [{ label:"Skip Varian", value: guna.varianTidakDisemprot }] : []),
-                ...(guna.sterilisasi  ? [{ label:"Sterilisasi", value: guna.sterilisasi }] : []),
-                ...(guna.nomorGas    ? [{ label:"Nomor Gas",    value: guna.nomorGas }] : []),
-                ...(guna.gasBaru !== null ? [{ label:"Gas Baru", value: guna.gasBaru ? "Ya" : "Tidak" }] : []),
-                ...(guna.peruntukan  ? [{ label:"Peruntukan",   value: guna.peruntukan }] : []),
-                ...(guna.keterangan  ? [{ label:"Keterangan",   value: guna.keterangan }] : []),
-              ]} />
-            )}
-
-            {submitError && (
-              <div style={{ padding:"12px", background:"rgba(244,67,54,0.1)", border:"1px solid rgba(244,67,54,0.3)", borderRadius:10, fontSize:13, color:color.dangerBorder, marginBottom:12 }}>
-                ⚠️ {submitError}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ══ SUKSES ══════════════════════════════════════════════════════════════ */}
-        {step === "sukses" && (
-          <div style={{ textAlign:"center", paddingTop:36 }}>
-            <div style={{ fontSize:60, marginBottom:14 }}>{isDemoMode ? "🧪" : savedOffline ? "💾" : "✅"}</div>
-            <h2 style={{ fontSize:22, fontWeight:800, color: isDemoMode ? "#FFB300" : savedOffline ? "#64B5F6" : "#1E88E5", margin:"0 0 8px" }}>
-              {isDemoMode ? "Demo Selesai!" : savedOffline ? "Tersimpan Lokal!" : "Data Tersimpan!"}
-            </h2>
-            <p style={{ fontSize:14, color:"rgba(255,255,255,0.5)", margin:"0 0 20px" }}>
-              {isDemoMode ? "Data tidak dikirim (mode demo)" : savedOffline ? "Akan terkirim otomatis saat online." : "Berhasil dikirim ke Google Sheets"}
-            </p>
-            {savedOffline && pendingCount > 0 && (
-              <div style={{ background:"rgba(33,150,243,0.08)", border:"1px solid rgba(33,150,243,0.25)", borderRadius:10, padding:"10px 14px", marginBottom:16, textAlign:"left", fontSize:12, color:"#64B5F6" }}>
-                {pendingCount} record menunggu sync saat online.
-              </div>
-            )}
-            <div style={{ background:"rgba(30,136,229,0.08)", border:"1px solid rgba(30,136,229,0.3)", borderRadius:12, padding:"14px 16px", marginBottom:20, textAlign:"left" }}>
-              <div style={{ fontSize:13, color:"rgba(255,255,255,0.7)", fontWeight:600 }}>{selectedGH} · {todayISO}</div>
-              <div style={{ fontSize:13, color:"rgba(255,255,255,0.5)", marginTop:4 }}>
-                {activity === "oles_gsb"
-                  ? `🖌️ ${pestisidaGSB} · ${konsentrasiGSB} · ${penggunaanGram}g`
-                  : activity === "pemakaian_gas"
-                  ? `🛢️ Gas ${gas.nomorGas} · ${gas.peruntukan}`
-                  : `💊 ${guna.namaPestisida} ${guna.konsentrasi} ${guna.jumlahPemakaian}${guna.jenisCampuran === "campuran" ? ` + ${guna.namaPestisida2} ${guna.konsentrasi2} ${guna.jumlahPemakaian2}` : ""}`}
-              </div>
-              <div style={{ fontSize:13, color:"rgba(255,255,255,0.45)", marginTop:2 }}>Operator: {operator}</div>
-            </div>
-            <button onClick={resetForm}
-              style={{ width:"100%", padding:"16px", background:"rgba(30,136,229,0.15)", border:"2px solid rgba(30,136,229,0.4)", borderRadius:12, color:"#64B5F6", fontSize:15, fontWeight:700, cursor:"pointer" }}>
-              + Input GH Berikutnya
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* ── Bottom Navigation ── */}
-      {step !== "sukses" && (
-        <div style={{ padding:"12px 16px 20px", borderTop:"1px solid rgba(255,255,255,0.08)", background:"rgba(0,0,0,0.3)", display:"flex", gap:10 }}>
-          {navHistory.length > 0 && (
-            <button onClick={goBack}
-              style={{ flex:1, padding:"14px", background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)", borderRadius:12, color:"rgba(255,255,255,0.7)", fontSize:14, fontWeight:600, cursor:"pointer" }}>
-              ← Kembali
-            </button>
-          )}
-
-          {step === "start" && (
-            <button onClick={() => navigateTo(activity === "oles_gsb" ? "form_oles" : activity === "pemakaian_gas" ? "form_gas" : "form_ambil")}
-              disabled={!canStart}
-              style={{ flex:2, padding:"14px", border:"none", borderRadius:12, background: canStart ? `linear-gradient(135deg,${actColor}cc,${actColor})` : "rgba(255,255,255,0.06)", color: canStart ? color.card : "rgba(255,255,255,0.3)", fontSize:15, fontWeight:700, cursor: canStart ? "pointer" : "not-allowed" }}>
-              Lanjut →
-            </button>
-          )}
-
-          {step === "form_oles" && (
-            <button onClick={() => navigateTo("rekap")} disabled={!canOlesGSB}
-              style={{ flex:2, padding:"14px", border:"none", borderRadius:12, background: canOlesGSB ? "linear-gradient(135deg,#bf360c,#FF7043)" : "rgba(255,255,255,0.06)", color: canOlesGSB ? color.card : "rgba(255,255,255,0.3)", fontSize:15, fontWeight:700, cursor: canOlesGSB ? "pointer" : "not-allowed" }}>
-              Review Data →
-            </button>
-          )}
-
-          {step === "form_ambil" && adaPengambilan === true && (
-            <>
-              <button onClick={() => navigateTo("form_guna")} disabled={!canAmbil}
-                style={{ flex:2, padding:"14px", border:"none", borderRadius:12, background: canAmbil ? `linear-gradient(135deg,${color.info},#1E88E5)` : "rgba(255,255,255,0.06)", color: canAmbil ? color.card : "rgba(255,255,255,0.3)", fontSize:13, fontWeight:700, cursor: canAmbil ? "pointer" : "not-allowed" }}>
-                + ke Penggunaan →
-              </button>
-              <button onClick={() => navigateTo("rekap")} disabled={!canAmbil}
-                style={{ flex:2, padding:"14px", border:`1px solid ${canAmbil ? "rgba(100,181,246,0.4)" : "rgba(255,255,255,0.08)"}`, borderRadius:12, background:"transparent", color: canAmbil ? "#64B5F6" : "rgba(255,255,255,0.3)", fontSize:13, fontWeight:700, cursor: canAmbil ? "pointer" : "not-allowed" }}>
-                Langsung Rekap →
-              </button>
-            </>
-          )}
-
-          {step === "form_guna" && (
-            <button onClick={() => navigateTo("rekap")} disabled={!canGuna}
-              style={{ flex:2, padding:"14px", border:"none", borderRadius:12, background: canGuna ? `linear-gradient(135deg,${color.info},#1E88E5)` : "rgba(255,255,255,0.06)", color: canGuna ? color.card : "rgba(255,255,255,0.3)", fontSize:15, fontWeight:700, cursor: canGuna ? "pointer" : "not-allowed" }}>
-              Review Data →
-            </button>
-          )}
-
-          {step === "form_gas" && (
-            <button onClick={() => navigateTo("rekap")} disabled={!canGas}
-              style={{ flex:2, padding:"14px", border:"none", borderRadius:12, background: canGas ? "linear-gradient(135deg,#6A1B9A,#8E24AA)" : "rgba(255,255,255,0.06)", color: canGas ? color.card : "rgba(255,255,255,0.3)", fontSize:15, fontWeight:700, cursor: canGas ? "pointer" : "not-allowed" }}>
-              Review Data →
-            </button>
-          )}
-
-          {step === "rekap" && (
-            <button onClick={() => setConfirmOpen(true)} disabled={syncing || !canSubmit}
-              style={{ flex:2, padding:"14px", border:"none", borderRadius:12, background: syncing ? "rgba(30,136,229,0.3)" : !canSubmit ? "rgba(255,255,255,0.06)" : isDemoMode ? "linear-gradient(135deg,#5d4037,#795548)" : !isOnline ? `linear-gradient(135deg,${color.info},#1976D2)` : `linear-gradient(135deg,${color.infoDark},${color.info})`, color: canSubmit ? color.card : "rgba(255,255,255,0.3)", fontSize:15, fontWeight:700, cursor: syncing || !canSubmit ? "not-allowed" : "pointer" }}>
-              {syncing ? "⏳ Mengirim..." : isDemoMode ? "Submit Demo 🧪" : !isOnline ? "💾 Simpan Offline" : "Submit ✓"}
-            </button>
-          )}
-        </div>
+      {/* ── Status koneksi & antrean ── */}
+      {step !== "sukses" && !isOnline && (
+        <FieldAlert tone="info">Mode offline. Data disimpan di perangkat dan terkirim otomatis saat online.</FieldAlert>
+      )}
+      {step !== "sukses" && pendingCount > 0 && (
+        <FieldAlert
+          tone="warning"
+          action={isOnline && !isSyncingPending ? { label: "Kirim sekarang", onClick: syncPendingData } : undefined}
+        >
+          {isSyncingPending ? "Mengirim data tertunda…" : `${pendingCount} isian tersimpan offline, belum terkirim.`}
+        </FieldAlert>
+      )}
+      {step !== "sukses" && isDemoMode && (
+        <FieldAlert tone="warning">Mode demo. Data tidak dikirim ke sheet.</FieldAlert>
       )}
 
-      <ConfirmSubmitModal
-        open={confirmOpen}
-        onCancel={() => setConfirmOpen(false)}
-        onConfirm={() => { setConfirmOpen(false); handleSubmit(); }}
-        color="#1E88E5"
-        isOffline={!isOnline}
-        isDemoMode={isDemoMode}
-        summary={[
-          { label: "Tanggal",   value: todayISO },
-          { label: "GH",        value: selectedGH },
-          { label: "Kegiatan",  value: activity === "oles_gsb" ? "Oles GSB" : activity === "pemakaian_gas" ? "Pemakaian Gas" : "Penggunaan & Pengambilan" },
-          ...(activity === "pemakaian_gas"
-            ? [{ label: "Nomor Gas", value: gas.nomorGas }]
-            : [{ label: "Pestisida", value: activity === "oles_gsb" ? pestisidaGSB : guna.jenisCampuran === "campuran" ? `${guna.namaPestisida} + ${guna.namaPestisida2}` : guna.namaPestisida }]),
-          { label: "Operator",  value: operator },
-        ]}
-      />
+      {/* ══ START ══════════════════════════════════════════════════════════════ */}
+      {step === "start" && (
+        <>
+          <section className="fh-section">
+            <span className="fh-label">Kegiatan</span>
+            <div className="fh-options" role="radiogroup" aria-label="Kegiatan">
+              {KEGIATAN.map(opt => {
+                const active = activity === opt.key;
+                return (
+                  <button key={opt.key} type="button" role="radio" aria-checked={active}
+                    className={`fh-option${active ? " is-active" : ""}`}
+                    onClick={() => { setActivity(opt.key); setSelectedGH(""); }}>
+                    <Icon name={opt.icon} size={24} className="fh-option-icon" />
+                    <span className="fh-option-label">
+                      {opt.label}
+                      <span className="fh-option-desc">{opt.desc}</span>
+                    </span>
+                    <span className="fh-option-radio" aria-hidden="true" />
+                  </button>
+                );
+              })}
+            </div>
+          </section>
 
-      <style>{`
-        input[type=number]::-webkit-outer-spin-button,
-        input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        input[type=time]::-webkit-calendar-picker-indicator { filter: invert(1) opacity(0.5); }
-        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-        select option { background: #1a2a3a; }
-      `}</style>
-    </div>
-  );
-}
+          {activity && (
+            <section className="fh-section">
+              <div className="fh-section-head">
+                <span className="fh-label">Pilih GH</span>
+                {selectedGH && <span className="fh-meta">{selectedGH} dipilih</span>}
+              </div>
+              <GHPicker
+                loading={loadingGH}
+                selected={selectedGH}
+                onSelect={(g) => { if (!warnIfGHBlocked(g, blockedMap)) setSelectedGH(g); }}
+                items={ghGroups.flatMap(group => group.items.map(item => {
+                  const blockedInfo = blockedMap[item.name.trim().toUpperCase()];
+                  return { gh: item.name, badges: blockedInfo ? [{ label: blockedInfo.aksi, tone: "danger" }] : [] };
+                }))}
+              />
+            </section>
+          )}
+        </>
+      )}
 
-// ─── Komponen: Rekap section ───────────────────────────────────────────────────
-function RekapSection({ title, color, rows }) {
-  return (
-    <div style={{ marginBottom:14 }}>
-      <div style={{ fontSize:10, color, letterSpacing:1.5, textTransform:"uppercase", fontWeight:700, marginBottom:6, paddingLeft:2 }}>{title}</div>
-      <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.09)", borderRadius:12, overflow:"hidden" }}>
-        {rows.map((item, i) => (
-          <div key={i} style={{ display:"flex", padding:"10px 14px", borderBottom: i < rows.length-1 ? "1px solid rgba(255,255,255,0.05)" : "none", gap:10 }}>
-            <span style={{ fontSize:12, color:"rgba(255,255,255,0.38)", minWidth:110 }}>{item.label}</span>
-            <span style={{ fontSize:12, color:color.card, fontWeight:600, flex:1 }}>{item.value}</span>
+      {/* ══ FORM OLES GSB ══════════════════════════════════════════════════════ */}
+      {step === "form_oles" && (
+        <>
+          <Field label="Pestisida" required>
+            <ChoiceChips list={PESTISIDA_GSB} value={pestisidaGSB} withLainnya={false} onChange={setPestisidaGSB} />
+          </Field>
+          <Field label="Konsentrasi" required>
+            <Segmented label="Konsentrasi" value={konsentrasiGSB} onChange={setKonsentrasiGSB}
+              options={KONSENTRASI_GSB.map(k => ({ v: k, l: k }))} />
+          </Field>
+          <Field label="Penggunaan" required>
+            <UnitInput label="Penggunaan" unit="gram" value={penggunaanGram} onChange={setPenggunaanGram} />
+          </Field>
+        </>
+      )}
+
+      {/* ══ FORM PENGAMBILAN PESTISIDA ═════════════════════════════════════════ */}
+      {step === "form_ambil" && adaPengambilan === true && (
+        <>
+          <span className="fh-overline">Pengambilan pestisida</span>
+          <Field label="Nama pestisida" required>
+            <PestisidaPicker label="Nama pestisida" value={ambil.namaPestisida} onChange={v => setAmbil(d => ({ ...d, namaPestisida: v }))} />
+          </Field>
+          <Field label="Jumlah pengambilan" required>
+            <input className="fh-input" value={ambil.jumlah} onChange={e => setAmbil(d => ({ ...d, jumlah: e.target.value }))}
+              placeholder="Contoh: 500 ml, 1 botol, 2 kg" />
+          </Field>
+        </>
+      )}
+
+      {/* ══ FORM PENGGUNAAN PESTISIDA ══════════════════════════════════════════ */}
+      {step === "form_guna" && (
+        <>
+          {adaPengambilan && (
+            <FieldAlert tone="info">Pengambilan: {ambil.namaPestisida} · {ambil.jumlah}</FieldAlert>
+          )}
+
+          <span className="fh-overline">Campuran</span>
+          <div className="fh-card fh-card-body" style={{ gap: 14 }}>
+            <Field label="Nama pestisida" required>
+              <PestisidaPicker label="Nama pestisida" value={guna.namaPestisida} onChange={setG("namaPestisida")} />
+            </Field>
+            <Field label="Konsentrasi" required>
+              <ChoiceChips list={KONSENTRASI_LIST} value={guna.konsentrasi} onChange={setG("konsentrasi")} placeholder="Tulis konsentrasi lain" />
+            </Field>
+            <Field label="Jumlah pemakaian" required>
+              <input className="fh-input" value={guna.jumlahPemakaian} onChange={e => setG("jumlahPemakaian")(e.target.value)} placeholder="Contoh: 2 L, 500 ml, 200 g" />
+            </Field>
           </div>
-        ))}
-      </div>
-    </div>
+
+          <Field label="Pencampuran" required>
+            <Segmented label="Pencampuran" value={guna.jenisCampuran} onChange={setG("jenisCampuran")}
+              options={[{ v: "tanpa", l: "Tanpa campuran" }, { v: "campuran", l: "Campuran" }]} />
+          </Field>
+
+          {guna.jenisCampuran === "campuran" && (
+            <div className="fh-card fh-card-body" style={{ gap: 14 }}>
+              <span className="fh-overline">Dicampur dengan pestisida ke-2</span>
+              <Field label="Nama pestisida ke-2" required>
+                <PestisidaPicker label="Nama pestisida ke-2" value={guna.namaPestisida2} onChange={setG("namaPestisida2")} />
+              </Field>
+              <Field label="Konsentrasi ke-2" required>
+                <ChoiceChips list={KONSENTRASI_LIST} value={guna.konsentrasi2} onChange={setG("konsentrasi2")} placeholder="Tulis konsentrasi lain" />
+              </Field>
+              <Field label="Jumlah pemakaian ke-2" required>
+                <input className="fh-input" value={guna.jumlahPemakaian2} onChange={e => setG("jumlahPemakaian2")(e.target.value)} placeholder="Contoh: 2 L, 500 ml, 200 g" />
+              </Field>
+            </div>
+          )}
+
+          <span className="fh-overline">Kondisi & waktu</span>
+          <div className="fh-grid-2" style={{ gap: 12 }}>
+            <Field label="Suhu mulai"><UnitInput label="Suhu mulai" unit="°C" value={guna.suhuMulai} onChange={setG("suhuMulai")} /></Field>
+            <Field label="RH mulai"><UnitInput label="RH mulai" unit="%" value={guna.rhMulai} onChange={setG("rhMulai")} /></Field>
+            <Field label="Suhu selesai"><UnitInput label="Suhu selesai" unit="°C" value={guna.suhuSelesai} onChange={setG("suhuSelesai")} /></Field>
+            <Field label="RH selesai"><UnitInput label="RH selesai" unit="%" value={guna.rhSelesai} onChange={setG("rhSelesai")} /></Field>
+            <Field label="Waktu mulai">
+              <input className="fh-input" type="time" value={guna.waktuMulai} onChange={e => setG("waktuMulai")(e.target.value)} />
+            </Field>
+            <Field label="Waktu selesai">
+              <input className="fh-input" type="time" value={guna.waktuSelesai} onChange={e => setG("waktuSelesai")(e.target.value)} />
+            </Field>
+          </div>
+
+          <Field label="Waktu">
+            <Segmented label="Waktu" allowClear value={guna.waktuPeriode} onChange={setG("waktuPeriode")}
+              options={WAKTU_PERIODE_LIST.map(w => ({ v: w, l: w }))} />
+          </Field>
+
+          <Field label="Varian yang tidak disemprot">
+            <input className="fh-input" value={guna.varianTidakDisemprot} onChange={e => setG("varianTidakDisemprot")(e.target.value)} placeholder="Nama varian, bila ada" />
+          </Field>
+
+          <Field label="Sterilisasi">
+            <select className={`fh-select${guna.sterilisasi ? "" : " is-empty"}`} value={guna.sterilisasi} onChange={e => setG("sterilisasi")(e.target.value)}>
+              <option value="">Pilih sterilisasi</option>
+              {STERILISASI_LIST.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </Field>
+
+          <span className="fh-overline">Gas</span>
+          <div className="fh-card fh-card-body" style={{ gap: 14 }}>
+            <GasFields data={guna} setData={setGuna} />
+          </div>
+
+          <Field label="Keterangan">
+            <textarea className="fh-textarea" rows={2} value={guna.keterangan} onChange={e => setG("keterangan")(e.target.value)} placeholder="Catatan tambahan" />
+          </Field>
+        </>
+      )}
+
+      {/* ══ FORM PEMAKAIAN GAS ═════════════════════════════════════════════════ */}
+      {step === "form_gas" && (
+        <>
+          <div className="fh-grid-2" style={{ gap: 12 }}>
+            <Field label="Waktu mulai">
+              <input className="fh-input" type="time" value={gas.waktuMulai} onChange={e => setGas(d => ({ ...d, waktuMulai: e.target.value }))} />
+            </Field>
+            <Field label="Waktu selesai">
+              <input className="fh-input" type="time" value={gas.waktuSelesai} onChange={e => setGas(d => ({ ...d, waktuSelesai: e.target.value }))} />
+            </Field>
+          </div>
+          <GasFields data={gas} setData={setGas} required peruntukanLainnya={false} />
+        </>
+      )}
+
+      {/* ══ REKAP ══════════════════════════════════════════════════════════════ */}
+      {step === "rekap" && (
+        <>
+          <label className="fh-section">
+            <span className="fh-label">Operator</span>
+            <input className={`fh-input${operator.trim() ? "" : " is-error"}`} value={operator} onChange={e => setOperator(e.target.value)} placeholder="Nama operator" />
+            <p className="fh-hint">Terisi dari akun login. Ubah bila yang mengisi orang lain.</p>
+          </label>
+
+          <ReviewTable title="Umum" info={[
+            ["Tanggal", formatTanggal()],
+            ["GH", selectedGH],
+            ["Kegiatan", kegiatanLabel(activity)],
+          ]} />
+
+          {activity === "oles_gsb" && (
+            <ReviewTable title="Oles GSB" info={[
+              ["Pestisida", pestisidaGSB],
+              ["Konsentrasi", konsentrasiGSB],
+              ["Penggunaan", `${penggunaanGram} gram`],
+            ]} />
+          )}
+
+          {activity === "penggunaan_ambil" && (
+            <ReviewTable title="Pengambilan" info={[
+              ["Ada pengambilan", adaPengambilan ? "Ya" : "Tidak"],
+              ...(adaPengambilan ? [["Pestisida", ambil.namaPestisida], ["Jumlah", ambil.jumlah]] : []),
+            ]} />
+          )}
+
+          {activity === "pemakaian_gas" && (
+            <ReviewTable title="Pemakaian gas" info={[
+              ...(gas.waktuMulai   ? [["Waktu mulai", gas.waktuMulai]] : []),
+              ...(gas.waktuSelesai ? [["Waktu selesai", gas.waktuSelesai]] : []),
+              ["Nomor gas", gas.nomorGas],
+              ["Gas baru", gas.gasBaru ? "Ya" : "Tidak"],
+              ["Peruntukan", gas.peruntukan],
+            ]} />
+          )}
+
+          {activity === "penggunaan_ambil" && guna.namaPestisida && (
+            <ReviewTable title="Penggunaan" info={[
+              ["Pestisida", guna.namaPestisida],
+              ["Konsentrasi", guna.konsentrasi],
+              ["Pemakaian", guna.jumlahPemakaian],
+              ["Pencampuran", guna.jenisCampuran === "campuran" ? "Campuran" : "Tanpa campuran"],
+              ...(guna.jenisCampuran === "campuran" ? [
+                ["Pestisida ke-2", guna.namaPestisida2],
+                ["Konsentrasi ke-2", guna.konsentrasi2],
+                ["Pemakaian ke-2", guna.jumlahPemakaian2],
+              ] : []),
+              ...(guna.suhuMulai    ? [["Suhu mulai", `${guna.suhuMulai.replace(".", ",")} °C`]] : []),
+              ...(guna.rhMulai      ? [["RH mulai", `${guna.rhMulai.replace(".", ",")} %`]] : []),
+              ...(guna.suhuSelesai  ? [["Suhu selesai", `${guna.suhuSelesai.replace(".", ",")} °C`]] : []),
+              ...(guna.rhSelesai    ? [["RH selesai", `${guna.rhSelesai.replace(".", ",")} %`]] : []),
+              ...(guna.waktuMulai   ? [["Waktu mulai", guna.waktuMulai]] : []),
+              ...(guna.waktuSelesai ? [["Waktu selesai", guna.waktuSelesai]] : []),
+              ...(guna.waktuPeriode ? [["Waktu", guna.waktuPeriode]] : []),
+              ...(guna.varianTidakDisemprot ? [["Varian dilewati", guna.varianTidakDisemprot]] : []),
+              ...(guna.sterilisasi  ? [["Sterilisasi", guna.sterilisasi]] : []),
+              ...(guna.nomorGas     ? [["Nomor gas", guna.nomorGas]] : []),
+              ...(guna.gasBaru !== null ? [["Gas baru", guna.gasBaru ? "Ya" : "Tidak"]] : []),
+              ...(guna.peruntukan   ? [["Peruntukan", guna.peruntukan]] : []),
+              ...(guna.keterangan   ? [["Keterangan", guna.keterangan]] : []),
+            ]} />
+          )}
+
+          {submitError && <FieldAlert tone="danger">{submitError}</FieldAlert>}
+        </>
+      )}
+
+      {/* ══ SUKSES ══════════════════════════════════════════════════════════════ */}
+      {step === "sukses" && (
+        <SuccessState
+          offline={savedOffline}
+          title={isDemoMode ? "Demo selesai" : savedOffline ? "Tersimpan di perangkat" : `${kegiatanLabel(activity)} terkirim`}
+          description={isDemoMode
+            ? "Data tidak dikirim (mode demo)."
+            : savedOffline
+              ? `Terkirim otomatis ke sheet saat online.${pendingCount > 0 ? ` ${pendingCount} isian menunggu.` : ""}`
+              : "Data masuk ke sheet."}
+          summary={[
+            ["GH", selectedGH],
+            ["Isian", activity === "oles_gsb"
+              ? `${pestisidaGSB} · ${konsentrasiGSB} · ${penggunaanGram} g`
+              : activity === "pemakaian_gas"
+                ? `Gas ${gas.nomorGas} · ${gas.peruntukan}`
+                : `${guna.namaPestisida} ${guna.konsentrasi} ${guna.jumlahPemakaian}${guna.jenisCampuran === "campuran" ? ` + ${guna.namaPestisida2} ${guna.konsentrasi2} ${guna.jumlahPemakaian2}` : ""}`],
+            ["Operator", operator],
+          ]}
+        />
+      )}
+
+      {/* ══ Ada pengambilan obat? ══════════════════════════════════════════════ */}
+      <Dialog
+        open={step === "form_ambil" && adaPengambilan === null}
+        title="Ada pengambilan obat hari ini?"
+        onClose={goBack}
+        actions={
+          <div className="fh-section">
+            <button type="button" className="fh-btn fh-btn-primary" onClick={() => handleAnswerAmbil(true)}>Ya, ada pengambilan</button>
+            <button type="button" className="fh-btn fh-btn-secondary" onClick={() => handleAnswerAmbil(false)}>Tidak, langsung ke penggunaan</button>
+          </div>
+        }
+      >
+        Pengambilan pestisida dari gudang atau supplier.
+      </Dialog>
+    </FormShell>
   );
 }

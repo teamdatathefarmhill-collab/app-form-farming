@@ -469,3 +469,54 @@
 .fh-count-row.is-sub { padding-left: 28px; background: var(--surface-sunken); border-top: none; }
 .fh-count-row.is-sub .fh-count-label { font-size: 13px; color: var(--ink-700); }
 .fh-count-row.is-sub .fh-stepper-btn, .fh-count-row.is-sub .fh-input { height: var(--touch-min); min-height: var(--touch-min); }
+
+/* ─── Chip pilihan (Penyemprotan) ─── */
+.fh-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fh-chip {
+  min-height: var(--touch-min); padding: 0 14px;
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface); color: var(--ink-700);
+  border: 1px solid var(--border-strong); border-radius: var(--radius-input);
+  font-size: 15px; cursor: pointer;
+}
+.fh-chip.is-active { background: var(--leaf-50); border-color: var(--leaf-600); box-shadow: inset 0 0 0 1px var(--leaf-600); color: var(--leaf-700); font-weight: 600; }
+.fh-chip.is-dashed { border-style: dashed; }
+
+/* ─── Segmented (pilihan sejajar sama lebar) ─── */
+.fh-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
+.fh-seg .fh-chip { justify-content: center; padding: 0 6px; }
+
+/* ─── Input dengan satuan di dalam ─── */
+.fh-unit { position: relative; }
+.fh-unit .fh-input { padding-right: 56px; }
+.fh-unit-label {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  font-size: 13px; color: var(--ink-500); pointer-events: none;
+}
+
+/* ─── Combobox pencarian (picker pestisida) ─── */
+.fh-combo { position: relative; }
+.fh-combo-list {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 30;
+  max-height: 240px; overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-card);
+  box-shadow: 0 8px 24px rgba(31, 42, 34, 0.12);
+}
+.fh-combo-item {
+  width: 100%; min-height: var(--touch-min); padding: 0 14px;
+  display: flex; align-items: center; gap: 8px;
+  background: none; border: none; border-bottom: 1px solid var(--border-default);
+  color: var(--ink-900); font-size: 15px; text-align: left; cursor: pointer;
+}
+.fh-combo-item:hover { background: var(--surface-sunken); }
+.fh-combo-item.is-manual { color: var(--leaf-700); font-weight: 600; border-bottom: none; }
+.fh-picked {
+  display: flex; align-items: center; gap: 8px;
+  min-height: var(--touch); padding: 0 4px 0 14px;
+  background: var(--leaf-50); border: 1px solid var(--leaf-600); border-radius: var(--radius-input);
+  color: var(--leaf-700); font-weight: 600; font-size: 15px;
+}
+.fh-picked span { flex: 1; }
+
+/* ─── Kartu pilihan kegiatan ─── */
+.fh-option-desc { display: block; font-size: 13px; color: var(--ink-500); font-weight: 400; margin-top: 2px; }
