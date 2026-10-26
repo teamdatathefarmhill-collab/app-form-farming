@@ -11,3 +11,4 @@ export { default as EntryTable } from "./EntryTable";
 export { default as Dialog } from "./Dialog";
 export { default as SegmentTabs } from "./SegmentTabs";
 export { default as Stepper } from "./Stepper";
+export { default as GoodNotGood } from "./GoodNotGood";

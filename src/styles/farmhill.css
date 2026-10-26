@@ -432,3 +432,17 @@
 .fh-field-title { font-size: 15px; font-weight: 600; line-height: 1.25; }
 .fh-field-unit { font-size: 13px; color: var(--ink-500); }
 .fh-mini-label { font-size: 13px; color: var(--ink-500); text-align: center; display: block; margin-bottom: 4px; }
+
+/* ─── GoodNotGood ─── */
+.fh-gng { display: flex; gap: 6px; }
+.fh-gng-btn {
+  flex: 1; min-height: var(--touch-min);
+  background: var(--surface); color: var(--ink-700);
+  border: 1px solid var(--border-strong); border-radius: var(--radius-input);
+  font-size: 15px; font-weight: 600; cursor: pointer;
+}
+.fh-gng-btn.is-good { background: var(--leaf-600); border-color: var(--leaf-600); color: #fff; }
+.fh-gng-btn.is-bad  { background: var(--status-danger-fg); border-color: var(--status-danger-fg); color: #fff; }
+.fh-check-item { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.fh-check-item.is-bad { border-color: var(--status-danger-border); background: var(--status-danger-bg); }
+.fh-check-label { font-size: 15px; line-height: 1.4; }

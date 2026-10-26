@@ -3,15 +3,15 @@ import { useDraft } from "../hooks/useDraft";
 import { useAuth } from "../hooks/useAuth";
 import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch, gasPost } from "../utils/idb";
 import html2canvas from "html2canvas";
-import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
-import { color } from "../styles/tokens";
+import { FormShell, FieldAlert, SuccessState, GHPicker, ReviewTable, Dialog, SegmentTabs, GoodNotGood, Icon } from "../components/form";
+import { formatTanggal } from "../lib/format";
 
 const DB_NAME    = "KesiapanOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_KESIAPAN_URL;
 
+// todayISO dikirim ke sheet (format dd/mm/yyyy) — jangan diubah
 const todayISO   = new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
-const todayLabel = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
 // ─── Data GH per Tipe ────────────────────────────────────────
 const GH_PER_TIPE = {
@@ -239,10 +239,11 @@ function hitungMaxTotal(tipe) {
 
 // Status berdasarkan persentase bobot terpenuhi
 // ≥ 70% = Siap Tanam, 50-69% = Perlu Perbaikan, < 50% = Tidak Layak
+// label dikirim ke sheet sebagai `status` — jangan diubah
 function statusDariPersen(persen) {
-  if (persen >= 70) return { label: "Siap Tanam",      warna: color.brand700, bg: color.brandBg, border: color.brand300 };
-  if (persen >= 50) return { label: "Perlu Perbaikan", warna: color.warning, bg: color.warningBg, border: color.warningBorder };
-  return               { label: "Tidak Layak",    warna: color.dangerDeep, bg: color.dangerBg, border: color.dangerBorder };
+  if (persen >= 70) return { label: "Siap Tanam",      tone: "success" };
+  if (persen >= 50) return { label: "Perlu Perbaikan", tone: "warning" };
+  return               { label: "Tidak Layak",    tone: "danger" };
 }
 
 function statusAspek(aspek, scores) {
@@ -291,11 +292,10 @@ export default function KesiapanGH() {
   const [showKodeInput, setShowKodeInput] = useState(false);
   const [kodeInput, setKodeInput]         = useState("");
   const [kodeError, setKodeError]         = useState("");
-  const [confirmOpen, setConfirmOpen]     = useState(false);
 
   const aspekList   = tipe ? MATRIKS[tipe] : [];
   const allItems    = aspekList.flatMap(a => a.items);
-  const filledCount = allItems.filter(i => scores[i.code] !== null).length;
+  const filledCount = allItems.filter(i => scores[i.code] !== null && scores[i.code] !== undefined).length;
   const allFilled   = allItems.length > 0 && filledCount === allItems.length;
   const totalBobot  = hitungTotalBobot(tipe, scores);
   const maxTotal    = hitungMaxTotal(tipe);
@@ -332,7 +332,7 @@ export default function KesiapanGH() {
       try {
         const json = await gasPost(SCRIPT_URL, record.payload);
         if (json.success) { markSubmittedLocal(record.key); await idbDelete(DB_NAME, record.id); }
-      } catch {}
+      } catch { /* gagal kirim record ini — coba lagi nanti */ }
     }
     await refreshPendingCount();
     setIsSyncingPending(false);
@@ -360,6 +360,9 @@ export default function KesiapanGH() {
     }
   }, []);
 
+  // Draft yang dipulihkan sudah punya tipe → ambil status "sudah dicek" tanpa harus pilih ulang
+  useEffect(() => { if (tipe) fetchSubmitted(tipe); }, []);
+
   const handleSelectTipe = (t) => {
     setTipe(t); setGh("");
     setScores(initScores(t));
@@ -376,6 +379,7 @@ export default function KesiapanGH() {
 
   const doSelectGH = (g) => {
     setGh(g); setShowWarning(false); setPendingGH("");
+    setStep(2);
   };
 
   const setScore = (code, val) => setScores(prev => ({ ...prev, [code]: val }));
@@ -407,7 +411,7 @@ export default function KesiapanGH() {
     setDownloading(true);
     try {
       const canvas = await html2canvas(rekapRef.current, {
-        backgroundColor: color.bg,
+        backgroundColor: "#f7f5ee",
         scale: 2,
         useCORS: true,
         logging: false,
@@ -436,7 +440,7 @@ export default function KesiapanGH() {
         markSubmittedLocal(submittedKey);
         setSubmittedToday(prev => [...new Set([...prev, submittedKey])]);
         clearDraft(); setSavedOffline(true); setStep(4);
-      } catch { setSubmitError("Gagal menyimpan offline. Coba lagi."); }
+      } catch { setSubmitError("Data belum tersimpan di perangkat. Tekan Simpan offline sekali lagi."); }
       finally { setSubmitting(false); }
       return;
     }
@@ -448,7 +452,7 @@ export default function KesiapanGH() {
       setSubmittedToday(prev => [...new Set([...prev, submittedKey])]);
       clearDraft(); setSavedOffline(false); setStep(4);
     } catch (err) {
-      setSubmitError("Gagal kirim data. " + err.message);
+      setSubmitError(`Data belum terkirim (${err.message}). Cek sinyal lalu tekan Kirim lagi.`);
     } finally {
       setSubmitting(false);
     }
@@ -460,374 +464,290 @@ export default function KesiapanGH() {
     setActiveAspek(""); setSubmitError(null); setSavedOffline(false);
   };
 
-  const activeAspekData = aspekList.find(a => a.key === activeAspek);
+  const closeWarning = () => {
+    setShowWarning(false); setPendingGH(""); setShowKodeInput(false); setKodeInput(""); setKodeError("");
+  };
+
+  const verifikasiKode = () => {
+    const now = new Date();
+    const dd = String(now.getDate()).padStart(2, "0");
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const kodeHariIni = `${dd}${mm}`;
+    if (kodeInput === kodeHariIni) {
+      doSelectGH(pendingGH);
+      setShowKodeInput(false);
+      setKodeInput("");
+      setKodeError("");
+    } else {
+      setKodeError("Kode salah. Hubungi Team Data untuk kode hari ini.");
+    }
+  };
+
+  // Aspek aktif default ke aspek pertama — draft yang dipulihkan tidak menyimpan tab aktif
+  const activeKey       = activeAspek || aspekList[0]?.key || "";
+  const activeIdx       = aspekList.findIndex(a => a.key === activeKey);
+  const activeAspekData = aspekList[activeIdx];
+  const nextAspek       = aspekList[activeIdx + 1];
+  const isFilledItem    = (code) => scores[code] !== null && scores[code] !== undefined;
+  const goodCount       = allItems.filter(i => scores[i.code] === "good").length;
+  const notGoodCount    = allItems.filter(i => scores[i.code] === "notgood").length;
+
+  const goToAspek = (key) => { setActiveAspek(key); window.scrollTo(0, 0); };
+
+  // ── Header ──
+  const title = step === 2 || step === 3 ? `Kesiapan · ${gh}` : "Kesiapan GH";
+  const subtitle = step === 1
+    ? `${formatTanggal()} · Langkah 1 dari 3`
+    : step === 4
+      ? formatTanggal()
+      : `${tipe} · Langkah ${step} dari 3`;
+  const onBack = step === 2 ? () => setStep(1) : step === 3 ? () => { setStep(2); setSubmitError(null); } : undefined;
+
+  // ── Footer ──
+  let footer = null;
+  if (step === 2) {
+    footer = (
+      <button type="button" className="fh-btn fh-btn-primary" disabled={!allFilled} onClick={() => setStep(3)}>
+        {allFilled ? "Lihat rekap" : `${allItems.length - filledCount} variabel belum dinilai`}
+      </button>
+    );
+  } else if (step === 3) {
+    footer = (
+      <div className="fh-btn-row">
+        <button type="button" className="fh-btn fh-btn-secondary" onClick={() => { setStep(2); setSubmitError(null); }}>Kembali</button>
+        <button type="button" className="fh-btn fh-btn-primary" disabled={submitting} onClick={handleSubmit}>
+          {submitting ? "Mengirim…" : !isOnline ? "Simpan offline" : "Kirim penilaian"}
+        </button>
+      </div>
+    );
+  } else if (step === 4) {
+    footer = <button type="button" className="fh-btn fh-btn-secondary" onClick={resetForm}>Cek GH lain</button>;
+  }
 
   // ─── RENDER ────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: "100vh", background: color.bg, fontFamily: "'DM Sans','Segoe UI',sans-serif" }}>
+    <FormShell title={title} subtitle={subtitle} steps={step < 4 ? 3 : 0} step={step} onBack={onBack} footer={footer}>
 
-      {/* Header */}
-      <div style={{ background: "#004D40", color: color.card, padding: "14px 16px 10px", position: "sticky", top: 0, zIndex: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <div style={{ fontSize: 10, opacity: 0.75, letterSpacing: 1.5, textTransform: "uppercase" }}>Form Kesiapan GH</div>
-            <div style={{ fontSize: 13, opacity: 0.65, marginTop: 1 }}>{todayLabel}</div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {pendingCount > 0 && (
-              <button onClick={isOnline ? syncPending : undefined}
-                style={{ fontSize: 10, fontWeight: 700, background: isOnline ? "rgba(33,150,243,0.3)" : "rgba(255,179,0,0.3)", border: `1px solid ${isOnline ? "rgba(33,150,243,0.6)" : "rgba(255,179,0,0.6)"}`, color: color.card, padding: "2px 8px", borderRadius: 20, cursor: isOnline ? "pointer" : "default" }}>
-                {isSyncingPending ? "⏳" : "📤"} {pendingCount} pending
-              </button>
-            )}
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: isOnline ? color.brand300 : color.dangerBorder }} />
-            <span style={{ fontSize: 10, opacity: 0.6 }}>{user?.nama}</span>
-          </div>
-        </div>
-        {step < 4 && (
-          <div style={{ display: "flex", gap: 4, marginTop: 10 }}>
-            {[1,2,3].map(s => (
-              <div key={s} style={{ flex: 1, height: 3, borderRadius: 2, background: s <= step ? "#80CBC4" : "rgba(255,255,255,0.2)", transition: "background 0.3s" }} />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Modal double submit */}
-      {showWarning && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: color.card, borderRadius: 16, padding: 24, width: "100%", maxWidth: 360 }}>
-            <div style={{ fontSize: 36, textAlign: "center", marginBottom: 12 }}>⚠️</div>
-            <div style={{ fontWeight: 700, fontSize: 16, color: color.text, textAlign: "center", marginBottom: 8 }}>GH Sudah Dicek Hari Ini</div>
-            <div style={{ fontSize: 13, color: color.textMuted, textAlign: "center", marginBottom: 8, lineHeight: 1.5 }}>
-              <strong>{tipe} · {pendingGH}</strong> sudah disubmit hari ini.
-            </div>
-
-            {!showKodeInput ? (
-              <>
-                <div style={{ fontSize: 12, color: color.textSoft, textAlign: "center", marginBottom: 20, lineHeight: 1.5 }}>
-                  Jika ada kesalahan input, hubungi Team Data untuk konfirmasi dan dapatkan kode akses.
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  <a href={`https://wa.me/08559932224?text=${encodeURIComponent(`Halo Team Data, saya ${user?.nama} ingin melaporkan kesalahan input pada Kesiapan GH.\nTipe: ${tipe}\nGreenhouse: ${pendingGH}\nTanggal: ${todayISO}\n\nMohon kode akses untuk pengisian ulang. Terima kasih.`)}`}
-                    target="_blank" rel="noreferrer"
-                    style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: 12, background: "#25D366", border: "none", borderRadius: 10, color: color.card, fontSize: 14, fontWeight: 700, cursor: "pointer", textDecoration: "none", boxSizing: "border-box" }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill={color.card}><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/></svg>
-                    Hubungi Team Data via WhatsApp
-                  </a>
-                  <button onClick={() => setShowKodeInput(true)}
-                    style={{ padding: 11, background: "#e0f2f1", border: "1px solid #80CBC4", borderRadius: 10, color: "#004D40", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-                    Sudah punya kode akses
-                  </button>
-                  <button onClick={() => { setShowWarning(false); setPendingGH(""); setKodeInput(""); setKodeError(""); }}
-                    style={{ padding: 11, background: color.bg, border: `1px solid ${color.border}`, borderRadius: 10, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-                    Kembali
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize: 12, color: color.textSoft, textAlign: "center", marginBottom: 16, lineHeight: 1.5 }}>
-                  Masukkan kode akses dari Team Data untuk melanjutkan.
-                </div>
-                <input
-                  type="number" inputMode="numeric" maxLength={4}
-                  value={kodeInput} onChange={e => { setKodeInput(e.target.value); setKodeError(""); }}
-                  placeholder="Kode 4 digit"
-                  style={{ width: "100%", padding: "12px", textAlign: "center", fontSize: 24, fontWeight: 700, letterSpacing: 8, border: `2px solid ${kodeError ? color.dangerBorder : color.border}`, borderRadius: 10, outline: "none", boxSizing: "border-box", marginBottom: 8, color: color.text }}
-                />
-                {kodeError && (
-                  <div style={{ fontSize: 12, color: color.dangerDeep, textAlign: "center", marginBottom: 8 }}>⚠️ {kodeError}</div>
-                )}
-                <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
-                  <button onClick={() => { setShowKodeInput(false); setKodeInput(""); setKodeError(""); }}
-                    style={{ flex: 1, padding: 11, background: color.bg, border: `1px solid ${color.border}`, borderRadius: 10, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-                    ← Kembali
-                  </button>
-                  <button onClick={() => {
-                    const now = new Date();
-                    const dd = String(now.getDate()).padStart(2, "0");
-                    const mm = String(now.getMonth() + 1).padStart(2, "0");
-                    const kodeHariIni = `${dd}${mm}`;
-                    if (kodeInput === kodeHariIni) {
-                      doSelectGH(pendingGH);
-                      setShowKodeInput(false);
-                      setKodeInput("");
-                      setKodeError("");
-                    } else {
-                      setKodeError("Kode salah. Hubungi Team Data.");
-                    }
-                  }}
-                    style={{ flex: 1, padding: 11, background: "#004D40", border: "none", borderRadius: 10, color: color.card, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-                    Verifikasi
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+      {/* ── Status koneksi & antrean ── */}
+      {step < 4 && !isOnline && (
+        <FieldAlert tone="info">Mode offline. Data disimpan di perangkat dan terkirim otomatis saat online.</FieldAlert>
+      )}
+      {step < 4 && pendingCount > 0 && (
+        <FieldAlert
+          tone="warning"
+          action={isOnline && !isSyncingPending ? { label: "Kirim sekarang", onClick: syncPending } : undefined}
+        >
+          {isSyncingPending ? "Mengirim data tertunda…" : `${pendingCount} penilaian tersimpan offline, belum terkirim.`}
+        </FieldAlert>
       )}
 
-      <div style={{ padding: 16 }}>
+      {/* ══ STEP 1 — Pilih Tipe & GH ══ */}
+      {step === 1 && (
+        <>
+          <section className="fh-section">
+            <span className="fh-label">Tipe GH</span>
+            <SegmentTabs
+              label="Tipe GH"
+              value={tipe}
+              onChange={handleSelectTipe}
+              tabs={TIPE_LIST.map(t => ({ key: t, label: t }))}
+            />
+            <p className="fh-hint">Daftar variabel penilaian mengikuti tipe GH.</p>
+          </section>
 
-        {/* ══ STEP 1 — Pilih Tipe & GH ══ */}
-        {step === 1 && (
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 18, color: "#004D40", marginBottom: 4 }}>Pilih Tipe & Greenhouse</div>
-            <div style={{ fontSize: 12, color: color.textSoft, marginBottom: 16 }}>Pilih tipe GH terlebih dahulu</div>
-
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Tipe GH</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {TIPE_LIST.map(t => (
-                  <button key={t} onClick={() => handleSelectTipe(t)}
-                    style={{ padding: "12px 16px", borderRadius: 12, cursor: "pointer", textAlign: "left", border: tipe === t ? "2px solid #004D40" : `1.5px solid ${color.border}`, background: tipe === t ? "#e0f2f1" : color.card, color: tipe === t ? "#004D40" : color.text, fontSize: 14, fontWeight: tipe === t ? 700 : 500, display: "flex", alignItems: "center", justifyContent: "space-between", transition: "all 0.2s" }}>
-                    <span>{t}</span>
-                    {tipe === t && <span>✓</span>}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {tipe && (
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
-                  Nama Greenhouse
-                  {loadingSubmitted && <span style={{ fontSize: 10, fontWeight: 400, color: color.textGhost, marginLeft: 8 }}>memeriksa data...</span>}
+          {tipe ? (
+            <>
+              <section className="fh-section">
+                <div className="fh-section-head">
+                  <span className="fh-label">Pilih GH</span>
+                  {loadingSubmitted && <span className="fh-meta">mengecek status…</span>}
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  {(GH_PER_TIPE[tipe] || []).map(g => {
-                    const sudahIsi = submittedToday.includes(`${tipe}__${g}`);
-                    const sel = gh === g;
-                    return (
-                      <button key={g} onClick={() => handleSelectGH(g)}
-                        style={{ padding: "10px 8px", borderRadius: 10, cursor: "pointer", textAlign: "center", border: sel ? "2px solid #004D40" : sudahIsi ? `1px solid ${color.warningBorder}` : `1px solid ${color.border}`, background: sel ? "#e0f2f1" : sudahIsi ? "#fff8e1" : color.card, color: sel ? "#004D40" : color.text, fontSize: 13, fontWeight: sel ? 700 : 500, transition: "all 0.2s" }}>
-                        <div>{g}</div>
-                        {sudahIsi && <div style={{ fontSize: 10, color: color.warning, marginTop: 2 }}>✓ Sudah dicek</div>}
-                        {sel && !sudahIsi && <div style={{ fontSize: 11, marginTop: 2 }}>✓</div>}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+              </section>
+              <GHPicker
+                selected={gh}
+                onSelect={handleSelectGH}
+                items={(GH_PER_TIPE[tipe] || []).map(g => {
+                  const sudahIsi = submittedToday.includes(`${tipe}__${g}`);
+                  const blockedInfo = blockedMap[g.trim().toUpperCase()];
+                  const badges = [];
+                  if (blockedInfo) badges.push({ label: blockedInfo.aksi, tone: "danger" });
+                  if (sudahIsi) badges.push({ label: "Sudah dicek", tone: "success" });
+                  return { gh: g, badges, done: sudahIsi };
+                })}
+              />
+            </>
+          ) : (
+            <p className="fh-empty">Pilih tipe GH dulu.</p>
+          )}
+        </>
+      )}
 
-        {/* ══ STEP 2 — Penilaian ══ */}
-        {step === 2 && (
-          <div>
-            {/* Badge info */}
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-              <div style={{ background: "#e0f2f1", border: "1px solid #80CBC4", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#004D40", fontWeight: 700 }}>{tipe}</div>
-              <div style={{ background: color.bg, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: color.textMuted }}>{gh}</div>
+      {/* ══ STEP 2 — Penilaian ══ */}
+      {step === 2 && (
+        <>
+          <section className="fh-section">
+            <div className="fh-section-head">
+              <span className="fh-label">Penilaian</span>
+              <span className="fh-meta">{filledCount}/{allItems.length} variabel</span>
             </div>
-
-            {/* Progress */}
-            <div style={{ fontSize: 12, color: color.textSoft, marginBottom: 4 }}>{filledCount}/{allItems.length} variabel terisi</div>
-            <div style={{ background: color.border, borderRadius: 4, height: 5, marginBottom: 14, overflow: "hidden" }}>
-              <div style={{ height: "100%", borderRadius: 4, background: "#00897B", width: `${allItems.length > 0 ? (filledCount / allItems.length) * 100 : 0}%`, transition: "width 0.3s" }} />
+            <div className="fh-bar">
+              <span style={{ width: `${allItems.length > 0 ? (filledCount / allItems.length) * 100 : 0}%` }} />
             </div>
+          </section>
 
-            {/* Tab Aspek */}
-            <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 6, marginBottom: 14 }}>
-              {aspekList.map(a => {
-                const katFilled = a.items.every(i => scores[i.code] !== null);
-                const isActive  = activeAspek === a.key;
+          <SegmentTabs
+            label="Aspek"
+            value={activeKey}
+            onChange={setActiveAspek}
+            tabs={aspekList.map(a => ({
+              key: a.key,
+              label: a.label,
+              count: `${a.items.filter(i => isFilledItem(i.code)).length}/${a.items.length}`,
+            }))}
+          />
+
+          {activeAspekData && (
+            <section className="fh-section">
+              {activeAspekData.items.map(item => {
+                const val = scores[item.code];
                 return (
-                  <button key={a.key} onClick={() => setActiveAspek(a.key)}
-                    style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 20, border: `1.5px solid ${isActive ? "#004D40" : color.border}`, background: isActive ? "#e0f2f1" : color.card, color: isActive ? "#004D40" : color.textSoft, fontSize: 11, fontWeight: isActive ? 700 : 400, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}>
-                    {a.label}
-                    {katFilled && <span style={{ fontSize: 10 }}>✅</span>}
-                  </button>
+                  <div key={item.code} className={`fh-card fh-check-item${val === "notgood" ? " is-bad" : ""}`}>
+                    <span className="fh-check-label">{item.label}</span>
+                    <GoodNotGood label={item.label} value={val} onChange={v => setScore(item.code, v)} />
+                  </div>
                 );
               })}
-            </div>
-
-            {/* Item penilaian */}
-            {activeAspekData && (
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
-                  {activeAspekData.label}
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  {activeAspekData.items.map(item => {
-                    const val = scores[item.code];
-                    return (
-                      <div key={item.code} style={{ background: color.card, border: `1.5px solid ${val === "notgood" ? color.dangerBorder : val === "good" ? color.brand300 : color.border}`, borderRadius: 12, padding: "10px 12px" }}>
-                        <div style={{ fontSize: 12, color: color.text, fontWeight: 500, marginBottom: 8, minHeight: 32, display: "flex", alignItems: "center" }}>{item.label}</div>
-                        <div style={{ display: "flex", gap: 6 }}>
-                          <button onClick={() => setScore(item.code, "good")}
-                            style={{ flex: 1, padding: "8px 4px", borderRadius: 8, border: `1.5px solid ${val === "good" ? color.brand300 : color.border}`, background: val === "good" ? color.brandBg : "#fafafa", color: val === "good" ? color.brand700 : color.textGhost, fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all .15s" }}>
-                            Good
-                          </button>
-                          <button onClick={() => setScore(item.code, "notgood")}
-                            style={{ flex: 1, padding: "8px 4px", borderRadius: 8, border: `1.5px solid ${val === "notgood" ? color.dangerBorder : color.border}`, background: val === "notgood" ? color.dangerBg : "#fafafa", color: val === "notgood" ? color.dangerDeep : color.textGhost, fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all .15s" }}>
-                            Not Good
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ══ STEP 3 — Rekap ══ */}
-        {step === 3 && (
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 18, color: "#004D40", marginBottom: 4 }}>Rekap Sebelum Submit</div>
-            <div style={{ fontSize: 12, color: color.textSoft, marginBottom: 16 }}>Pastikan semua data sudah benar</div>
-
-            {/* Konten yang akan di-screenshot */}
-            <div ref={rekapRef} style={{ background: color.bg, padding: 8, borderRadius: 14 }}>
-
-              {/* Header laporan */}
-              <div style={{ background: "#004D40", borderRadius: 10, padding: "12px 16px", marginBottom: 10, display: "flex", alignItems: "center", gap: 12 }}>
-                <img src="/logo-farmhill.png" alt="Farmhill" style={{ height: 36, borderRadius: 6, background: color.card, padding: "2px 6px" }} />
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: color.card }}>Laporan Kesiapan Greenhouse</div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.65)" }}>PT. Kebun Bumi Lestari · {todayLabel}</div>
-                </div>
-              </div>
-
-              {/* Info umum */}
-              <div style={{ background: color.card, borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 10 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>📋 Informasi Umum</div>
-                {[["Tanggal", todayISO], ["Operator", user?.nama], ["Tipe GH", tipe], ["Greenhouse", gh]].map(([l, v]) => (
-                  <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #f0f0f0" }}>
-                    <span style={{ fontSize: 12, color: color.textMuted }}>{l}</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: color.text }}>{v}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Rekap per aspek — hanya Good/Not Good count, tanpa bobot */}
-              <div style={{ background: color.card, borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 10 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#00897B", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>📋 Rekap Per Aspek</div>
-                {aspekList.map(a => {
-                  const goodCount    = a.items.filter(i => scores[i.code] === "good").length;
-                  const notGoodCount = a.items.filter(i => scores[i.code] === "notgood").length;
-                  return (
-                    <div key={a.key} style={{ padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontSize: 12, color: color.text, fontWeight: 500 }}>{a.label}</span>
-                        <div style={{ display: "flex", gap: 6 }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, background: color.brandBg, color: color.brand700, border: `1px solid ${color.brand300}`, borderRadius: 20, padding: "2px 10px" }}>✓ {goodCount} Good</span>
-                          {notGoodCount > 0 && (
-                            <span style={{ fontSize: 11, fontWeight: 700, background: color.dangerBg, color: color.dangerDeep, border: `1px solid ${color.dangerBorder}`, borderRadius: 20, padding: "2px 10px" }}>✗ {notGoodCount} Not Good</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                {/* Total simpel */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 10, marginTop: 4 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: color.text }}>Total</span>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, background: color.brandBg, color: color.brand700, border: `1px solid ${color.brand300}`, borderRadius: 20, padding: "3px 12px" }}>
-                      ✓ {allItems.filter(i => scores[i.code] === "good").length} Good
-                    </span>
-                    <span style={{ fontSize: 12, fontWeight: 700, background: color.dangerBg, color: color.dangerDeep, border: `1px solid ${color.dangerBorder}`, borderRadius: 20, padding: "3px 12px" }}>
-                      ✗ {allItems.filter(i => scores[i.code] === "notgood").length} Not Good
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-            </div>{/* end rekapRef */}
-
-            {/* Tombol download PNG */}
-            <button onClick={handleDownloadPNG} disabled={downloading}
-              style={{ width: "100%", padding: 12, marginBottom: 10, border: "1.5px solid #00897B", borderRadius: 12, background: downloading ? color.border : "#e0f2f1", color: downloading ? color.textGhost : "#004D40", fontSize: 14, fontWeight: 700, cursor: downloading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-              {downloading ? "⏳ Menyimpan..." : "📥 Download Laporan PNG"}
-            </button>
-
-            {submitError && (
-              <div style={{ fontSize: 12, color: color.dangerDeep, background: color.dangerBg, border: `1px solid ${color.dangerBorder}`, borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>⚠️ {submitError}</div>
-            )}
-          </div>
-        )}
-
-        {/* ══ STEP 4 — Sukses ══ */}
-        {step === 4 && (
-          <div style={{ textAlign: "center", paddingTop: 32 }}>
-            <div style={{ fontSize: 60, marginBottom: 12 }}>{savedOffline ? "💾" : "✅"}</div>
-            <div style={{ fontSize: 21, fontWeight: 800, color: savedOffline ? color.info : "#004D40", marginBottom: 6 }}>
-              {savedOffline ? "Tersimpan Lokal!" : "Penilaian Tersimpan!"}
-            </div>
-            <div style={{ fontSize: 13, color: color.textSoft, marginBottom: 20 }}>
-              {savedOffline ? "Otomatis terkirim saat online." : "Data berhasil dikirim ke Google Sheets"}
-            </div>
-            <div style={{ background: savedOffline ? color.infoBg : "#e0f2f1", border: `1px solid ${savedOffline ? color.infoBorder : "#80CBC4"}`, borderRadius: 14, padding: 16, textAlign: "left", marginBottom: 20 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#004D40" }}>{tipe} · {gh}</div>
-              <div style={{ fontSize: 13, color: color.textMuted, marginTop: 2 }}>Operator: {user?.nama} · {todayISO}</div>
-              <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(0,0,0,0.06)", display: "flex", gap: 10, justifyContent: "center" }}>
-                <span style={{ fontSize: 13, fontWeight: 700, background: color.brandBg, color: color.brand700, border: `1px solid ${color.brand300}`, borderRadius: 20, padding: "4px 14px" }}>
-                  ✓ {allItems.filter(i => scores[i.code] === "good").length} Good
-                </span>
-                <span style={{ fontSize: 13, fontWeight: 700, background: color.dangerBg, color: color.dangerDeep, border: `1px solid ${color.dangerBorder}`, borderRadius: 20, padding: "4px 14px" }}>
-                  ✗ {allItems.filter(i => scores[i.code] === "notgood").length} Not Good
-                </span>
-              </div>
-            </div>
-            <button onClick={resetForm} style={{ width: "100%", padding: 15, background: "#e0f2f1", border: "2px solid #80CBC4", borderRadius: 12, color: "#004D40", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-              + Cek GH Berikutnya
-            </button>
-          </div>
-        )}
-
-      </div>
-
-      {/* Bottom Nav */}
-      {step < 4 && (
-        <div style={{ padding: "12px 16px 24px", borderTop: `1px solid ${color.border}`, background: color.card, position: "sticky", bottom: 0, display: "flex", gap: 10 }}>
-          {step > 1 && (
-            <button onClick={() => { setStep(s => s - 1); setSubmitError(null); }}
-              style={{ flex: 1, padding: 13, background: color.bg, border: `1px solid ${color.border}`, borderRadius: 12, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-              ← Kembali
-            </button>
+              {nextAspek && activeAspekData.items.every(i => isFilledItem(i.code)) && (
+                <button type="button" className="fh-btn fh-btn-secondary" onClick={() => goToAspek(nextAspek.key)}>
+                  Aspek berikut: {nextAspek.label}
+                </button>
+              )}
+            </section>
           )}
-          {step === 1 && (
-            <button onClick={() => setStep(2)} disabled={!tipe || !gh}
-              style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: tipe && gh ? "linear-gradient(135deg,#004D40,#00695C)" : color.border, color: tipe && gh ? color.card : color.textGhost, fontSize: 15, fontWeight: 700, cursor: tipe && gh ? "pointer" : "not-allowed" }}>
-              Lanjut Penilaian →
-            </button>
-          )}
-          {step === 2 && (
-            <button onClick={() => setStep(3)} disabled={!allFilled}
-              style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: allFilled ? "linear-gradient(135deg,#004D40,#00695C)" : color.border, color: allFilled ? color.card : color.textGhost, fontSize: 15, fontWeight: 700, cursor: allFilled ? "pointer" : "not-allowed" }}>
-              {allFilled ? "Lihat Rekap →" : `⚠️ ${allItems.length - filledCount} belum terisi`}
-            </button>
-          )}
-          {step === 3 && (
-            <button onClick={() => setConfirmOpen(true)} disabled={submitting}
-              style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: submitting ? color.border : !isOnline ? `linear-gradient(135deg,${color.info},#1976D2)` : "linear-gradient(135deg,#004D40,#00695C)", color: submitting ? color.textGhost : color.card, fontSize: 15, fontWeight: 700, cursor: submitting ? "not-allowed" : "pointer" }}>
-              {submitting ? "⏳ Menyimpan..." : !isOnline ? "💾 Simpan Offline" : "Submit Penilaian ✓"}
-            </button>
-          )}
-        </div>
+        </>
       )}
 
-      <ConfirmSubmitModal
-        open={confirmOpen}
-        onCancel={() => setConfirmOpen(false)}
-        onConfirm={() => { setConfirmOpen(false); handleSubmit(); }}
-        color="#00897B"
-        isOffline={!isOnline}
-        summary={[
-          { label: "Tanggal",  value: todayISO },
-          { label: "GH",       value: gh },
-          { label: "Tipe",     value: tipe },
-          { label: "Skor",     value: `${totalPct}% (${status?.label || ""})` },
-          { label: "Operator", value: user?.nama || "" },
-        ]}
-      />
+      {/* ══ STEP 3 — Rekap ══ */}
+      {step === 3 && (
+        <>
+          {/* Konten yang ikut di-download sebagai PNG */}
+          <div ref={rekapRef} className="fh-section" style={{ gap: 12, padding: 4 }}>
+            <div className="fh-card fh-card-body" style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <img src="/logo-farmhill.png" alt="Farmhill" style={{ height: 36 }} />
+              <div>
+                <div className="fh-card-title">Laporan kesiapan greenhouse</div>
+                <div className="fh-meta">PT. Kebun Bumi Lestari · {formatTanggal()}</div>
+              </div>
+            </div>
 
-      <style>{`* { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }`}</style>
-    </div>
+            <ReviewTable
+              title="Informasi umum"
+              info={[
+                ["Tanggal", formatTanggal()],
+                ["Operator", user?.nama || "-"],
+                ["Tipe GH", tipe],
+                ["Greenhouse", gh],
+              ]}
+            />
+
+            <ReviewTable
+              title="Rekap per aspek"
+              columns={[
+                { key: "aspek", label: "Aspek" },
+                { key: "good", label: "Good", num: true },
+                { key: "notgood", label: "Not good", num: true },
+              ]}
+              rows={aspekList.map(a => {
+                const ng = a.items.filter(i => scores[i.code] === "notgood").length;
+                return {
+                  key: a.key,
+                  aspek: a.label,
+                  good: a.items.filter(i => scores[i.code] === "good").length,
+                  notgood: ng > 0 ? <span className="fh-badge fh-badge-danger">{ng}</span> : 0,
+                };
+              })}
+              footer={{ aspek: "Total", good: goodCount, notgood: notGoodCount }}
+            />
+
+            {notGoodCount > 0 && (
+              <ReviewTable
+                title="Variabel not good"
+                info={aspekList.flatMap(a => a.items
+                  .filter(i => scores[i.code] === "notgood")
+                  .map(i => [i.label, a.label]))}
+              />
+            )}
+          </div>
+
+          <button type="button" className="fh-btn fh-btn-secondary" disabled={downloading} onClick={handleDownloadPNG}>
+            <Icon name="Download" size={18} /> {downloading ? "Menyimpan gambar…" : "Download laporan PNG"}
+          </button>
+
+          {submitError && <FieldAlert tone="danger">{submitError}</FieldAlert>}
+        </>
+      )}
+
+      {/* ══ STEP 4 — Sukses ══ */}
+      {step === 4 && (
+        <SuccessState
+          offline={savedOffline}
+          title={savedOffline ? "Tersimpan di perangkat" : `Kesiapan ${gh} terkirim`}
+          description={savedOffline ? "Terkirim otomatis ke sheet saat online." : "Data masuk ke sheet."}
+          summary={[
+            ["GH", `${tipe} · ${gh}`],
+            ["Good", goodCount],
+            ["Not good", notGoodCount],
+            ["Operator", user?.nama || "-"],
+          ]}
+        />
+      )}
+
+      {/* ── GH sudah dicek hari ini: isi ulang perlu kode akses dari Team Data ── */}
+      <Dialog
+        open={showWarning}
+        title="GH sudah dicek hari ini"
+        onClose={closeWarning}
+        actions={!showKodeInput ? (
+          <div className="fh-section">
+            <a
+              className="fh-btn fh-btn-primary"
+              style={{ textDecoration: "none" }}
+              href={`https://wa.me/08559932224?text=${encodeURIComponent(`Halo Team Data, saya ${user?.nama} ingin melaporkan kesalahan input pada Kesiapan GH.\nTipe: ${tipe}\nGreenhouse: ${pendingGH}\nTanggal: ${todayISO}\n\nMohon kode akses untuk pengisian ulang. Terima kasih.`)}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Minta kode lewat WhatsApp
+            </a>
+            <button type="button" className="fh-btn fh-btn-secondary" onClick={() => setShowKodeInput(true)}>Sudah punya kode akses</button>
+            <button type="button" className="fh-btn fh-btn-secondary" onClick={closeWarning}>Batal</button>
+          </div>
+        ) : (
+          <div className="fh-btn-row">
+            <button type="button" className="fh-btn fh-btn-secondary" onClick={() => { setShowKodeInput(false); setKodeInput(""); setKodeError(""); }}>Kembali</button>
+            <button type="button" className="fh-btn fh-btn-primary" onClick={verifikasiKode}>Verifikasi</button>
+          </div>
+        )}
+      >
+        {!showKodeInput ? (
+          <>{tipe} · {pendingGH} sudah dikirim hari ini. Bila ada salah input, minta kode akses ke Team Data untuk mengisi ulang.</>
+        ) : (
+          <div className="fh-section">
+            <span>Masukkan kode akses dari Team Data.</span>
+            <input
+              className={`fh-input is-number${kodeError ? " is-error" : ""}`}
+              style={{ textAlign: "center", letterSpacing: "0.3em" }}
+              type="text"
+              inputMode="numeric"
+              maxLength={4}
+              value={kodeInput}
+              onChange={e => { setKodeInput(e.target.value.replace(/\D/g, "")); setKodeError(""); }}
+              placeholder="4 digit"
+              aria-label="Kode akses"
+            />
+            {kodeError && <p className="fh-error-text">{kodeError}</p>}
+          </div>
+        )}
+      </Dialog>
+    </FormShell>
   );
 }
