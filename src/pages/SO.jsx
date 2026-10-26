@@ -1,19 +1,20 @@
 import { useState, useEffect, useCallback } from "react";
 import { useDraft } from "../hooks/useDraft";
+import { useAuth } from "../hooks/useAuth";
 import { idbAdd, idbGetAll, idbDelete, idbCount, gasPost } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 import { useSOHistory, hasCompletedCheckpoint } from "../hooks/useSOHistory";
-import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
-import { color } from "../styles/tokens";
+import { FormShell, FieldAlert, SuccessState, GHPicker, ReviewTable, EntryTable, Dialog, Icon } from "../components/form";
+import { formatTanggal, formatAngka } from "../lib/format";
 
 const DB_NAME    = "SOOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_SO_URL;
 
 // ─── Tipe GH & mapping nama ───────────────────────────────────────────────────
 const TIPE_GH = [
-  { key: "drip",         label: "Drip",         color: color.info },
-  { key: "kolam",        label: "Kolam",        color: "#00838F" },
+  { key: "drip",         label: "Drip"  },
+  { key: "kolam",        label: "Kolam" },
 ];
 
 function buildGHNames() {
@@ -112,12 +113,11 @@ function getSOStatus(hst, soHistory, gh, periode) {
   };
 }
 
-function hstChipStyle(hst, soStatus) {
-  if (hst === null) return { bg: color.bg, color: color.textFaint, border: color.border };
-  if (hst === SO_CHECKPOINT_1 - 1 || hst === SO_CHECKPOINT_2 - 1) return { bg: color.warningBg, color: color.warning, border: color.warningBorder };
-  if (hst === SO_CHECKPOINT_1 || hst === SO_CHECKPOINT_2) return { bg: "#fbe9e7", color: "#bf360c", border: "#ffab91" };
-  if (soStatus?.late) return { bg: "#fce4ec", color: "#880e4f", border: "#f48fb1" };
-  return { bg: color.brandBg, color: color.brand700, border: color.brand300 };
+// Badge HST: H-1 checkpoint = warning, hari H = due (melon), lainnya netral
+function hstTone(hst) {
+  if (hst === SO_CHECKPOINT_1 - 1 || hst === SO_CHECKPOINT_2 - 1) return "warning";
+  if (hst === SO_CHECKPOINT_1 || hst === SO_CHECKPOINT_2) return "due";
+  return "neutral";
 }
 
 function isSODeadlineAlert(hst) {
@@ -142,12 +142,12 @@ function markSubmitted(gh) {
 }
 
 const todayISO   = new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
-const todayLabel = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const todayTimestamp = () => new Date().toLocaleString("id-ID");
 
 
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
 export default function SO() {
+  const { user } = useAuth();
   const { getDraft, saveDraft, clearDraft } = useDraft("so");
   const _draft = getDraft();
 
@@ -158,17 +158,17 @@ export default function SO() {
   const { blockedMap } = useGHBlockedList();
   const { soHistory, loading: loadingHistory, refetch: fetchSOHistory }    = useSOHistory();
 
-  const [openTipe, setOpenTipe]         = useState(null);
   const [selectedGH, setSelectedGH]     = useState(_draft?.selectedGH || "");
   const [tableData, setTableData]       = useState(_draft?.tableData  || []);
-  const [operator, setOperator]         = useState(_draft?.operator   || "");
+  // Operator otomatis dari akun login; bisa diubah di langkah rekap
+  const [operator, setOperator]         = useState(_draft?.operator || user?.nama || "");
   const [keterangan, setKeterangan]     = useState(_draft?.keterangan || "");
 
   const [syncing, setSyncing]           = useState(false);
   const [syncProgress, setSyncProgress] = useState({ done: 0, total: 0 });
   const [submitError, setSubmitError]   = useState(null);
   const [savedOffline, setSavedOffline] = useState(false);
-  const [confirmOpen, setConfirmOpen]   = useState(false);
+  const [copyDone, setCopyDone]         = useState(false);
 
   const [submittedToday, setSubmittedToday] = useState(getSubmittedToday());
   const [showDoubleWarn, setShowDoubleWarn] = useState(false);
@@ -176,6 +176,11 @@ export default function SO() {
 
   const [pendingCount, setPendingCount]         = useState(0);
   const [isSyncingPending, setIsSyncingPending] = useState(false);
+
+  // useAuth membaca sessionStorage setelah render pertama → isi operator begitu nama tersedia
+  useEffect(() => {
+    if (user?.nama) setOperator(prev => prev || user.nama);
+  }, [user?.nama]);
 
   // ── Online/offline listener ──
   useEffect(() => {
@@ -187,7 +192,7 @@ export default function SO() {
   }, []);
 
   useEffect(() => {
-    if (step === 3) return;
+    if (step === 4) return;
     saveDraft({ step, selectedGH, tableData, operator, keterangan });
   }, [step, selectedGH, tableData, operator, keterangan]);
 
@@ -309,7 +314,6 @@ export default function SO() {
   const ghInfo    = ghData[selectedGH];
   const hstAktif  = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : null;
   const soStatus  = getStatus(hstAktif, selectedGH, ghInfo?.periode);
-  const chipStyle = hstChipStyle(hstAktif, soStatus);
   const reminders = reminderGH();
 
   // ── Validasi ──
@@ -322,7 +326,54 @@ export default function SO() {
   const allNormalFilled = normalRows.length > 0 && filledNormal === normalRows.length;
   const manualOK        = manualRows.every(r => r.baris.trim() && r.varian && r.populasi !== "");
   const keteranganOK    = !soStatus.late || keterangan.trim().length > 0;
-  const canSubmit       = allNormalFilled && manualOK && operator.trim().length > 0 && keteranganOK;
+  const canProceed      = allNormalFilled && manualOK && keteranganOK;
+  // data GH harus sudah termuat — periode/HST/status terlambat diambil dari situ
+  const canSubmit       = canProceed && operator.trim().length > 0 && !loadingRef && !loadingHistory;
+  const rowsTerisi      = tableData.filter(r => r.populasi !== "").length;
+
+  // ── Ringkasan per baris & total per varian (untuk kartu ringkasan + teks grup) ──
+  const totalPerVarian = {};
+  let totalAll = 0;
+  tableData.forEach(r => {
+    if (r.populasi === "") return;
+    const pop = parseInt(r.populasi) || 0;
+    const v   = r.varian || "Tidak diketahui";
+    totalPerVarian[v] = (totalPerVarian[v] || 0) + pop;
+    totalAll += pop;
+  });
+  const totalVarianSorted = Object.entries(totalPerVarian).sort((a, b) => b[1] - a[1]);
+
+  const barisGroup = {};
+  const barisOrder = [];
+  tableData.forEach(r => {
+    if (r.populasi === "") return;
+    const barisKey = r.baris.replace(/\d+$/, "").trim() || r.baris;
+    if (!barisGroup[barisKey]) {
+      barisGroup[barisKey] = {};
+      barisOrder.push(barisKey);
+    }
+    const v = r.varian || "?";
+    barisGroup[barisKey][v] = (barisGroup[barisKey][v] || 0) + (parseInt(r.populasi) || 0);
+  });
+
+  const lines = barisOrder.map(baris => {
+    const parts = Object.entries(barisGroup[baris]).map(([v, p]) => `${v} ${p}`).join(" ");
+    return `${baris} ${parts}`;
+  });
+
+  const totalLines = totalVarianSorted.map(([v, t]) => `${v}: ${t.toLocaleString("id-ID")} tanaman`);
+
+  const clipboardText = [
+    `SO ${selectedGH} - ${todayISO}`,
+    `Periode ${ghData[selectedGH]?.periode || ""} | ${hstAktif ?? ""} HST`,
+    ...(soStatus.late ? [`TERLAMBAT ${soStatus.daysLate} hari dari checkpoint HST ${soStatus.checkpoint}${keterangan.trim() ? ` — Alasan: ${keterangan.trim()}` : ""}`] : []),
+    "",
+    ...lines,
+    "",
+    "--- TOTAL PER VARIAN ---",
+    ...totalLines,
+    `TOTAL: ${totalAll.toLocaleString("id-ID")} tanaman`,
+  ].join("\n");
 
   // ── Build payloads ──
   const buildPayloads = () => {
@@ -365,7 +416,7 @@ export default function SO() {
       }
       markSubmitted(selectedGH);
       setSubmittedToday(getSubmittedToday());
-      setStep(3);
+      setStep(4);
       setSyncing(false);
       return;
     }
@@ -379,9 +430,9 @@ export default function SO() {
         setSubmittedToday(getSubmittedToday());
         clearDraft();
         setSavedOffline(true);
-        setStep(3);
+        setStep(4);
       } catch {
-        setSubmitError("Gagal menyimpan data offline. Coba lagi.");
+        setSubmitError("Data belum tersimpan di perangkat. Tekan Simpan offline sekali lagi.");
       } finally {
         setSyncing(false);
       }
@@ -399,9 +450,9 @@ export default function SO() {
       clearDraft();
       // Refresh SO history setelah submit berhasil supaya status langsung update
       fetchSOHistory();
-      setStep(3);
+      setStep(4);
     } catch {
-      setSubmitError("Gagal mengirim data. Cek koneksi dan coba lagi.");
+      setSubmitError("Data belum terkirim karena koneksi terputus. Cek sinyal lalu tekan Kirim lagi.");
     } finally {
       setSyncing(false);
     }
@@ -409,537 +460,324 @@ export default function SO() {
 
   const resetForm = () => {
     clearDraft();
-    setStep(1); setOpenTipe(null); setSelectedGH(""); setTableData([]);
-    setOperator(""); setKeterangan(""); setSyncing(false); setSyncProgress({ done: 0, total: 0 });
-    setSubmitError(null); setSavedOffline(false);
+    setStep(1); setSelectedGH(""); setTableData([]);
+    setOperator(user?.nama || ""); setKeterangan(""); setSyncing(false); setSyncProgress({ done: 0, total: 0 });
+    setSubmitError(null); setSavedOffline(false); setCopyDone(false);
+  };
+
+  const copyText = () => {
+    navigator.clipboard.writeText(clipboardText).then(() => {
+      setCopyDone(true);
+      setTimeout(() => setCopyDone(false), 1400);
+    }).catch(() => {});
   };
 
   const loadingAll = loadingRef || loadingHistory;
 
-  return (
-    <div style={{ minHeight: "100vh", background: color.bg, fontFamily: "'DM Sans','Segoe UI',sans-serif" }}>
+  // ── Pengingat langkah 1 ──
+  const deadline = reminders.filter(r => r.reminderType === "h1" || r.reminderType === "hariH");
+  const late1    = reminders.filter(r => r.reminderType === "late" && r.checkpoint === SO_CHECKPOINT_1).sort((a, b) => b.daysLate - a.daysLate);
+  const late2    = reminders.filter(r => r.reminderType === "late" && r.checkpoint === SO_CHECKPOINT_2).sort((a, b) => b.daysLate - a.daysLate);
 
-      {/* ── Header ── */}
-      <div style={{ background: color.brand900, color: color.card, padding: "14px 16px 10px", position: "sticky", top: 0, zIndex: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <div style={{ fontSize: 10, opacity: 0.75, letterSpacing: 1.5, textTransform: "uppercase" }}>Stock Opname Populasi</div>
-            <div style={{ fontSize: 13, opacity: 0.65, marginTop: 1 }}>{todayLabel}</div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {pendingCount > 0 && (
-              <button onClick={isOnline ? syncPendingData : undefined}
-                style={{ fontSize: 10, fontWeight: 700, background: isOnline ? "rgba(33,150,243,0.3)" : "rgba(255,179,0,0.3)", border: `1px solid ${isOnline ? "rgba(33,150,243,0.6)" : "rgba(255,179,0,0.6)"}`, color: color.card, padding: "2px 8px", borderRadius: 20, cursor: isOnline ? "pointer" : "default", display: "flex", alignItems: "center", gap: 4 }}>
-                {isSyncingPending ? "⏳" : "📤"} {pendingCount} pending
-              </button>
-            )}
-            {isDemoMode && (
-              <div style={{ fontSize: 10, fontWeight: 700, background: "rgba(255,179,0,0.25)", border: "1px solid rgba(255,179,0,0.5)", borderRadius: 20, padding: "2px 8px", color: "#fff9c4" }}>DEMO</div>
-            )}
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: isOnline ? color.brand300 : color.dangerBorder, boxShadow: isOnline ? `0 0 6px ${color.brand300}` : `0 0 6px ${color.dangerBorder}` }} />
-          </div>
-        </div>
+  // ── Header ──
+  const title = step === 2 || step === 3 ? `SO · ${selectedGH}` : "Stock opname";
+  const ghMeta = [ghInfo?.periode && `P${ghInfo.periode}`, hstAktif !== null && `${hstAktif} HST`].filter(Boolean).join(" · ");
+  const subtitle = step === 1
+    ? `${formatTanggal()} · Langkah 1 dari 3`
+    : step === 4
+      ? formatTanggal()
+      : `${ghMeta ? `${ghMeta} · ` : ""}Langkah ${step} dari 3`;
+  const backTo1 = () => { setStep(1); setSubmitError(null); };
+  const onBack = step === 2 ? backTo1 : step === 3 ? () => { setStep(2); setSubmitError(null); } : undefined;
 
-        {!isOnline && (
-          <div style={{ marginTop: 8, padding: "6px 10px", background: "rgba(244,67,54,0.2)", border: "1px solid rgba(244,67,54,0.4)", borderRadius: 7, display: "flex", alignItems: "center", gap: 7 }}>
-            <span style={{ fontSize: 13 }}>📵</span>
-            <span style={{ fontSize: 11, color: "#ffcdd2" }}>Mode offline — data tersimpan lokal & sync otomatis saat online</span>
-          </div>
-        )}
-
-        {/* Step progress bar */}
-        {step < 3 && (
-          <div style={{ display: "flex", gap: 4, marginTop: 10 }}>
-            {[1, 2].map(s => (
-              <div key={s} style={{ flex: 1, height: 3, borderRadius: 2, background: s <= step ? color.brand300 : "rgba(255,255,255,0.2)", transition: "background 0.3s" }} />
-            ))}
-          </div>
-        )}
+  // ── Footer ──
+  let footer = null;
+  if (step === 2) {
+    let label = "Lihat rekap";
+    if (!allNormalFilled) label = `${normalRows.length - filledNormal} baris belum diisi`;
+    else if (!manualOK) label = "Lengkapi baris manual";
+    else if (!keteranganOK) label = "Isi alasan terlambat";
+    footer = (
+      <button type="button" className="fh-btn fh-btn-primary" disabled={!canProceed} onClick={() => setStep(3)}>
+        {label}
+      </button>
+    );
+  } else if (step === 3) {
+    const sendLabel = syncing
+      ? `Mengirim… ${syncProgress.done}/${syncProgress.total}`
+      : loadingRef || loadingHistory ? "Memuat data GH…"
+      : isDemoMode ? "Kirim demo"
+      : !isOnline ? `Simpan offline (${rowsTerisi} baris)`
+      : `Kirim ${rowsTerisi} baris`;
+    footer = (
+      <div className="fh-btn-row">
+        <button type="button" className="fh-btn fh-btn-secondary" onClick={() => { setStep(2); setSubmitError(null); }}>Kembali</button>
+        <button type="button" className="fh-btn fh-btn-primary" disabled={!canSubmit || syncing} onClick={handleSubmit}>{sendLabel}</button>
       </div>
+    );
+  } else if (step === 4) {
+    footer = <button type="button" className="fh-btn fh-btn-secondary" onClick={resetForm}>Isi GH lain</button>;
+  }
 
-      {/* ── Modal double submit warning ── */}
-      {showDoubleWarn && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: color.card, borderRadius: 16, padding: 24, maxWidth: 360, width: "100%" }}>
-            <div style={{ fontSize: 36, textAlign: "center", marginBottom: 12 }}>⚠️</div>
-            <div style={{ fontWeight: 700, fontSize: 16, color: color.text, textAlign: "center", marginBottom: 8 }}>GH Sudah Diisi Hari Ini</div>
-            <div style={{ fontSize: 13, color: color.textMuted, textAlign: "center", marginBottom: 20, lineHeight: 1.5 }}>
-              <strong>{pendingGH}</strong> sudah disubmit hari ini. Yakin mau isi ulang?
-            </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => { setShowDoubleWarn(false); setPendingGH(""); }} style={{ flex: 1, padding: "11px", background: color.bg, border: `1px solid ${color.border}`, borderRadius: 10, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Batal</button>
-              <button onClick={() => doSelectGH(pendingGH)} style={{ flex: 1, padding: "11px", background: color.danger, border: "none", borderRadius: 10, color: color.card, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Isi Ulang</button>
-            </div>
-          </div>
-        </div>
+  return (
+    <FormShell title={title} subtitle={subtitle} steps={step < 4 ? 3 : 0} step={step} onBack={onBack} footer={footer}>
+
+      {/* ── Status koneksi & antrean ── */}
+      {step < 4 && !isOnline && (
+        <FieldAlert tone="info">Mode offline. Data disimpan di perangkat dan terkirim otomatis saat online.</FieldAlert>
+      )}
+      {step < 4 && pendingCount > 0 && (
+        <FieldAlert
+          tone="warning"
+          action={isOnline && !isSyncingPending ? { label: "Kirim sekarang", onClick: syncPendingData } : undefined}
+        >
+          {isSyncingPending ? "Mengirim data tertunda…" : `${pendingCount} GH tersimpan offline, belum terkirim.`}
+        </FieldAlert>
       )}
 
-      <div style={{ padding: "16px" }}>
+      {/* ══ STEP 1 — Pilih GH ══ */}
+      {step === 1 && (
+        <>
+          {isDemoMode && (
+            <FieldAlert tone="warning" action={{ label: "Coba lagi", onClick: fetchRefData }}>
+              Data REF tidak terjangkau. Menampilkan data demo, data tidak dikirim ke sheet.
+            </FieldAlert>
+          )}
 
-        {/* ══ STEP 1 — Pilih GH ══ */}
-        {step === 1 && (
-          <div>
-            {(() => {
-              const deadline = reminders.filter(r => r.reminderType === "h1" || r.reminderType === "hariH");
-              const late1    = reminders.filter(r => r.reminderType === "late" && r.checkpoint === SO_CHECKPOINT_1).sort((a, b) => b.daysLate - a.daysLate);
-              const late2    = reminders.filter(r => r.reminderType === "late" && r.checkpoint === SO_CHECKPOINT_2).sort((a, b) => b.daysLate - a.daysLate);
-              if (deadline.length === 0 && late1.length === 0 && late2.length === 0) return null;
+          {!loadingAll && deadline.length > 0 && (
+            <FieldAlert tone="warning">
+              <strong>Deadline SO ({deadline.length} GH):</strong>{" "}
+              {deadline.map(gh => `${gh.name} (${gh.reminderType === "hariH" ? "hari ini" : "besok"})`).join(", ")}
+            </FieldAlert>
+          )}
+          {!loadingAll && [[SO_CHECKPOINT_1, late1], [SO_CHECKPOINT_2, late2]].map(([cp, list]) => list.length > 0 && (
+            <FieldAlert key={cp} tone="danger">
+              <strong>Lewat checkpoint HST {cp} ({list.length} GH):</strong>{" "}
+              {list.map(gh => `${gh.name} (+${gh.daysLate} hari)`).join(", ")}
+            </FieldAlert>
+          ))}
 
-              const chipBase = { display: "inline-flex", alignItems: "center", gap: 4, borderRadius: 7, padding: "3px 8px", fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" };
+          <section className="fh-section">
+            <span className="fh-label">Pilih GH</span>
+            <p className="fh-hint">Stock opname dilakukan pada checkpoint HST {SO_CHECKPOINT_1} dan HST {SO_CHECKPOINT_2}.</p>
+          </section>
 
+          <GHPicker
+            loading={loadingAll}
+            selected={selectedGH}
+            onSelect={handleSelectGH}
+            emptyText="Tidak ada GH aktif untuk SO saat ini."
+            items={TIPE_GH.flatMap(tipe => ghAktifPerTipe(tipe.key).map(gh => {
+              const lateInfo = getStatus(gh.hst, gh.name, gh.periode);
+              const sudahIsi = submittedToday.includes(gh.name);
+              const blockedInfo = blockedMap[gh.name.trim().toUpperCase()];
+              const badges = [];
+              if (blockedInfo) badges.push({ label: blockedInfo.aksi, tone: "danger" });
+              if (sudahIsi) badges.push({ label: "Sudah diisi", tone: "success" });
+              else if (lateInfo.late) badges.push({ label: `Terlambat ${lateInfo.daysLate} hari`, tone: "danger" });
+              else if (isSODeadlineAlert(gh.hst)) badges.push({ label: "Deadline", tone: "due" });
+              if (gh.hst !== null) badges.push({ label: `${gh.hst} HST`, tone: hstTone(gh.hst) });
+              return {
+                gh: gh.name,
+                meta: `${tipe.label} · ${gh.periode ? `P${gh.periode} · ` : ""}${gh.baris?.length || 0} baris`,
+                badges,
+                done: sudahIsi,
+                urgent: !sudahIsi && (lateInfo.late || isSODeadlineAlert(gh.hst)),
+                sortValue: gh.hst,
+              };
+            }))}
+          />
+        </>
+      )}
+
+      {/* ══ STEP 2 — Form Input ══ */}
+      {step === 2 && (
+        <>
+          {soStatus.late && (
+            <section className="fh-section">
+              <FieldAlert tone="danger">
+                SO ini terlambat {soStatus.daysLate} hari dari checkpoint HST {soStatus.checkpoint}. Isi alasannya sebelum lanjut.
+              </FieldAlert>
+              <label className="fh-section">
+                <span className="fh-label">Alasan terlambat (wajib)</span>
+                <textarea
+                  className={`fh-textarea${keterangan.trim() ? "" : " is-error"}`}
+                  rows={3}
+                  value={keterangan}
+                  onChange={e => setKeterangan(e.target.value)}
+                  placeholder={`Kenapa SO terlambat ${soStatus.daysLate} hari dari checkpoint HST ${soStatus.checkpoint}`}
+                />
+              </label>
+            </section>
+          )}
+
+          <section className="fh-section">
+            <div className="fh-section-head">
+              <span className="fh-label">Populasi per baris</span>
+              <span className="fh-meta">{filledCount}/{totalRows} baris</span>
+            </div>
+            <div className="fh-bar">
+              <span style={{ width: `${totalRows > 0 ? (filledCount / totalRows) * 100 : 0}%` }} />
+            </div>
+          </section>
+
+          <EntryTable
+            columns={[
+              { key: "baris", label: "Baris · varian" },
+              { key: "populasi", label: "Populasi", width: 100, input: true, inputMode: "numeric" },
+            ]}
+            rows={tableData}
+            rowKey={(row, i) => `${i}`}
+            onChange={(i, _key, val) => updatePopulasi(i, val)}
+            isRowDone={(row) => row.isManual ? !!(row.baris.trim() && row.varian && row.populasi !== "") : row.populasi !== ""}
+            renderCell={(row, col, i) => {
+              if (!row.isManual) {
+                return (
+                  <>
+                    <span className="fh-row-label">{row.baris}</span>
+                    <span className="fh-row-sub">{row.varian}</span>
+                  </>
+                );
+              }
               return (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-                  {deadline.length > 0 && (
-                    <div style={{ background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 12, padding: "10px 12px" }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: color.warning, marginBottom: 8 }}>
-                        🔔 Deadline SO <span style={{ fontWeight: 600, opacity: 0.7 }}>({deadline.length} GH)</span>
-                      </div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {deadline.map(gh => (
-                          <div key={gh.name} style={{ ...chipBase, background: gh.reminderType === "hariH" ? "#fbe9e7" : "#fff8e1", border: `1px solid ${gh.reminderType === "hariH" ? "#ffab91" : "#ffe082"}`, color: gh.reminderType === "hariH" ? "#bf360c" : color.warning }}>
-                            {gh.name}
-                            <span style={{ fontWeight: 600, fontSize: 10, opacity: 0.85 }}>{gh.reminderType === "hariH" ? "hari ini!" : "besok"}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {late1.length > 0 && (
-                    <div style={{ background: "#fce4ec", border: "1px solid #f48fb1", borderRadius: 12, padding: "10px 12px" }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#880e4f", marginBottom: 8 }}>
-                        ⏰ Lewat Checkpoint HST {SO_CHECKPOINT_1} <span style={{ fontWeight: 600, opacity: 0.7 }}>({late1.length} GH)</span>
-                      </div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {late1.map(gh => (
-                          <div key={gh.name} style={{ ...chipBase, background: color.card, border: "1px solid #f48fb1", color: "#880e4f" }}>
-                            {gh.name}
-                            <span style={{ fontWeight: 600, fontSize: 10, opacity: 0.85 }}>+{gh.daysLate} hari</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {late2.length > 0 && (
-                    <div style={{ background: "#fce4ec", border: "1px solid #f48fb1", borderRadius: 12, padding: "10px 12px" }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#880e4f", marginBottom: 8 }}>
-                        ⏰ Lewat Checkpoint HST {SO_CHECKPOINT_2} <span style={{ fontWeight: 600, opacity: 0.7 }}>({late2.length} GH)</span>
-                      </div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {late2.map(gh => (
-                          <div key={gh.name} style={{ ...chipBase, background: color.card, border: "1px solid #f48fb1", color: "#880e4f" }}>
-                            {gh.name}
-                            <span style={{ fontWeight: 600, fontSize: 10, opacity: 0.85 }}>+{gh.daysLate} hari</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-
-            {isDemoMode && (
-              <div style={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 10, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 18 }}>🔌</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, color: "#f57f17", fontWeight: 600 }}>Data REF tidak terjangkau</div>
-                  <div style={{ fontSize: 11, color: "#a67c00", marginTop: 2 }}>Menampilkan data demo</div>
-                </div>
-                <button onClick={fetchRefData} style={{ padding: "5px 10px", background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 7, color: color.warning, fontSize: 11, cursor: "pointer", fontWeight: 600 }}>Coba Lagi</button>
-              </div>
-            )}
-
-            <div style={{ fontWeight: 700, fontSize: 18, color: color.brand900, marginBottom: 4 }}>Pilih Greenhouse</div>
-            <div style={{ fontSize: 12, color: color.textSoft, marginBottom: 16 }}>Stock opname dilakukan pada checkpoint HST {SO_CHECKPOINT_1} &amp; HST {SO_CHECKPOINT_2}</div>
-
-            {loadingAll ? (
-              <div style={{ textAlign: "center", padding: "40px 0", color: color.textGhost }}>
-                <div style={{ fontSize: 28 }}>🔄</div>
-                <div style={{ fontSize: 13, marginTop: 8 }}>Memuat data...</div>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {TIPE_GH.map(tipe => {
-                  const aktif       = ghAktifPerTipe(tipe.key);
-                  const isOpen      = openTipe === tipe.key;
-                  const hasReminder = aktif.some(g => g.hst === SO_CHECKPOINT_1 - 1 || g.hst === SO_CHECKPOINT_2 - 1);
-                  const hasLate     = aktif.some(g => getStatus(g.hst, g.name, g.periode).late && !submittedToday.includes(g.name));
-                  return (
-                    <div key={tipe.key} style={{ borderRadius: 14, border: `1.5px solid ${isOpen ? tipe.color : color.border}`, background: color.card, overflow: "hidden", transition: "border-color 0.2s" }}>
-                      <button onClick={() => setOpenTipe(isOpen ? null : tipe.key)}
-                        style={{ width: "100%", padding: "14px 16px", background: isOpen ? `${tipe.color}10` : "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <div style={{ textAlign: "left" }}>
-                          <div style={{ fontSize: 15, fontWeight: 700, color: tipe.color }}>{tipe.label}</div>
-                          <div style={{ fontSize: 12, color: color.textSoft, marginTop: 2 }}>{aktif.length} GH aktif saat ini</div>
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          {hasLate && <div style={{ fontSize: 10, fontWeight: 700, background: "#fce4ec", border: "1px solid #f48fb1", borderRadius: 20, padding: "2px 8px", color: "#880e4f" }}>Terlambat ⏰</div>}
-                          {hasReminder && <div style={{ fontSize: 10, fontWeight: 700, background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 20, padding: "2px 8px", color: color.warning }}>H-1 ⚠</div>}
-                          <span style={{ fontSize: 18, color: tipe.color, transition: "transform 0.2s", display: "inline-block", transform: isOpen ? "rotate(90deg)" : "rotate(0deg)" }}>›</span>
-                        </div>
-                      </button>
-
-                      {isOpen && (
-                        <div style={{ padding: "0 12px 14px", borderTop: `1px solid ${tipe.color}20` }}>
-                          {aktif.length === 0 ? (
-                            <div style={{ textAlign: "center", padding: "20px 0", color: color.textGhost, fontSize: 13 }}>Tidak ada GH aktif untuk tipe ini.</div>
-                          ) : (
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 12 }}>
-                              {aktif.map(gh => {
-                                const lateInfo = getStatus(gh.hst, gh.name, gh.periode);
-                                const chip     = hstChipStyle(gh.hst, lateInfo);
-                                const sudahIsi = submittedToday.includes(gh.name);
-                                const alert    = isSODeadlineAlert(gh.hst);
-                                return (
-                                  <button key={gh.name} onClick={() => handleSelectGH(gh.name)}
-                                    style={{ padding: "10px 8px", borderRadius: 12, cursor: "pointer", textAlign: "center", border: sudahIsi ? `1px solid ${color.warningBorder}` : (alert || lateInfo.late) ? `2px solid ${chip.border}` : `1px solid ${color.border}`, background: sudahIsi ? "#fff8e1" : color.card, boxShadow: "0 1px 4px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, transition: "all 0.2s" }}>
-                                    <div style={{ fontSize: 12, fontWeight: 700, color: color.text, lineHeight: 1.3 }}>{gh.name}</div>
-                                    <div style={{ fontSize: 10, color: color.textGhost }}>P{gh.periode} · {gh.baris?.length || 0} baris</div>
-                                    {gh.hst !== null && (
-                                      <div style={{ background: chip.bg, border: `1px solid ${chip.border}`, borderRadius: 7, padding: "3px 10px", width: "100%" }}>
-                                        <span style={{ fontSize: 15, fontWeight: 800, color: chip.color }}>{gh.hst}</span>
-                                        <span style={{ fontSize: 10, color: chip.color, marginLeft: 3 }}>HST</span>
-                                      </div>
-                                    )}
-                                    {sudahIsi && <div style={{ fontSize: 10, background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 20, padding: "2px 8px", color: color.warning, fontWeight: 600 }}>✓ Sudah diisi</div>}
-                                    {alert && !sudahIsi && <div style={{ fontSize: 10, background: "#fbe9e7", border: "1px solid #ffab91", borderRadius: 20, padding: "2px 8px", color: "#bf360c", fontWeight: 600 }}>⚠ Deadline</div>}
-                                    {lateInfo.late && !sudahIsi && <div style={{ fontSize: 10, background: "#fce4ec", border: "1px solid #f48fb1", borderRadius: 20, padding: "2px 8px", color: "#880e4f", fontWeight: 600 }}>⏰ Terlambat {lateInfo.daysLate} hari</div>}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ══ STEP 2 — Form Input ══ */}
-        {step === 2 && (
-          <div>
-            <button onClick={() => setStep(1)} style={{ background: "none", border: "none", color: color.textMuted, fontSize: 13, cursor: "pointer", padding: 0, marginBottom: 12, display: "flex", alignItems: "center", gap: 4 }}>← Kembali</button>
-
-            {/* Info chips */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
-              <div style={{ background: color.brandBg, border: `1px solid ${color.brand300}`, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: color.brand700, fontWeight: 700 }}>{selectedGH}</div>
-              <div style={{ background: color.bg, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: color.textMuted }}>Periode {ghInfo?.periode}</div>
-              {hstAktif !== null && (
-                <div style={{ background: chipStyle.bg, border: `1px solid ${chipStyle.border}`, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: chipStyle.color, fontWeight: 700 }}>{hstAktif} HST</div>
-              )}
-              {soStatus.late && (
-                <div style={{ background: "#fce4ec", border: "1px solid #f48fb1", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#880e4f", fontWeight: 700 }}>⏰ Terlambat {soStatus.daysLate} hari</div>
-              )}
-            </div>
-
-            {/* Banner terlambat */}
-            {soStatus.late && (
-              <div style={{ marginBottom: 12, padding: "8px 12px", background: "#fce4ec", border: "1px solid #f48fb1", borderRadius: 9 }}>
-                <span style={{ fontSize: 12, color: "#880e4f" }}>
-                  ⏰ SO ini terlambat <strong>{soStatus.daysLate} hari</strong> dari checkpoint HST {soStatus.checkpoint}. Wajib isi alasan keterlambatan sebelum submit.
-                </span>
-              </div>
-            )}
-
-            {!isOnline && (
-              <div style={{ marginBottom: 12, padding: "8px 12px", background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 9, display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 14 }}>📵</span>
-                <span style={{ fontSize: 11, color: color.warning }}>Offline — data disimpan lokal & dikirim otomatis saat online</span>
-              </div>
-            )}
-
-            <div style={{ fontWeight: 700, fontSize: 17, color: color.brand900, marginBottom: 2 }}>Input Populasi</div>
-            <div style={{ fontSize: 12, color: color.textSoft, marginBottom: 8 }}>{filledCount}/{totalRows} baris terisi</div>
-
-            {/* Progress bar */}
-            <div style={{ background: color.border, borderRadius: 4, height: 5, marginBottom: 14, overflow: "hidden" }}>
-              <div style={{ height: "100%", borderRadius: 4, background: "#4CAF50", width: `${totalRows > 0 ? (filledCount / totalRows) * 100 : 0}%`, transition: "width 0.3s" }} />
-            </div>
-
-            {/* Tabel */}
-            <div style={{ overflowX: "auto", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.08)", marginBottom: 16 }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                <thead>
-                  <tr style={{ background: color.brand900, color: color.card }}>
-                    <th style={{ padding: "9px 10px", textAlign: "left", fontWeight: 700, fontSize: 11 }}>Baris</th>
-                    <th style={{ padding: "9px 6px", textAlign: "left", fontWeight: 700, fontSize: 11 }}>Varian</th>
-                    <th style={{ padding: "9px 10px", textAlign: "center", fontWeight: 700, fontSize: 11 }}>Populasi</th>
-                    <th style={{ padding: "9px 6px", width: 32 }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tableData.map((row, i) => {
-                    const filled   = row.populasi !== "";
-                    const isManual = row.isManual;
-                    return (
-                      <tr key={i} style={{ background: isManual ? color.purpleBg : filled ? "#f1f8e9" : i % 2 === 0 ? color.card : "#fafafa", transition: "background 0.2s" }}>
-                        <td style={{ padding: "6px 10px", fontWeight: 700, color: isManual ? color.purple700 : color.brand900, whiteSpace: "nowrap" }}>
-                          {isManual ? (
-                            <input type="text" value={row.baris} onChange={e => updateManualField(i, "baris", e.target.value)}
-                              placeholder="A" style={{ width: 44, textAlign: "center", border: `1.5px solid ${color.purple300}`, borderRadius: 6, padding: "4px 6px", fontSize: 12, fontWeight: 700, color: color.purple700, outline: "none", background: color.card }} />
-                          ) : row.baris}
-                        </td>
-                        <td style={{ padding: "6px 6px", fontSize: 11, color: isManual ? color.purple700 : color.textMuted, whiteSpace: "nowrap" }}>
-                          {isManual ? (
-                            <select value={row.varian} onChange={e => updateManualField(i, "varian", e.target.value)}
-                              style={{ border: `1.5px solid ${color.purple300}`, borderRadius: 6, padding: "4px 6px", fontSize: 11, color: color.purple700, outline: "none", background: color.card, maxWidth: 110 }}>
-                              <option value="">Pilih varian</option>
-                              {VARIAN_LIST.map(v => <option key={v} value={v}>{v}</option>)}
-                            </select>
-                          ) : row.varian}
-                        </td>
-                        <td style={{ padding: "4px 6px", textAlign: "center" }}>
-                          <input type="number" inputMode="numeric" value={row.populasi}
-                            onChange={e => updatePopulasi(i, e.target.value)}
-                            placeholder="—"
-                            style={{ width: 70, height: 32, textAlign: "center", border: `1.5px solid ${filled ? (isManual ? color.purple300 : color.brand400) : color.border}`, borderRadius: 7, fontSize: 13, fontWeight: 600, color: filled ? (isManual ? color.purple700 : color.brand700) : "#bbb", outline: "none", background: color.card }} />
-                        </td>
-                        <td style={{ padding: "4px 6px", textAlign: "center" }}>
-                          {isManual && (
-                            <button onClick={() => removeManualRow(i)} style={{ background: "none", border: "none", color: color.danger, fontSize: 16, cursor: "pointer", padding: "2px 4px", lineHeight: 1 }}>×</button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Tombol tambah baris manual */}
-            <button onClick={addManualRow}
-              style={{ width: "100%", padding: "10px", background: color.purpleBg, border: `1.5px dashed ${color.purple300}`, borderRadius: 10, color: color.purple700, fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 16 }}>
-              + Tambah baris / varian tidak terdaftar
-            </button>
-
-            {/* Ringkasan & Copy */}
-            {filledCount > 0 && (() => {
-              const totalPerVarian = {};
-              let totalAll = 0;
-              tableData.forEach(r => {
-                if (r.populasi === "") return;
-                const pop = parseInt(r.populasi) || 0;
-                const v   = r.varian || "Tidak diketahui";
-                totalPerVarian[v] = (totalPerVarian[v] || 0) + pop;
-                totalAll += pop;
-              });
-
-              const barisGroup = {};
-              const barisOrder = [];
-              tableData.forEach(r => {
-                if (r.populasi === "") return;
-                const barisKey = r.baris.replace(/\d+$/, "").trim() || r.baris;
-                if (!barisGroup[barisKey]) {
-                  barisGroup[barisKey] = {};
-                  barisOrder.push(barisKey);
-                }
-                const v = r.varian || "?";
-                barisGroup[barisKey][v] = (barisGroup[barisKey][v] || 0) + (parseInt(r.populasi) || 0);
-              });
-
-              const lines = barisOrder.map(baris => {
-                const parts = Object.entries(barisGroup[baris]).map(([v, p]) => `${v} ${p}`).join(" ");
-                return `${baris} ${parts}`;
-              });
-
-              const totalLines = Object.entries(totalPerVarian)
-                .sort((a, b) => b[1] - a[1])
-                .map(([v, t]) => `${v}: ${t.toLocaleString("id-ID")} tanaman`);
-
-              const clipboardText = [
-                `SO ${selectedGH} - ${todayISO}`,
-                `Periode ${ghData[selectedGH]?.periode || ""} | ${hstAktif ?? ""} HST`,
-                ...(soStatus.late ? [`TERLAMBAT ${soStatus.daysLate} hari dari checkpoint HST ${soStatus.checkpoint}${keterangan.trim() ? ` — Alasan: ${keterangan.trim()}` : ""}`] : []),
-                "",
-                ...lines,
-                "",
-                "--- TOTAL PER VARIAN ---",
-                ...totalLines,
-                `TOTAL: ${totalAll.toLocaleString("id-ID")} tanaman`,
-              ].join("\n");
-
-              return (
-                <div style={{ background: "#f9fbe7", border: "1.5px solid #dce775", borderRadius: 12, padding: 14, marginBottom: 16 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#558b2f", textTransform: "uppercase", letterSpacing: 1 }}>📊 Ringkasan</div>
-                    <button onClick={() => {
-                      navigator.clipboard.writeText(clipboardText)
-                        .then(() => alert("✅ Disalin ke clipboard!"))
-                        .catch(() => alert("Gagal menyalin, coba lagi."));
-                    }}
-                      style={{ padding: "5px 12px", background: "#558b2f", border: "none", borderRadius: 8, color: color.card, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                      📋 Copy
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <input
+                      className={`fh-input${row.baris.trim() ? "" : " is-error"}`}
+                      style={{ width: 72 }}
+                      value={row.baris}
+                      onChange={e => updateManualField(i, "baris", e.target.value)}
+                      placeholder="Baris"
+                      aria-label="Nama baris manual"
+                    />
+                    <span className="fh-tag">manual</span>
+                    <button type="button" className="fh-icon-btn is-danger" style={{ marginLeft: "auto" }} onClick={() => removeManualRow(i)} aria-label="Hapus baris manual">
+                      <Icon name="X" />
                     </button>
                   </div>
-                  <div style={{ fontFamily: "monospace", fontSize: 12, color: color.text, marginBottom: 10, whiteSpace: "pre-wrap", lineHeight: 1.7 }}>
-                    {lines.join("\n")}
-                  </div>
-                  <div style={{ borderTop: "1px solid #dce775", paddingTop: 8 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: "#558b2f", marginBottom: 6 }}>Total per varian</div>
-                    {Object.entries(totalPerVarian).sort((a,b) => b[1]-a[1]).map(([v, t]) => (
-                      <div key={v} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "2px 0" }}>
-                        <span style={{ color: "#555" }}>{v}</span>
-                        <span style={{ fontWeight: 700, color: color.brand900, fontFamily: "monospace" }}>{t.toLocaleString("id-ID")}</span>
-                      </div>
-                    ))}
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700, borderTop: "1px solid #dce775", marginTop: 6, paddingTop: 6 }}>
-                      <span>Total keseluruhan</span>
-                      <span style={{ color: color.brand900, fontFamily: "monospace" }}>{totalAll.toLocaleString("id-ID")}</span>
-                    </div>
-                  </div>
+                  <select
+                    className={`fh-select${row.varian ? "" : " is-empty"}`}
+                    value={row.varian}
+                    onChange={e => updateManualField(i, "varian", e.target.value)}
+                    aria-label="Varian baris manual"
+                  >
+                    <option value="">Pilih varian</option>
+                    {VARIAN_LIST.map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
                 </div>
               );
-            })()}
+            }}
+          />
 
-            {/* Input operator */}
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, color: "#388e3c", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
-                👤 Nama Operator <span style={{ color: color.danger }}>*</span>
-              </label>
-              <input type="text" value={operator} onChange={e => setOperator(e.target.value)}
-                placeholder="Tulis nama lengkap..."
-                style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: color.card, border: `1.5px solid ${operator.trim() ? color.brand400 : color.border}`, borderRadius: 10, color: color.text, fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
-            </div>
-
-            {/* Input alasan keterlambatan */}
-            {soStatus.late && (
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ fontSize: 11, color: "#880e4f", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
-                  ⏰ Alasan Terlambat Mengisi SO <span style={{ color: color.danger }}>*</span>
-                </label>
-                <textarea value={keterangan} onChange={e => setKeterangan(e.target.value)}
-                  placeholder={`Tulis alasan kenapa SO terlambat ${soStatus.daysLate} hari dari checkpoint HST ${soStatus.checkpoint}...`}
-                  rows={3}
-                  style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: color.card, border: `1.5px solid ${keterangan.trim() ? "#f48fb1" : color.border}`, borderRadius: 10, color: color.text, fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit", resize: "vertical" }} />
-              </div>
-            )}
-
-            {!canSubmit && (() => {
-              const missing = [];
-              if (normalRows.length > 0 && !allNormalFilled) missing.push(`${normalRows.length - filledNormal} baris referensi belum diisi populasinya`);
-              if (!manualOK) {
-                const manualIdx = tableData.reduce((acc, r, i) => { if (r.isManual) acc.push(i); return acc; }, []);
-                const incomplete = manualRows.filter(r => !(r.baris.trim() && r.varian && r.populasi !== "")).length;
-                missing.push(`${incomplete} baris manual belum lengkap (baris/varian/populasi) — cek baris ke-${manualIdx.map(i => i + 1).join(", ")}`);
-              }
-              if (!operator.trim()) missing.push("Nama Operator belum diisi");
-              if (soStatus.late && !keterangan.trim()) missing.push("Alasan Keterlambatan belum diisi");
-              if (missing.length === 0) return null;
-              return (
-                <div style={{ fontSize: 12, color: "#880e4f", background: "#fce4ec", border: "1px solid #f48fb1", borderRadius: 8, padding: "10px 12px", marginBottom: 8 }}>
-                  <div style={{ fontWeight: 700, marginBottom: 4 }}>⚠️ Belum bisa submit — lengkapi dulu:</div>
-                  <ul style={{ margin: 0, paddingLeft: 18 }}>
-                    {missing.map((m, i) => <li key={i}>{m}</li>)}
-                  </ul>
-                </div>
-              );
-            })()}
-            {submitError && (
-              <div style={{ fontSize: 12, color: color.dangerDeep, background: color.dangerBg, border: `1px solid ${color.dangerBorder}`, borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
-                ⚠️ {submitError}
-              </div>
-            )}
-            {syncing && (
-              <div style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 12, color: color.textMuted, marginBottom: 6 }}>Menyimpan {syncProgress.done}/{syncProgress.total} baris...</div>
-                <div style={{ background: color.border, borderRadius: 4, height: 6, overflow: "hidden" }}>
-                  <div style={{ height: "100%", borderRadius: 4, background: "#4CAF50", width: `${syncProgress.total > 0 ? (syncProgress.done / syncProgress.total) * 100 : 0}%`, transition: "width 0.3s" }} />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ══ STEP 3 — Sukses ══ */}
-        {step === 3 && (
-          <div style={{ textAlign: "center", paddingTop: 32 }}>
-            <div style={{ fontSize: 60, marginBottom: 12 }}>
-              {isDemoMode ? "🧪" : savedOffline ? "💾" : "✅"}
-            </div>
-            <div style={{ fontSize: 21, fontWeight: 800, color: isDemoMode ? "#f57f17" : savedOffline ? color.info : color.brand700, marginBottom: 6 }}>
-              {isDemoMode ? "Demo Selesai!" : savedOffline ? "Tersimpan Lokal!" : "Data SO Tersimpan!"}
-            </div>
-            <div style={{ fontSize: 13, color: color.textSoft, marginBottom: 20 }}>
-              {isDemoMode
-                ? "Data tidak dikirim (mode demo)"
-                : savedOffline
-                  ? "Data disimpan di perangkat. Otomatis terkirim ke Google Sheets saat online."
-                  : `${buildPayloads().length} baris berhasil dikirim ke Google Sheets`}
-            </div>
-
-            {savedOffline && (
-              <div style={{ background: color.infoBg, border: `1px solid ${color.infoBorder}`, borderRadius: 10, padding: "10px 14px", marginBottom: 16, textAlign: "left" }}>
-                <div style={{ fontSize: 12, color: color.info, fontWeight: 600, marginBottom: 4 }}>📡 Cara sync:</div>
-                <div style={{ fontSize: 12, color: "#555" }}>Biarkan app terbuka saat koneksi kembali — data terkirim otomatis.</div>
-              </div>
-            )}
-
-            <div style={{ background: isDemoMode ? "#fff8e1" : savedOffline ? color.infoBg : color.brandBg, border: `1px solid ${isDemoMode ? "#ffe082" : savedOffline ? color.infoBorder : color.brand300}`, borderRadius: 14, padding: 16, textAlign: "left", marginBottom: 20 }}>
-              <div style={{ fontSize: 12, color: isDemoMode ? "#f57f17" : savedOffline ? color.info : color.brand700, fontWeight: 700, marginBottom: 10 }}>Ringkasan SO</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: color.text }}>{selectedGH} · Periode {ghInfo?.periode} · {hstAktif} HST</div>
-              <div style={{ fontSize: 13, color: color.textMuted, marginTop: 2 }}>Operator: {operator}</div>
-              <div style={{ fontSize: 13, color: color.textMuted, marginTop: 2 }}>Tanggal: {todayISO}</div>
-              <div style={{ fontSize: 13, color: color.textMuted, marginTop: 2 }}>Total baris: {tableData.filter(r => r.populasi !== "").length} baris</div>
-              <div style={{ fontSize: 13, color: color.textMuted, marginTop: 2 }}>
-                Total populasi: {tableData.reduce((sum, r) => sum + (parseInt(r.populasi) || 0), 0).toLocaleString("id-ID")} tanaman
-              </div>
-              {soStatus.late && (
-                <div style={{ fontSize: 13, color: "#880e4f", marginTop: 6, paddingTop: 6, borderTop: "1px dashed #f48fb1" }}>
-                  ⏰ Terlambat {soStatus.daysLate} hari (checkpoint HST {soStatus.checkpoint})<br />
-                  <span style={{ color: color.textMuted }}>Alasan: {keterangan}</span>
-                </div>
-              )}
-            </div>
-
-            <button onClick={resetForm} style={{ width: "100%", padding: "15px", background: isDemoMode ? "#fff8e1" : savedOffline ? color.infoBg : color.brandBg, border: `2px solid ${isDemoMode ? color.warningBorder : savedOffline ? color.infoBorder : color.brand400}`, borderRadius: 12, color: isDemoMode ? color.warning : savedOffline ? color.info : color.brand700, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-              + Input GH Berikutnya
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* ── Bottom Nav ── */}
-      {step === 2 && (
-        <div style={{ padding: "12px 16px 24px", borderTop: `1px solid ${color.border}`, background: color.card, position: "sticky", bottom: 0, display: "flex", gap: 10 }}>
-          <button onClick={() => { setStep(1); setSubmitError(null); }} style={{ flex: 1, padding: "13px", background: color.bg, border: `1px solid ${color.border}`, borderRadius: 12, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>← Kembali</button>
-          <button onClick={() => setConfirmOpen(true)} disabled={!canSubmit || syncing}
-            style={{ flex: 2, padding: "13px", border: "none", borderRadius: 12, background: canSubmit && !syncing ? (!isOnline ? `linear-gradient(135deg,${color.info},#1976D2)` : `linear-gradient(135deg,${color.brand900},${color.brand700})`) : color.border, color: canSubmit && !syncing ? color.card : color.textGhost, fontSize: 15, fontWeight: 700, cursor: canSubmit && !syncing ? "pointer" : "not-allowed", transition: "all 0.2s" }}>
-            {syncing
-              ? `⏳ Mengirim...`
-              : !isOnline && canSubmit
-                ? `💾 Simpan Offline (${tableData.filter(r => r.populasi !== "").length} baris)`
-                : `Submit ${tableData.filter(r => r.populasi !== "").length} Baris ✓`}
+          <button type="button" className="fh-dashed-btn" onClick={addManualRow}>
+            <Icon name="Plus" size={18} /> Baris / varian tidak terdaftar
           </button>
-        </div>
+
+          {filledCount > 0 && (
+            <div className="fh-card is-sunken fh-card-body">
+              <div className="fh-section-head">
+                <span className="fh-overline">Total per varian</span>
+                <span className="fh-meta">{formatAngka(totalAll)} tanaman</span>
+              </div>
+              {totalVarianSorted.map(([v, t]) => (
+                <div key={v} className="fh-section-head" style={{ fontSize: 15 }}>
+                  <span>{v}</span>
+                  <span className="fh-num">{formatAngka(t)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
-      <ConfirmSubmitModal
-        open={confirmOpen}
-        onCancel={() => setConfirmOpen(false)}
-        onConfirm={() => { setConfirmOpen(false); handleSubmit(); }}
-        color="#43A047"
-        isOffline={!isOnline}
-        isDemoMode={isDemoMode}
-        summary={[
-          { label: "Tanggal",   value: todayISO },
-          { label: "GH",        value: selectedGH },
-          { label: "Jml Baris", value: `${tableData.filter(r => r.populasi !== "").length} baris terisi` },
-          { label: "Operator",  value: operator },
-          ...(soStatus.late ? [{ label: "Keterangan", value: `Terlambat ${soStatus.daysLate} hari — ${keterangan.trim()}` }] : []),
-        ]}
-      />
+      {/* ══ STEP 3 — Rekap ══ */}
+      {step === 3 && (
+        <>
+          <label className="fh-section">
+            <span className="fh-label">Operator</span>
+            <input
+              className={`fh-input${operator.trim() ? "" : " is-error"}`}
+              value={operator}
+              onChange={e => setOperator(e.target.value)}
+              placeholder="Nama operator"
+            />
+            <p className="fh-hint">Terisi dari akun login. Ubah bila yang mengisi orang lain.</p>
+          </label>
 
-      <style>{`
-        input[type=number]::-webkit-outer-spin-button,
-        input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-      `}</style>
-    </div>
+          <ReviewTable
+            title="Rekap"
+            info={[
+              ["Tanggal", formatTanggal()],
+              ["GH", selectedGH],
+              ["Periode", ghInfo?.periode || "-"],
+              ["HST", hstAktif ?? "-"],
+              ["Baris terisi", `${rowsTerisi} baris`],
+              ["Total populasi", `${formatAngka(totalAll)} tanaman`],
+              ...(soStatus.late ? [["Terlambat", `${soStatus.daysLate} hari (HST ${soStatus.checkpoint})`]] : []),
+            ]}
+            columns={[
+              { key: "varian", label: "Varian" },
+              { key: "total", label: "Populasi", num: true },
+            ]}
+            rows={totalVarianSorted.map(([v, t]) => ({ key: v, varian: v, total: formatAngka(t) }))}
+            footer={{ varian: "Total", total: formatAngka(totalAll) }}
+          />
+
+          {soStatus.late && (
+            <section className="fh-section">
+              <span className="fh-label">Alasan terlambat</span>
+              <p className="fh-card fh-card-body" style={{ margin: 0 }}>{keterangan.trim()}</p>
+            </section>
+          )}
+
+          <section className="fh-section">
+            <div className="fh-section-head">
+              <span className="fh-label">Teks untuk grup</span>
+              <button type="button" className="fh-btn fh-btn-secondary fh-btn-sm" onClick={copyText}>
+                <Icon name={copyDone ? "Check" : "Copy"} size={16} /> {copyDone ? "Disalin" : "Salin"}
+              </button>
+            </div>
+            <pre className="fh-pre">{clipboardText}</pre>
+          </section>
+
+          {submitError && <FieldAlert tone="danger">{submitError}</FieldAlert>}
+        </>
+      )}
+
+      {/* ══ STEP 4 — Sukses ══ */}
+      {step === 4 && (
+        <SuccessState
+          offline={savedOffline}
+          title={isDemoMode ? "Demo selesai" : savedOffline ? "Tersimpan di perangkat" : `SO ${selectedGH} terkirim`}
+          description={isDemoMode
+            ? "Data tidak dikirim (mode demo)."
+            : savedOffline
+              ? "Terkirim otomatis ke sheet saat online."
+              : `${rowsTerisi} baris masuk ke sheet.`}
+          summary={[
+            ["GH", selectedGH],
+            ["HST", hstAktif ?? "-"],
+            ["Baris", rowsTerisi],
+            ["Total populasi", formatAngka(totalAll)],
+            ["Operator", operator],
+            ...(soStatus.late ? [["Terlambat", `${soStatus.daysLate} hari`]] : []),
+          ]}
+        />
+      )}
+
+      <Dialog
+        open={showDoubleWarn}
+        title="GH sudah diisi hari ini"
+        onClose={() => { setShowDoubleWarn(false); setPendingGH(""); }}
+        actions={
+          <div className="fh-btn-row">
+            <button type="button" className="fh-btn fh-btn-secondary" onClick={() => { setShowDoubleWarn(false); setPendingGH(""); }}>Batal</button>
+            <button type="button" className="fh-btn fh-btn-primary" onClick={() => doSelectGH(pendingGH)}>Isi ulang</button>
+          </div>
+        }
+      >
+        {pendingGH} sudah dikirim hari ini. Isi ulang akan menambah baris baru di sheet, data lama tidak terhapus.
+      </Dialog>
+    </FormShell>
   );
 }

@@ -1,5 +1,5 @@
 // Tabel input per baris (Gramasi, SO).
-//   columns — [{ key, label, width?, input?: true, num?: true, placeholder? }]
+//   columns — [{ key, label, width?, input?: true, inputMode?, num?: true, placeholder? }]
 //             kolom `input` dirender sebagai field angka; lainnya pakai row[key]
 //   rows    — array baris data
 //   rowKey  — (row, i) => key unik
@@ -39,7 +39,7 @@ export default function EntryTable({ columns, rows, rowKey, renderCell, onChange
                       <input
                         className={`fh-input is-number${err ? " is-error" : ""}`}
                         type="text"
-                        inputMode="decimal"
+                        inputMode={c.inputMode || "decimal"}
                         value={displayValue ? displayValue(row[c.key]) : row[c.key]}
                         placeholder={c.placeholder ?? ""}
                         aria-label={`${c.label} baris ${i + 1}`}

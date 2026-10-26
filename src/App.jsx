@@ -296,7 +296,7 @@ export default function App() {
                 display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
                 borderTop: isHPTActive ? `2px solid ${HPT_COLOR}` : "2px solid transparent",
               }}>
-              <span style={{ color: isHPTActive ? "#fff" : "rgba(255,255,255,0.55)", display: "flex" }}><Icon name="Bug" size={22} /></span>
+              <span style={{ color: isHPTActive ? "#fff" : "rgba(255,255,255,0.55)", display: "flex" }}><Icon name={accessibleHPT.length === 1 ? accessibleHPT[0].icon : "Bug"} size={22} /></span>
               <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
                 <span style={{ fontSize: 10, fontWeight: isHPTActive ? 700 : 500, color: isHPTActive ? HPT_COLOR : "rgba(255,255,255,0.35)", letterSpacing: 0.5, whiteSpace: "nowrap" }}>
                   {accessibleHPT.length === 1 ? accessibleHPT[0].label : "HPT"}

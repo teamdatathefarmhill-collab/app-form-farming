@@ -288,7 +288,8 @@ export default function Gramasi() {
   const hst         = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : null;
   const filledCount = tableData.filter(r => r.s1 !== "" && r.s2 !== "" && r.s3 !== "").length;
   const allFilled   = tableData.length > 0 && filledCount === tableData.length;
-  const canSubmit   = allFilled && operator.trim().length > 0;
+  // data GH harus sudah termuat — periode & HST diambil dari situ
+  const canSubmit   = allFilled && operator.trim().length > 0 && !loadingGH;
 
   // ── Peringatan kenaikan/penurunan ekstrem dibanding pengukuran terakhir, per sel ──
   const rowWarnings = tableData.map(row => {
@@ -418,6 +419,7 @@ export default function Gramasi() {
   } else if (step === 3) {
     const sendLabel = syncing
       ? `Mengirim… ${syncProgress.done}/${syncProgress.total}`
+      : loadingGH ? "Memuat data GH…"
       : isDemoMode ? "Kirim demo"
       : !isOnline ? `Simpan offline (${tableData.length} baris)`
       : `Kirim ${tableData.length} baris`;
@@ -476,6 +478,7 @@ export default function Gramasi() {
                 meta: `${info.periode ? `P${info.periode} · ` : ""}${info.baris?.length || 0} baris`,
                 badges,
                 done: submittedToday.includes(gh),
+                sortValue: hstGH,
               };
             })}
           />

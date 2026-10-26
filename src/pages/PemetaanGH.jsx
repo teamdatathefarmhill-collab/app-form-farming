@@ -308,7 +308,8 @@ export default function PemetaanGH() {
   const allRegulerFilled = regulerRows.every((r) => r.entries.every((e) => e.varian && e.jumlah !== ""));
   const keteranganOK = mismatches.every((v) => (keteranganSelisih[v] || "").trim().length > 0);
   const canProceedStep2 = allBarisNamed && allRegulerFilled && keteranganOK;
-  const canSubmit = operator.trim().length > 0 && !syncing;
+  // referensi semai harus sudah termuat — periode & selisih diambil dari situ
+  const canSubmit = operator.trim().length > 0 && !syncing && !loadingSemai;
 
   // ── Teks untuk grup ──
   const barisLines = barisRows
@@ -462,7 +463,7 @@ export default function PemetaanGH() {
       </button>
     );
   } else if (step === 3) {
-    const sendLabel = syncing ? "Mengirim…" : isDemoMode ? "Kirim demo" : !isOnline ? "Simpan offline" : "Kirim pemetaan";
+    const sendLabel = syncing ? "Mengirim…" : loadingSemai ? "Memuat data GH…" : isDemoMode ? "Kirim demo" : !isOnline ? "Simpan offline" : "Kirim pemetaan";
     footer = (
       <div className="fh-btn-row">
         <button type="button" className="fh-btn fh-btn-secondary" onClick={() => setStep(2)}>Kembali</button>
