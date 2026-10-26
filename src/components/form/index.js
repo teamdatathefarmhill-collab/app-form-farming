@@ -7,3 +7,5 @@ export { default as SuccessState } from "./SuccessState";
 export { default as OptionList } from "./OptionList";
 export { default as GHPicker } from "./GHPicker";
 export { default as ReviewTable } from "./ReviewTable";
+export { default as EntryTable } from "./EntryTable";
+export { default as Dialog } from "./Dialog";

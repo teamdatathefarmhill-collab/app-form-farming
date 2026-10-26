@@ -2,50 +2,38 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import SOPModal from "./SOPModal";
 import SOP from "../data/sopContent";
+import { Icon } from "./form";
 
 // ─── InfoButton ────────────────────────────────────────────────────────────────
-// Tombol "i" yang muncul di header untuk membuka panduan menu kapan saja
+// Tombol "i" di header app untuk membuka panduan menu kapan saja.
+// Header app masih gelap (sampai bottom bar/header baru di PRD 6.0), jadi tombol
+// ini memakai garis putih tipis; ukurannya sama dengan tombol WA di sebelahnya.
 // Props:
 //   menuKey  — key menu aktif (e.g. "penyemprotan", "gramasi", dll)
-//   color    — warna aksen (opsional, default ambil dari SOP)
 
-export default function InfoButton({ menuKey, color }) {
+export default function InfoButton({ menuKey }) {
   const [open, setOpen] = useState(false);
   const sop = SOP[menuKey];
 
   if (!sop) return null;
 
-  const accentColor = color || sop.color || "#4aaa6e";
-
   return (
     <>
       <button
+        type="button"
         onClick={() => setOpen(true)}
         title={`Panduan ${sop.title}`}
+        aria-label={`Panduan ${sop.title}`}
         style={{
-          width: 28, height: 28, borderRadius: 8,
-          border: `1px solid ${accentColor}44`,
-          background: `${accentColor}18`,
-          color: accentColor,
-          fontSize: 13, fontWeight: 800,
-          cursor: "pointer",
+          width: 30, height: 30, borderRadius: 4, padding: 0, flexShrink: 0,
+          border: "1px solid rgba(255,255,255,0.28)",
+          background: "rgba(255,255,255,0.06)",
+          color: "rgba(255,255,255,0.85)",
           display: "flex", alignItems: "center", justifyContent: "center",
-          flexShrink: 0,
-          fontStyle: "italic",
-          fontFamily: "Georgia, serif",
-          letterSpacing: 0,
-          transition: "all 0.15s",
-        }}
-        onMouseEnter={e => {
-          e.currentTarget.style.background = `${accentColor}30`;
-          e.currentTarget.style.border = `1px solid ${accentColor}77`;
-        }}
-        onMouseLeave={e => {
-          e.currentTarget.style.background = `${accentColor}18`;
-          e.currentTarget.style.border = `1px solid ${accentColor}44`;
+          cursor: "pointer",
         }}
       >
-        i
+        <Icon name="Info" size={17} />
       </button>
 
       {open && createPortal(
