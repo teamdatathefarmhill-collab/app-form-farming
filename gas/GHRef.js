@@ -61,7 +61,7 @@ function doGet(e) {
   const action = (e.parameter || {}).action;
   if (!checkRateLimit()) return jsonResponse({ success: false, error: "Terlalu banyak request, coba lagi sebentar." });
   if (!checkAppToken((e.parameter || {}).token)) return jsonResponse({ success: false, error: "Unauthorized" });
-  if (action === "getGH")            return jsonResponse(getGHData());
+  if (action === "getGH")            return jsonResponse(getGHDataCached());
   if (action === "getDailyTask")     return jsonResponse(getDailyTaskData(e));
   if (action === "getGHRestartLog")  return jsonResponse(getGHRestartLog());
   return jsonResponse({ success: true, app: "GHRef GAS", status: "active" });
@@ -225,6 +225,19 @@ function formatJam(val) {
 // ============================================================
 // getGHData — baca REF sheet, kembalikan data GH terstruktur
 // ============================================================
+// Cache 3 menit — getGHData baca 2 sheet penuh lewat openById, mahal kalau dipanggil
+// tiap halaman dibuka. Data REF jarang berubah dalam hitungan menit.
+function getGHDataCached() {
+  const cache = CacheService.getScriptCache();
+  const hit   = cache.get("getGH_v1");
+  if (hit) return JSON.parse(hit);
+  const res = getGHData();
+  if (res.success) {
+    try { cache.put("getGH_v1", JSON.stringify(res), 180); } catch (e) { /* >100KB, lewati cache */ }
+  }
+  return res;
+}
+
 function getGHData() {
   try {
     const ss    = SpreadsheetApp.openById(SS_ID);

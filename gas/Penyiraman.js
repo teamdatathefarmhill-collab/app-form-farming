@@ -14,6 +14,9 @@
 // ============================================================
 
 const SHEET_PENYIRAMAN = "Form Penyiraman";
+const NUTRISI_SCAN_ROWS = 1500;
+const REF_CACHE_KEY     = "getREF_v1";
+const REF_CACHE_TTL     = 180; // detik
 const SS_REF_ID        = "1tIJzuTBXcM7Wks03pgsyVicJUCtDs9Ak0N89K9GlKe4"; // Spreadsheet REF
 
 // GH tertentu (mis. TOHUDAN 18) kirim isian Drip per varian SEKALIGUS 1 baris Dutch Bucket
@@ -164,8 +167,12 @@ function getLastNutrisiPerGh() {
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return result;
 
+  // Hanya baca NUTRISI_SCAN_ROWS baris terakhir — sheet ini tumbuh terus tiap hari,
+  // membaca semua baris bikin getREF makin lambat. Nutrisi GH aktif pasti ada di baris-baris terbaru.
+  const startRow = Math.max(2, lastRow - NUTRISI_SCAN_ROWS + 1);
+
   // Kolom: Nama GH = E (5), Nutrisi = U (21)
-  const rows = sheet.getRange(2, 5, lastRow - 1, 17).getValues(); // E..U relatif terhadap kolom 5
+  const rows = sheet.getRange(startRow, 5, lastRow - startRow + 1, 17).getValues(); // E..U relatif terhadap kolom 5
   for (let i = rows.length - 1; i >= 0; i--) {
     const gh      = String(rows[i][0] || "").trim();   // kolom E
     const nutrisi = String(rows[i][16] || "").trim();  // kolom U (5 + 16 = 21)
@@ -177,13 +184,25 @@ function getLastNutrisiPerGh() {
 
 // ── Handler: Get REF Data (REF biasa + REF RND) ──────────────
 function handleGetREF() {
+  const cache = CacheService.getScriptCache();
+  const hit   = cache.get(REF_CACHE_KEY);
+  if (hit) return ContentService.createTextOutput(hit).setMimeType(ContentService.MimeType.JSON);
+
+  const payload = buildRefPayload();
+  if (payload.success) {
+    try { cache.put(REF_CACHE_KEY, JSON.stringify(payload), REF_CACHE_TTL); } catch (e) { /* >100KB, lewati cache */ }
+  }
+  return ContentService.createTextOutput(JSON.stringify(payload)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function buildRefPayload() {
   try {
     const ss    = getSSRef();
     const sheet = ss.getSheetByName("REF");
-    if (!sheet) return jsonError("Sheet 'REF' tidak ditemukan.");
+    if (!sheet) return { success: false, error: "Sheet 'REF' tidak ditemukan." };
 
     const rows = sheet.getRange("A:L").getValues();
-    if (rows.length < 2) return jsonError("Sheet REF kosong.");
+    if (rows.length < 2) return { success: false, error: "Sheet REF kosong." };
 
     const ghMap = buildGhMapFromRows(rows, { gh: 0, periode: 1, varian: 8, tanam: 11 });
     const data  = ghMapToData(ghMap);
@@ -205,12 +224,10 @@ function handleGetREF() {
     Object.keys(data).forEach(gh    => { data[gh].nutrisi    = lastNutrisi[gh] || ""; });
     Object.keys(dataRnd).forEach(gh => { dataRnd[gh].nutrisi = lastNutrisi[gh] || ""; });
 
-    return ContentService
-      .createTextOutput(JSON.stringify({ success: true, data, dataRnd }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return { success: true, data, dataRnd };
 
   } catch (err) {
-    return jsonError("getREF error: " + err.toString());
+    return { success: false, error: "getREF error: " + err.toString() };
   }
 }
 
@@ -229,6 +246,7 @@ function handlePenyiraman(data) {
   const lastRow = sheet.getLastRow();
   sheet.getRange(lastRow + 1, 1, 1, row.length).setValues([row]);
   formatLastRowPenyiraman(sheet, data);
+  CacheService.getScriptCache().remove(REF_CACHE_KEY); // nutrisi terakhir berubah
 
   return jsonOk();
 }
@@ -251,6 +269,7 @@ function handlePenyiramanBatch(data) {
   sheet.getRange(lastRow + 1, 1, builtRows.length, builtRows[0].length).setValues(builtRows);
 
   formatBatchPenyiraman(sheet, rows, lastRow + 1, builtRows[0].length);
+  CacheService.getScriptCache().remove(REF_CACHE_KEY); // nutrisi terakhir berubah
 
   return ContentService
     .createTextOutput(JSON.stringify({ success: true, count: builtRows.length }))

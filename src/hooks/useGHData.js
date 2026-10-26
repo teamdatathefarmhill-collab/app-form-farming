@@ -79,6 +79,28 @@ function splitProduksiSemai(data) {
   return { produksi, semai };
 }
 
+// ─── Dedup fetch antar pemakai hook ──────────────────────────────────────────
+// Banyak komponen (useGHBlockedList, VigorReminder, form, dll) memanggil useGHData
+// bersamaan. Tanpa ini tiap pemanggil menembak getGH sendiri-sendiri. Request yang
+// sedang jalan dipakai bersama, dan hasil segar (< SHARE_TTL) langsung dipakai ulang.
+// refetch() manual selalu melewati cache ini (force).
+const SHARE_TTL = 30 * 1000;
+let inflight   = null;
+let lastResult = null; // { json, at }
+
+function fetchGHShared(force = false) {
+  if (!force && lastResult && Date.now() - lastResult.at < SHARE_TTL) return Promise.resolve(lastResult.json);
+  if (!force && inflight) return inflight;
+  const p = gasFetch(`${GHREF_URL}?action=getGH`)
+    .then(json => {
+      if (json?.success) lastResult = { json, at: Date.now() };
+      return json;
+    })
+    .finally(() => { if (inflight === p) inflight = null; });
+  inflight = p;
+  return p;
+}
+
 // ─── Hook ────────────────────────────────────────────────────────────────────
 export function useGHData() {
   const [ghData,       setGhData]       = useState({});
@@ -87,12 +109,12 @@ export function useGHData() {
   const [loading,      setLoading]      = useState(true);
   const [isDemoMode,   setIsDemoMode]   = useState(false);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (force = false) => {
     setLoading(true);
     setIsDemoMode(false);
     try {
       if (!GHREF_URL) throw new Error("VITE_GAS_GHREF_URL tidak dikonfigurasi");
-      const json = await gasFetch(`${GHREF_URL}?action=getGH`);
+      const json = await fetchGHShared(force === true);
       if (!json.success) throw new Error(json.error || "Response tidak sukses");
 
       const data = json.data || {};
@@ -129,5 +151,5 @@ export function useGHData() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  return { ghData, produksiData, semaiData, loading, isDemoMode, refetch: fetchData };
+  return { ghData, produksiData, semaiData, loading, isDemoMode, refetch: () => fetchData(true) };
 }

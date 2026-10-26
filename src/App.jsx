@@ -226,9 +226,9 @@ export default function App() {
 
       {/* Halaman aktif */}
       <div style={{ flex: 1, paddingTop: 48, paddingBottom: 64, width: "100%" }}>
-        {/* Pengingat Vigor — di tab Vigor sendiri sudah ada badge Due, jadi disembunyikan di sana */}
-        {resolvedTab !== "vigor" && accessibleStandalone.some(t => t.key === "vigor") && (
-          <div style={{ paddingTop: 8 }}><VigorReminder onOpenVigor={() => switchTab("vigor")} /></div>
+        {/* Pengingat Vigor — popup yang muncul setelah menu Vigor dibuka (bukan banner di atas menu lain) */}
+        {resolvedTab === "vigor" && accessibleStandalone.some(t => t.key === "vigor") && (
+          <VigorReminder popup />
         )}
         {ActivePage
           ? <ActivePage />

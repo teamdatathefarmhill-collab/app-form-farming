@@ -4,6 +4,7 @@
 // antrean offline yang tersimpan di HP tapi belum terkirim ke server.
 //
 // onOpenVigor(gh) — dipanggil saat baris GH diketuk (buka form Vigor).
+// popup — tampil sebagai modal (dipakai saat menu Vigor dibuka), bukan banner inline.
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useGHData } from "../hooks/useGHData";
@@ -24,7 +25,8 @@ function hitungHST(tgl) {
 
 const doneKey = (gh, periode, cp) => `${String(gh).trim().toUpperCase()}|${Number(periode)}|${Number(cp)}`;
 
-export default function VigorReminder({ onOpenVigor }) {
+export default function VigorReminder({ onOpenVigor, popup = false }) {
+  const [dismissed, setDismissed] = useState(false);
   const { ghData, loading: loadingGH } = useGHData();
   const [done, setDone]         = useState(null);   // Set key sheet, null = belum/ gagal dicek
   const [checkError, setCheckError] = useState(false);
@@ -102,15 +104,20 @@ export default function VigorReminder({ onOpenVigor }) {
   };
 
   if (belumDiisi.length === 0 && pending.length === 0 && !checkError) return null;
+  if (popup && dismissed) return null;
 
-  return (
-    <div style={{ margin: "10px 12px", borderRadius: 14, background: color.card, border: `1.5px solid ${color.warningBorder}`, overflow: "hidden", fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
+  const card = (
+    <div style={{ margin: popup ? 0 : "10px 12px", width: popup ? "100%" : undefined, maxWidth: popup ? 420 : undefined, maxHeight: popup ? "80vh" : undefined, overflowY: popup ? "auto" : undefined, borderRadius: 14, background: color.card, border: `1.5px solid ${color.warningBorder}`, overflow: "hidden", fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
       <div style={{ padding: "10px 14px", background: color.warningBg, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
         <div style={{ fontSize: 13, fontWeight: 800, color: color.warning }}>🔔 Pengingat Vigor</div>
         <button onClick={refreshAll} disabled={checking}
           style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, border: `1px solid ${color.warningBorder}`, background: color.card, color: color.warning, cursor: "pointer" }}>
           {checking ? "⏳" : "↻ Cek ulang"}
         </button>
+        {popup && (
+          <button onClick={() => setDismissed(true)} aria-label="Tutup"
+            style={{ fontSize: 16, fontWeight: 700, lineHeight: 1, padding: "2px 8px", borderRadius: 20, border: "none", background: "transparent", color: color.warning, cursor: "pointer" }}>✕</button>
+        )}
       </div>
 
       {pending.length > 0 && (
@@ -137,7 +144,7 @@ export default function VigorReminder({ onOpenVigor }) {
             ⚠️ Belum ada datanya di sheet
           </div>
           {belumDiisi.map(g => (
-            <button key={g.gh} onClick={() => onOpenVigor?.(g.gh)}
+            <button key={g.gh} onClick={() => { onOpenVigor?.(g.gh); if (popup) setDismissed(true); }}
               style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", marginBottom: 6, borderRadius: 10, border: `1px solid ${color.border}`, background: "#fafafa", cursor: "pointer", textAlign: "left" }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: color.text }}>{g.gh}</span>
               <span style={{ fontSize: 11, color: color.warning, fontWeight: 700 }}>HST {g.hst} · checkpoint {g.cp} ›</span>
@@ -151,6 +158,14 @@ export default function VigorReminder({ onOpenVigor }) {
           Gagal cek status ke sheet — daftar GH belum diisi mungkin belum lengkap. Ketuk "Cek ulang".
         </div>
       )}
+    </div>
+  );
+
+  if (!popup) return card;
+  return (
+    <div onClick={(e) => { if (e.target === e.currentTarget) setDismissed(true); }}
+      style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      {card}
     </div>
   );
 }
