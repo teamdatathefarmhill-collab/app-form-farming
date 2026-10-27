@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useDraft } from "../hooks/useDraft";
+import { useAuth } from "../hooks/useAuth";
 import { idbAdd, idbGetAll, idbDelete, idbCount, gasPost } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
-import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
-import FotoSelfie from "../components/FotoSelfie";
-import { color } from "../styles/tokens";
+import { FormShell, FieldAlert, SuccessState, GHPicker, ReviewTable, OptionList, SegmentTabs, PhotoBox, Dialog } from "../components/form";
+import { formatTanggal } from "../lib/format";
 import { HST_CHECKPOINTS, HST_NEAR_RANGE, TIPE_GH } from "../lib/vigorDue";
 
 const DB_NAME    = "VigorOfflineDB";
@@ -13,6 +13,7 @@ const SCRIPT_URL = import.meta.env.VITE_GAS_VIGOR_URL;
 
 // ─── Changelog ───────────────────────────────────────────────────────────────
 export const CHANGELOG = [
+  "Tampilan baru Farmhill: GH per lokasi, tab per varian, tiap variabel satu kartu pilihan, langkah rekap sebelum kirim",
   "Tambah kolom Keterangan (opsional) di bawah Foto Selfie — satu catatan untuk seluruh checkpoint, masuk ke kolom Keterangan di sheet (sama di semua baris varian)",
   "Tambah checkpoint HST 11 — Vigor Semai (Akar, Batang, Daun, Warna Daun, skor 1–4, 3 sampel random per varian); data masuk ke sheet terpisah",
   "Tipe GH RnD dihapus dari Pilih GH — Tohudan 22, Sawahan Tunnel 1 & Open Field 1 kini kembali masuk tipe Kolam",
@@ -35,10 +36,10 @@ const HST_MAX = 60;
 function getCheckpointStatus(hst) {
   if (hst === null) return null;
   for (const cp of HST_CHECKPOINTS) {
-    if (hst >= cp && hst <= cp + 3) return { type: "due",  cp, label: `⚠️ Waktunya input Vigor HST ${cp}!` };
+    if (hst >= cp && hst <= cp + 3) return { type: "due",  cp, label: `Waktunya input Vigor HST ${cp}.` };
   }
   for (const cp of HST_CHECKPOINTS) {
-    if (hst >= cp - HST_NEAR_RANGE && hst < cp) return { type: "soon", cp, label: `🔔 ${cp - hst} hari lagi menuju checkpoint HST ${cp}` };
+    if (hst >= cp - HST_NEAR_RANGE && hst < cp) return { type: "soon", cp, label: `${cp - hst} hari lagi menuju checkpoint HST ${cp}.` };
   }
   return null;
 }
@@ -154,11 +155,6 @@ function hitungHST(tgl) {
   return Math.floor((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - tanam) / 86400000);
 }
 
-function hstColor(hst) {
-  if (hst <= 21) return { bg: color.brandBg, border: color.brand300, text: color.brand700, badge: "#c8e6c9" };
-  if (hst <= 40) return { bg: "#fff8e1", border: "#ffe082", text: "#f57f17", badge: "#fff9c4" };
-  return              { bg: "#fbe9e7", border: "#ffab91", text: "#bf360c", badge: "#fce4ec" };
-}
 
 function initVarianData(varianList) {
   const obj = {};
@@ -213,59 +209,33 @@ function markSubmitted(gh) {
   if (!list.includes(gh)) localStorage.setItem(getLSKey(), JSON.stringify([...list, gh]));
 }
 
-// ─── Komponen: Pilih Opsi (Radio style) ──────────────────────────────────────
-function PilihOpsi({ options, value, onChange, color = color.brand700, cols = 1 }) {
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 6 }}>
-      {options.map((opt, i) => {
-        const active = value === opt;
-        return (
-          <button key={i} onClick={() => onChange(opt)}
-            style={{
-              padding: "9px 10px", textAlign: "left", borderRadius: 10, cursor: "pointer",
-              border: `1.5px solid ${active ? color : color.border}`,
-              background: active ? `${color}12` : color.card,
-              color: active ? color : "#555",
-              fontSize: 12, fontWeight: active ? 700 : 400,
-              transition: "all 0.15s", lineHeight: 1.4,
-              display: "flex", alignItems: "flex-start", gap: 6,
-            }}>
-            <span style={{ flexShrink: 0, marginTop: 1 }}>{active ? "●" : "○"}</span>
-            <span>{opt}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 // initialGH/onDone — opsional, dipakai oleh Home Koor GH untuk auto-pilih GH
 // dari jadwal harian. Tidak mempengaruhi cara form ini dipakai biasa (tanpa props).
 export default function Vigor({ initialGH, onDone } = {}) {
-  const [step, setStep]         = useState(1);
+  const { user } = useAuth();
+  const { getDraft, saveDraft, clearDraft } = useDraft("vigor");
+  const _draft = getDraft();
+
+  const [step, setStep]         = useState(_draft?.step === 2 || _draft?.step === 3 ? _draft.step : 1);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   // Tanggal selalu fresh saat komponen mount
   const [todayISO]   = useState(() => new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" }));
-  const [todayLabel] = useState(() => new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" }));
 
   const { ghData, loading: loadingGH, isDemoMode } = useGHData();
   const { blockedMap } = useGHBlockedList();
-
-  const { getDraft, saveDraft, clearDraft } = useDraft("vigor");
-  const _draft = getDraft();
 
   const [selectedGH, setSelectedGH]     = useState(_draft?.selectedGH   || "");
   const [selectedHST, setSelectedHST]   = useState(_draft?.selectedHST  || null);
   const [selectedTipe, setSelectedTipe] = useState(_draft?.selectedTipe || "");
   const [varianData, setVarianData]     = useState(_draft?.varianData   || {});
-  const [operator, setOperator]         = useState(_draft?.operator     || "");
+  // Operator otomatis dari akun login; bisa diubah di langkah rekap
+  const [operator, setOperator]         = useState(_draft?.operator || user?.nama || "");
   const [keterangan, setKeterangan]     = useState(_draft?.keterangan   || "");
   const [activeVarian, setActiveVarian] = useState(null);
 
   const [submitting, setSubmitting]     = useState(false);
-  const [confirmOpen, setConfirmOpen]   = useState(false);
   const [submitError, setSubmitError]   = useState(null);
   const [savedOffline, setSavedOffline] = useState(false);
 
@@ -282,8 +252,13 @@ export default function Vigor({ initialGH, onDone } = {}) {
   const [pendingCount, setPendingCount]         = useState(0);
   const [isSyncingPending, setIsSyncingPending] = useState(false);
 
+  // useAuth membaca sessionStorage setelah render pertama → isi operator begitu nama tersedia
   useEffect(() => {
-    if (step === 3) return;
+    if (user?.nama) setOperator(prev => prev || user.nama);
+  }, [user?.nama]);
+
+  useEffect(() => {
+    if (step === 4) return;
     saveDraft({ step, selectedGH, selectedHST, selectedTipe, varianData, operator, keterangan });
   }, [step, selectedGH, selectedHST, selectedTipe, varianData, operator, keterangan]);
 
@@ -300,8 +275,6 @@ export default function Vigor({ initialGH, onDone } = {}) {
     window.addEventListener("offline", off);
     return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
   }, []);
-
-  useEffect(() => { if (isOnline) syncPending(); }, [isOnline]);
 
   // ── Sync offline pending — kirim batch per record ──────────────────────────
   const syncPending = useCallback(async () => {
@@ -325,6 +298,9 @@ export default function Vigor({ initialGH, onDone } = {}) {
     setIsSyncingPending(false);
   }, [refreshPendingCount]);
 
+  // ── Auto-sync saat kembali online ──
+  useEffect(() => { if (isOnline) syncPending(); }, [isOnline]);
+
   const ghAktif = Object.entries(ghData).filter(([, info]) => {
     if (!info.tanam) return true;
     const hst = hitungHST(info.tanam);
@@ -334,7 +310,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
   const handleSelectGH = (gh) => {
     if (warnIfGHBlocked(gh, blockedMap)) return;
     if (submittedToday.includes(gh)) { setPendingGH(gh); setShowWarning(true); }
-    else doSelectGH(gh);
+    else { doSelectGH(gh); setStep(2); }
   };
 
   const doSelectGH = (gh) => {
@@ -371,7 +347,6 @@ export default function Vigor({ initialGH, onDone } = {}) {
   const ghInfo     = ghData[selectedGH];
   const varianList = ghInfo?.varian || [];
   const hstAktual  = ghInfo?.tanam ? hitungHST(ghInfo.tanam) : null;
-  const col        = hstAktual !== null ? hstColor(hstAktual) : hstColor(21);
 
   const showSemai          = selectedHST === 11;
   const showLebarDiameter  = !showSemai && selectedHST !== 38 && selectedHST !== 45 && selectedHST !== 54;
@@ -399,7 +374,73 @@ export default function Vigor({ initialGH, onDone } = {}) {
 
   const filledCount = varianList.filter(v => isVarianFilled(varianData[v] || {}, showKualitas, showPolinasi, showKesegaran, showNetting, showNetting50Field, showNetBercakHitam, showLebarDiameter, showSimetri, showSemai)).length;
   const allFilled   = varianList.length > 0 && filledCount === varianList.length;
-  const canSubmit   = allFilled && operator.trim().length > 0;
+  const canSubmit   = allFilled && operator.trim().length > 0 && !submitting;
+
+  // ── Daftar variabel yang tampil untuk checkpoint terpilih, dikelompokkan per aspek ──
+  // Mengikuti flag show* yang sama dengan isVarianFilled & buildPayloads.
+  const tipeGH = TIPE_GH.find(t => t.pattern(selectedGH));
+  const samplingText = tipeGH?.key === "kolam"
+    ? "Sistem kolam: ambil mulai dari tanaman ke-16 dari baris depan sejumlah 7 tanaman, dan ke-16 dari baris belakang sejumlah 7 tanaman (total 14 tanaman)."
+    : tipeGH?.key === "dutch"
+    ? "Sistem DB: ambil mulai dari bucket/polybag ke-16 dari baris depan sejumlah 7 tanaman, dan ke-16 dari baris belakang sejumlah 7 tanaman (total 14 tanaman)."
+    : "Ambil sampel setelah 10 tanaman depan dan 10 tanaman belakang, hindari tanaman yang terpengaruh variabel luar.";
+  const lebarHint = selectedHST === 14 ? "Dilakukan pada daun ke-7" : selectedHST === 18 ? "Dilakukan pada daun ke-11" : "Dilakukan pada daun ke-4";
+
+  const aspekList = showSemai
+    ? [{
+        key: "semai", title: "Vigor semai",
+        hint: "Per varian per GH · 3 sampel random per varian · skor 1–4, bobot tiap variabel 25%.",
+        items: SEMAI_VARIABEL.map(v => ({
+          key: v.key, label: v.label, skor: true,
+          options: v.options.map(o => ({ value: String(o.skor), label: o.desc, meta: `skor ${o.skor}` })),
+        })),
+      }]
+    : [
+        {
+          key: "vigor", title: "Aspek vigor tanaman", hint: samplingText,
+          items: [
+            ...(showLebarDiameter ? [
+              { key: "lebarDaun", label: "Lebar daun (cm)", hint: lebarHint, options: lebarDaunOptions, columns: lebarDaunOptions.length === 3 && selectedHST !== 33 ? 3 : 1 },
+              { key: "diameterBatang", label: "Diameter batang", hint: "Penilaian pada ruas ke-3 hingga ke-5", options: diameterOptions },
+            ] : []),
+            { key: "warnaDaun", label: "Warna daun", options: WARNA_DAUN_OPTIONS },
+            ...(showKesegaranVigor ? [{ key: "kesegaran", label: "Kesegaran tanaman (kelayuan)", options: KESEGARAN_OPTIONS, columns: 3 }] : []),
+          ],
+        },
+        {
+          key: "akar", title: "Aspek perakaran", hint: "Sampel 1 tanaman per varian, gali ±2 cm pada media tanam.",
+          items: [
+            { key: "warnaAkar", label: "Warna akar serabut", options: WARNA_AKAR_OPTIONS },
+            { key: "volumeAkar", label: "Volume akar", options: VOLUME_AKAR_OPTIONS },
+          ],
+        },
+        ...(showSimetri ? [{
+          key: "buah", title: "Aspek kualitas buah", hint: "Per baris (± 198 tanaman) per varian.",
+          items: [
+            { key: "simetriBuah", label: "Simetri buah", options: SIMETRI_BUAH_OPTIONS },
+            { key: "cabangBuah", label: "Cabang buah", options: CABANG_BUAH_OPTIONS },
+          ],
+        }] : []),
+        ...(showPolinasi ? [{
+          key: "polinasi", title: "Aspek keberhasilan polinasi",
+          hint: "Ambil sampel setelah 10 tanaman depan dan 10 tanaman belakang, hindari tanaman yang terpengaruh variabel luar.",
+          note: "Umur 18 HST belum selesai polinasi, jadi penilaian keberhasilan cabang polinasi belum dapat dilakukan.",
+          items: [
+            { key: "buahBajang", label: "Buah bajang", options: BUAH_BAJANG_OPTIONS },
+            { key: "panjangTunasAir", label: "Panjang tunas air", options: PANJANG_TUNAS_AIR_OPTIONS, columns: 2 },
+          ],
+        }] : []),
+        ...(showNetting || showNetting50Field || showNetBercakHitam ? [{
+          key: "buahTambahan", title: "Kualitas buah tambahan",
+          items: [
+            ...(showNetting ? [{ key: "nettingBuah", label: selectedHST === 54 ? "Netting buah (crack basah)" : "Netting buah", options: selectedHST === 54 ? NETTING_BUAH_54_OPTIONS : NETTING_BUAH_45_OPTIONS }] : []),
+            ...(showNetting50Field ? [{ key: "netting50", label: showNettingCrack45 ? "Netting buah (crack basah)" : "Pencapaian netting 50%", options: showNettingCrack45 ? NETTING_BUAH_54_OPTIONS : NETTING_50_54_OPTIONS }] : []),
+            ...(showNetBercakHitam ? [{ key: "netBercakHitam", label: "Pendataan buah net/bercak hitam", options: NET_BERCAK_HITAM_54_OPTIONS }] : []),
+          ],
+        }] : []),
+      ];
+  const allItems   = aspekList.flatMap(a => a.items);
+  const countDone  = (v) => allItems.filter(it => (varianData[v] || {})[it.key]).length;
 
   const buildPayloads = () => {
     const client_timestamp = new Date().toISOString();
@@ -464,7 +505,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
     if (isDemoMode) {
       await new Promise(r => setTimeout(r, 600));
       markSubmitted(selectedGH); setSubmittedToday(getSubmittedToday());
-      clearDraft(); setStep(3); setSubmitting(false);
+      clearDraft(); setStep(4); setSubmitting(false);
       return;
     }
 
@@ -474,9 +515,9 @@ export default function Vigor({ initialGH, onDone } = {}) {
         await idbAdd(DB_NAME, { gh: selectedGH, tanggal: todayISO, createdAt: Date.now(), payloads });
         await refreshPendingCount();
         markSubmitted(selectedGH); setSubmittedToday(getSubmittedToday());
-        clearDraft(); setSavedOffline(true); setStep(3);
+        clearDraft(); setSavedOffline(true); setStep(4);
       } catch {
-        setSubmitError("Gagal menyimpan data offline. Coba lagi.");
+        setSubmitError("Data belum tersimpan di perangkat. Tekan Simpan offline sekali lagi.");
       } finally { setSubmitting(false); }
       return;
     }
@@ -513,548 +554,281 @@ export default function Vigor({ initialGH, onDone } = {}) {
       if (!json.success) throw new Error(json.error || "Gagal menyimpan");
 
       markSubmitted(selectedGH); setSubmittedToday(getSubmittedToday());
-      clearDraft(); setStep(3);
+      clearDraft(); setStep(4);
     } catch (e) {
-      setSubmitError(e.message || "Terjadi kesalahan, coba lagi.");
+      setSubmitError(`Data belum terkirim (${e.message || "koneksi terputus"}). Cek sinyal lalu tekan Kirim lagi.`);
     } finally { setSubmitting(false); }
   };
 
   const resetForm = () => {
     clearDraft();
-    setStep(1); setSelectedGH(""); setOperator(""); setKeterangan(""); setVarianData({});
+    setStep(1); setSelectedGH(""); setOperator(user?.nama || ""); setKeterangan(""); setVarianData({});
     setSelectedHST(null); setSelectedTipe(""); setActiveVarian(null); setSubmitting(false);
     setSubmitError(null); setSavedOffline(false);
     setSelfieFile(null); setSelfiePreview(null); setSelfieUrl("");
   };
 
+  // ── Varian aktif (default varian pertama) ──
+  const activeKey  = varianList.includes(activeVarian) ? activeVarian : (varianList[0] || "");
+  const activeIdx  = varianList.indexOf(activeKey);
+  const nextVarian = varianList[activeIdx + 1];
+  const goToVarian = (v) => { setActiveVarian(v); window.scrollTo(0, 0); };
+  const d          = varianData[activeKey] || {};
+  const cs         = getCheckpointStatus(hstAktual);
+
+  // ── Header ──
+  const title = step === 2 || step === 3 ? `Vigor · ${selectedGH}` : "Vigor";
+  const ghMeta = [ghInfo?.periode && `P${ghInfo.periode}`, hstAktual !== null && `${hstAktual} HST`].filter(Boolean).join(" · ");
+  const subtitle = step === 1
+    ? `${formatTanggal()} · Langkah 1 dari 3`
+    : step === 4
+      ? formatTanggal()
+      : `${ghMeta ? `${ghMeta} · ` : ""}Langkah ${step} dari 3`;
+  const onBack = step === 2 ? (onDone || (() => setStep(1)))
+    : step === 3 ? () => { setStep(2); setSubmitError(null); }
+    : step === 1 ? onDone
+    : undefined;
+
+  // ── Footer ──
+  let footer = null;
+  if (step === 2) {
+    footer = (
+      <button type="button" className="fh-btn fh-btn-primary" disabled={!allFilled} onClick={() => setStep(3)}>
+        {allFilled ? "Lihat rekap" : `${varianList.length - filledCount} varian belum lengkap`}
+      </button>
+    );
+  } else if (step === 3) {
+    footer = (
+      <div className="fh-btn-row">
+        <button type="button" className="fh-btn fh-btn-secondary" onClick={() => { setStep(2); setSubmitError(null); }}>Kembali</button>
+        <button type="button" className="fh-btn fh-btn-primary" disabled={!canSubmit} onClick={handleSubmit}>
+          {submitting ? "Mengirim…" : loadingGH ? "Memuat data GH…" : isDemoMode ? "Kirim demo" : !isOnline ? "Simpan offline" : `Kirim ${varianList.length} varian`}
+        </button>
+      </div>
+    );
+  } else if (step === 4) {
+    footer = onDone
+      ? <button type="button" className="fh-btn fh-btn-secondary" onClick={onDone}>Kembali ke Home</button>
+      : <button type="button" className="fh-btn fh-btn-secondary" onClick={resetForm}>Isi GH lain</button>;
+  }
+
   return (
-    <div style={{ minHeight: "100vh", background: "#f4f7f4", fontFamily: "'Segoe UI', system-ui, sans-serif", display: "flex", flexDirection: "column" }}>
+    <FormShell title={title} subtitle={subtitle} steps={step < 4 ? 3 : 0} step={step} onBack={onBack} footer={footer}>
 
-      {/* Header */}
-      <div style={{ background: `linear-gradient(135deg, ${color.brand900}, ${color.brand700})`, padding: "14px 16px 12px", position: "sticky", top: 0, zIndex: 10 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <div>
-            {onDone && (
-              <button onClick={onDone} style={{ background: "none", border: "none", padding: 0, marginBottom: 6, color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-                ← Kembali ke Home
-              </button>
-            )}
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", letterSpacing: 2, textTransform: "uppercase" }}>Form Vigor Harian</div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{todayLabel}</div>
-          </div>
-          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
-            {pendingCount > 0 && (
-              <button onClick={isOnline ? syncPending : undefined}
-                style={{ fontSize: 10, fontWeight: 700, background: isOnline ? "rgba(33,150,243,0.25)" : "rgba(255,179,0,0.2)", border: `1px solid ${isOnline ? "rgba(33,150,243,0.5)" : "rgba(255,179,0,0.4)"}`, borderRadius: 20, padding: "3px 9px", color: isOnline ? color.infoBorder : "#FFB300", cursor: isOnline ? "pointer" : "default" }}>
-                {isSyncingPending ? "⏳" : "📤"} {pendingCount} pending
-              </button>
-            )}
-            {isDemoMode && <span style={{ fontSize: 10, background: "rgba(255,179,0,0.2)", border: "1px solid rgba(255,179,0,0.4)", color: "#FFB300", padding: "3px 8px", borderRadius: 20, fontWeight: 700 }}>DEMO</span>}
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: isOnline ? "#69f0ae" : "#f44336", display: "inline-block", boxShadow: isOnline ? "0 0 6px #69f0ae" : "0 0 6px #f44336" }} />
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 5, marginTop: 12 }}>
-          {["Pilih GH", "Input Vigor", "Selesai"].map((label, i) => {
-            const s = i + 1;
-            const active = step === s, done = step > s;
-            return (
-              <div key={s} style={{ flex: 1, textAlign: "center" }}>
-                <div style={{ height: 3, borderRadius: 2, marginBottom: 4, background: done ? "#69f0ae" : active ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.15)", transition: "background 0.3s" }} />
-                <div style={{ fontSize: 9, color: active ? color.card : done ? "#69f0ae" : "rgba(255,255,255,0.3)", fontWeight: active ? 700 : 400 }}>{label}</div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Warning modal */}
-      {showWarning && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <div style={{ background: color.card, borderRadius: 16, padding: 24, maxWidth: 340, width: "100%" }}>
-            <div style={{ fontSize: 32, textAlign: "center", marginBottom: 12 }}>⚠️</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: color.text, textAlign: "center", marginBottom: 8 }}>Sudah disubmit hari ini</div>
-            <div style={{ fontSize: 13, color: color.textMuted, textAlign: "center", marginBottom: 20, lineHeight: 1.5 }}>
-              <strong>{pendingGH}</strong> sudah disubmit hari ini. Data baru akan ditambahkan.
-            </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => { setShowWarning(false); setPendingGH(""); }} style={{ flex: 1, padding: 11, background: color.bg, border: `1px solid ${color.border}`, borderRadius: 10, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Batal</button>
-              <button onClick={() => doSelectGH(pendingGH)} style={{ flex: 1, padding: 11, background: color.danger, border: "none", borderRadius: 10, color: color.card, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Isi Ulang</button>
-            </div>
-          </div>
-        </div>
+      {/* ── Status koneksi & antrean ── */}
+      {step < 4 && !isOnline && (
+        <FieldAlert tone="info">Mode offline. Data disimpan di perangkat dan terkirim otomatis saat online.</FieldAlert>
+      )}
+      {step < 4 && pendingCount > 0 && (
+        <FieldAlert
+          tone="warning"
+          action={isOnline && !isSyncingPending ? { label: "Kirim sekarang", onClick: syncPending } : undefined}
+        >
+          {isSyncingPending ? "Mengirim data tertunda…" : `${pendingCount} GH tersimpan offline, belum terkirim.`}
+        </FieldAlert>
+      )}
+      {step < 4 && isDemoMode && (
+        <FieldAlert tone="warning">Mode demo. Data tidak dikirim ke sheet.</FieldAlert>
       )}
 
-      <div style={{ flex: 1, padding: 16 }}>
+      {/* ══ STEP 1 — Pilih GH ══ */}
+      {step === 1 && (
+        <>
+          <section className="fh-section">
+            <span className="fh-label">GH aktif HST {HST_MIN}–{HST_MAX}</span>
+            <p className="fh-hint">Checkpoint Vigor: HST {HST_CHECKPOINTS.join(", ")}.</p>
+          </section>
+          <GHPicker
+            loading={loadingGH}
+            selected={selectedGH}
+            onSelect={handleSelectGH}
+            emptyText="Tidak ada GH aktif."
+            items={ghAktif.flatMap(([gh, info]) => {
+              const tipe = TIPE_GH.find(t => t.pattern(gh));
+              if (!tipe) return [];
+              const hstGH    = info.tanam ? hitungHST(info.tanam) : null;
+              const sudahIsi = submittedToday.includes(gh);
+              const st       = getCheckpointStatus(hstGH);
+              const blockedInfo = blockedMap[gh.trim().toUpperCase()];
+              const badges = [];
+              if (blockedInfo) badges.push({ label: blockedInfo.aksi, tone: "danger" });
+              if (sudahIsi) badges.push({ label: "Sudah diisi", tone: "success" });
+              else if (st?.type === "due") badges.push({ label: `Due HST ${st.cp}`, tone: "due" });
+              else if (st?.type === "soon") badges.push({ label: `HST ${st.cp} dalam ${st.cp - hstGH} hari`, tone: "warning" });
+              if (hstGH !== null) badges.push({ label: `${hstGH} HST`, tone: "neutral" });
+              return [{
+                gh,
+                meta: [tipe.label, info.periode && `P${info.periode}`, `${info.varian?.length || 0} varian`].filter(Boolean).join(" · "),
+                badges,
+                done: sudahIsi,
+                urgent: !sudahIsi && st?.type === "due",
+                sortValue: hstGH,
+              }];
+            })}
+          />
+        </>
+      )}
 
-        {/* ══ STEP 1 — Pilih GH ══ */}
-        {step === 1 && (
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 18, color: color.brand900, marginBottom: 4 }}>Pilih Greenhouse</div>
-            <div style={{ fontSize: 12, color: color.textSoft, marginBottom: 14 }}>GH aktif HST {HST_MIN}–{HST_MAX}</div>
-            {loadingGH ? (
-              <div style={{ textAlign: "center", padding: "40px 0", color: color.textGhost }}>
-                <div style={{ fontSize: 28 }}>🔄</div>
-                <div style={{ fontSize: 13, marginTop: 8 }}>Memuat data GH...</div>
-              </div>
-            ) : ghAktif.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "32px 0", color: color.textGhost, fontSize: 13 }}>Tidak ada GH aktif</div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {TIPE_GH.map(tipe => {
-                  const ghDiTipe = ghAktif.filter(([gh]) => tipe.pattern(gh));
-                  const isOpen   = selectedTipe === tipe.key;
-                  const hasDue   = ghDiTipe.some(([, info]) => getCheckpointStatus(info.tanam ? hitungHST(info.tanam) : null)?.type === "due");
-                  const hasSoon  = !hasDue && ghDiTipe.some(([, info]) => getCheckpointStatus(info.tanam ? hitungHST(info.tanam) : null)?.type === "soon");
-                  return (
-                    <div key={tipe.key} style={{ border: `1.5px solid ${isOpen ? tipe.color + "55" : color.border}`, borderRadius: 14, overflow: "hidden", background: color.card }}>
-                      <button onClick={() => setSelectedTipe(isOpen ? "" : tipe.key)}
-                        style={{ width: "100%", padding: "13px 16px", background: isOpen ? `${tipe.color}10` : color.card, border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          <span style={{ fontSize: 20 }}>{tipe.icon}</span>
-                          <div style={{ textAlign: "left" }}>
-                            <div style={{ fontSize: 14, fontWeight: 800, color: isOpen ? tipe.color : color.text }}>{tipe.label}</div>
-                            <div style={{ fontSize: 11, color: color.textGhost, marginTop: 1 }}>{ghDiTipe.length} GH aktif saat ini</div>
-                          </div>
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          {hasDue  && <span style={{ fontSize: 10, background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 20, padding: "2px 8px", color: color.warning, fontWeight: 700 }}>⚠️ Due</span>}
-                          {hasSoon && <span style={{ fontSize: 10, background: color.brandBg, border: `1px solid ${color.brand300}`, borderRadius: 20, padding: "2px 8px", color: color.brand700, fontWeight: 700 }}>🔔 Soon</span>}
-                          <span style={{ fontSize: 14, color: "#bbb", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "inline-block" }}>▼</span>
-                        </div>
-                      </button>
-                      {isOpen && (
-                        <div style={{ padding: "10px 12px 14px", borderTop: `1px solid ${tipe.color}22` }}>
-                          {ghDiTipe.length === 0 ? (
-                            <div style={{ textAlign: "center", padding: 20, color: color.textGhost, fontSize: 13 }}>Tidak ada GH aktif di tipe ini.</div>
-                          ) : (
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                              {ghDiTipe.map(([gh, info]) => {
-                                const hstGH    = info.tanam ? hitungHST(info.tanam) : null;
-                                const c        = hstGH !== null ? hstColor(hstGH) : hstColor(21);
-                                const dipilih  = selectedGH === gh;
-                                const sudahIsi = submittedToday.includes(gh);
-                                const cs       = getCheckpointStatus(hstGH);
-                                return (
-                                  <button key={gh} onClick={() => handleSelectGH(gh)}
-                                    style={{ padding: "12px 10px", borderRadius: 12, cursor: "pointer", textAlign: "center", border: dipilih ? `2px solid ${tipe.color}` : sudahIsi ? `1px solid ${color.warningBorder}` : `1px solid ${color.border}`, background: dipilih ? `${tipe.color}12` : sudahIsi ? "#fff8e1" : "#fafafa", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, transition: "all 0.2s" }}>
-                                    <div style={{ fontSize: 13, fontWeight: 700, color: dipilih ? tipe.color : color.text }}>{gh}</div>
-                                    <div style={{ fontSize: 10, color: color.textGhost }}>P{info.periode} · {info.varian?.length || 0} varian</div>
-                                    {hstGH !== null && (
-                                      <div style={{ background: c.badge, border: `1px solid ${c.border}`, borderRadius: 8, padding: "4px 10px", width: "100%" }}>
-                                        <span style={{ fontSize: 16, fontWeight: 800, color: c.text }}>{hstGH}</span>
-                                        <span style={{ fontSize: 10, color: c.text, marginLeft: 3 }}>HST</span>
-                                      </div>
-                                    )}
-                                    {cs && (
-                                      <div style={{ width: "100%", fontSize: 10, borderRadius: 7, padding: "3px 6px", fontWeight: 700, background: cs.type === "due" ? color.warningBg : color.brandBg, border: `1px solid ${cs.type === "due" ? color.warningBorder : color.brand300}`, color: cs.type === "due" ? color.warning : color.brand700 }}>
-                                        {cs.label}
-                                      </div>
-                                    )}
-                                    {sudahIsi && <div style={{ fontSize: 10, background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 20, padding: "2px 8px", color: color.warning, fontWeight: 600 }}>✓ Sudah diisi</div>}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+      {/* ══ STEP 2 — Input per varian ══ */}
+      {step === 2 && (
+        <>
+          {cs && <FieldAlert tone={cs.type === "due" ? "warning" : "info"}>{cs.label}</FieldAlert>}
+
+          <section className="fh-section">
+            <span className="fh-label">Checkpoint HST</span>
+            <div className="fh-chips">
+              {HST_CHECKPOINTS.map(h => (
+                <button key={h} type="button" aria-pressed={selectedHST === h}
+                  className={`fh-chip${selectedHST === h ? " is-active" : ""}`}
+                  onClick={() => setSelectedHST(h)}>
+                  HST {h}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="fh-section">
+            <div className="fh-section-head">
+              <span className="fh-label">Penilaian per varian</span>
+              <span className="fh-meta">{filledCount}/{varianList.length} varian lengkap</span>
+            </div>
+            {varianList.length > 1 && (
+              <SegmentTabs
+                label="Varian"
+                value={activeKey}
+                onChange={setActiveVarian}
+                tabs={varianList.map(v => ({ key: v, label: v, count: `${countDone(v)}/${allItems.length}` }))}
+              />
             )}
-          </div>
-        )}
+          </section>
 
-        {/* ══ STEP 2 — Input Per Varian ══ */}
-        {step === 2 && (
-          <div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
-              <div style={{ background: color.brandBg, border: `1px solid ${color.brand300}`, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: color.brand700, fontWeight: 700 }}>{selectedGH}</div>
-              <div style={{ background: color.bg, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: color.textMuted }}>P{ghInfo?.periode}</div>
-              {hstAktual !== null && (
-                <div style={{ background: col.badge, border: `1px solid ${col.border}`, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: col.text, fontWeight: 700 }}>{hstAktual} HST aktual</div>
-              )}
-            </div>
+          {varianList.length === 0 && (
+            <FieldAlert tone="warning">GH ini belum punya daftar varian di sheet REF. Hubungi Team Data.</FieldAlert>
+          )}
 
-            {(() => {
-              const cs = getCheckpointStatus(hstAktual);
-              if (!cs) return null;
-              return (
-                <div style={{ marginBottom: 12, padding: "9px 14px", background: cs.type === "due" ? color.warningBg : color.brandBg, border: `1px solid ${cs.type === "due" ? color.warningBorder : color.brand300}`, borderRadius: 10, fontSize: 12, color: cs.type === "due" ? color.warning : color.brand700, fontWeight: 600 }}>
-                  {cs.label}
-                </div>
-              );
-            })()}
-
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, color: "#388e3c", letterSpacing: 1.1, textTransform: "uppercase", fontWeight: 700, marginBottom: 6 }}>Checkpoint HST</div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {HST_CHECKPOINTS.map(h => (
-                  <button key={h} onClick={() => setSelectedHST(h)}
-                    style={{ padding: "6px 14px", borderRadius: 20, border: `1.5px solid ${selectedHST === h ? color.brand900 : color.border}`, background: selectedHST === h ? color.brandBg : color.card, color: selectedHST === h ? color.brand900 : color.textSoft, fontSize: 13, fontWeight: selectedHST === h ? 700 : 400, cursor: "pointer" }}>
-                    HST {h}
-                  </button>
-                ))}
+          {activeKey && aspekList.map(aspek => (
+            <section key={aspek.key} className="fh-section" style={{ gap: 12 }}>
+              <div>
+                <span className="fh-overline">{aspek.title}</span>
+                {aspek.hint && <p className="fh-hint" style={{ marginTop: 2 }}>{aspek.hint}</p>}
               </div>
-            </div>
-
-            <div style={{ fontSize: 12, color: color.textSoft, marginBottom: 6 }}>{filledCount}/{varianList.length} varian terisi</div>
-            <div style={{ background: color.border, borderRadius: 4, height: 5, marginBottom: 14, overflow: "hidden" }}>
-              <div style={{ height: "100%", borderRadius: 4, background: "#4CAF50", width: `${varianList.length > 0 ? (filledCount / varianList.length) * 100 : 0}%`, transition: "width 0.3s" }} />
-            </div>
-
-            {!isOnline && (
-              <div style={{ marginBottom: 12, padding: "8px 12px", background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 9, display: "flex", alignItems: "center", gap: 8 }}>
-                <span>📵</span>
-                <span style={{ fontSize: 11, color: color.warning }}>Offline — data tersimpan lokal & dikirim otomatis saat online</span>
-              </div>
-            )}
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-              {varianList.map((varian) => {
-                const d      = varianData[varian] || {};
-                const filled = isVarianFilled(d, showKualitas, showPolinasi, showKesegaran, showNetting, showNetting50Field, showNetBercakHitam, showLebarDiameter, showSimetri, showSemai);
-                const isOpen = activeVarian === varian;
-                return (
-                  <div key={varian} style={{ background: color.card, borderRadius: 12, border: `1.5px solid ${filled ? color.brand300 : color.border}`, overflow: "hidden" }}>
-                    <button onClick={() => setActiveVarian(isOpen ? null : varian)}
-                      style={{ width: "100%", padding: "12px 14px", background: filled ? "#f1f8e9" : color.card, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <span style={{ fontWeight: 700, fontSize: 15, color: filled ? color.brand700 : color.text }}>🌾 {varian}</span>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        {filled  && <span style={{ fontSize: 14 }}>✅</span>}
-                        {!filled && <span style={{ fontSize: 10, background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 20, padding: "2px 8px", color: color.warning }}>Belum lengkap</span>}
-                        <span style={{ fontSize: 12, color: "#bbb", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
-                      </div>
-                    </button>
-
-                    {isOpen && (
-                      <div style={{ padding: "14px", borderTop: "1px solid #f0f0f0" }}>
-
-                        {/* VIGOR SEMAI (HST 11) */}
-                        {showSemai && (
-                          <div>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: "#388e3c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🌱 Vigor Semai</div>
-                            <div style={{ fontSize: 10, color: color.textSoft, marginBottom: 12 }}>Per varian per GH · 3 sampel random per varian · pilih skor 1–4 (bobot tiap variabel 25%)</div>
-                            {SEMAI_VARIABEL.map((v, vi) => (
-                              <div key={v.key} style={{ marginBottom: 16 }}>
-                                <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>{vi + 1}. {v.label}</div>
-                                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                                  {v.options.map(opt => {
-                                    const val = String(opt.skor);
-                                    const active = d[v.key] === val;
-                                    return (
-                                      <button key={opt.skor} onClick={() => updateVarian(varian, v.key, val)}
-                                        style={{ padding: "9px 10px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? color.brand700 : color.border}`, background: active ? `${color.brand700}12` : color.card, color: active ? color.brand700 : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 8 }}>
-                                        <span style={{ flexShrink: 0, minWidth: 22, textAlign: "center", fontWeight: 800, background: active ? color.brand700 : color.bg, color: active ? color.card : "#777", borderRadius: 6, padding: "1px 0" }}>{opt.skor}</span>
-                                        <span>{opt.desc}</span>
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {!showSemai && <>
-                        {/* ASPEK VIGOR */}
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "#388e3c", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>🌿 Aspek Vigor Tanaman</div>
-                        {(() => {
-                          const tipeGH = TIPE_GH.find(t => t.pattern(selectedGH));
-                          const samplingText = tipeGH?.key === "kolam"
-                            ? "Sistem Kolam: ambil mulai dari tanaman ke-16 dari baris depan sejumlah 7 tanaman, dan ke-16 dari baris belakang sejumlah 7 tanaman (total 14 tanaman)"
-                            : tipeGH?.key === "dutch"
-                            ? "Sistem DB: ambil mulai dari bucket/polybag ke-16 dari baris depan sejumlah 7 tanaman, dan ke-16 dari baris belakang sejumlah 7 tanaman (total 14 tanaman)"
-                            : "Ambil sampel setelah 10 tanaman depan dan 10 tanaman belakang, hindari tanaman yang terpengaruh variabel luar";
-                          return <div style={{ fontSize: 10, color: color.textSoft, marginBottom: 4 }}>{samplingText}</div>;
-                        })()}
-
-                        {showLebarDiameter && (
-                          <div style={{ marginBottom: 14 }}>
-                            <div style={{ fontSize: 12, color: "#555", marginBottom: 4, fontWeight: 600 }}>1. Lebar Daun (cm)</div>
-                            <div style={{ fontSize: 11, color: color.textGhost, marginBottom: 8 }}>
-                              {selectedHST === 7 ? "Dilakukan pada daun ke-4" : selectedHST === 14 ? "Dilakukan pada daun ke-7" : selectedHST === 18 ? "Dilakukan pada daun ke-11" : "Dilakukan pada daun ke-4"}
-                            </div>
-                            <PilihOpsi options={lebarDaunOptions} value={d.lebarDaun} onChange={val => updateVarian(varian, "lebarDaun", val)} color={color.brand700} cols={3} />
-                          </div>
-                        )}
-
-                        {showLebarDiameter && (
-                          <div style={{ marginBottom: 14 }}>
-                            <div style={{ fontSize: 12, color: "#555", marginBottom: 4, fontWeight: 600 }}>2. Diameter Batang</div>
-                            <div style={{ fontSize: 11, color: color.textGhost, marginBottom: 8 }}>Penilaian DB pada ruas ke-3 hingga ke-5</div>
-                            <PilihOpsi options={diameterOptions} value={d.diameterBatang} onChange={val => updateVarian(varian, "diameterBatang", val)} color={color.info} cols={2} />
-                          </div>
-                        )}
-
-                        <div style={{ marginBottom: 18 }}>
-                          <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>{showLebarDiameter ? "3." : "1."} Warna Daun</div>
-                          <PilihOpsi options={WARNA_DAUN_OPTIONS} value={d.warnaDaun} onChange={val => updateVarian(varian, "warnaDaun", val)} color="#f57f17" cols={2} />
-                        </div>
-
-                        {/* KESEGARAN — bagian Aspek Vigor (sejajar Warna Daun, semua checkpoint relevan) */}
-                        {showKesegaranVigor && (
-                          <div style={{ marginBottom: 18 }}>
-                            <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>{showLebarDiameter ? "4." : "2."} Kesegaran Tanaman (Kelayuan)</div>
-                            <PilihOpsi options={KESEGARAN_OPTIONS} value={d.kesegaran} onChange={val => updateVarian(varian, "kesegaran", val)} color={color.brand700} cols={3} />
-                          </div>
-                        )}
-
-                        {/* ASPEK PERAKARAN */}
-                        <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginBottom: 12 }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: "#795548", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🪱 Aspek Perakaran</div>
-                          <div style={{ fontSize: 10, color: color.textSoft, marginBottom: 12 }}>Sampel 1 tanaman per varian, gali ±2 cm pada media tanam</div>
-                        </div>
-
-                        <div style={{ marginBottom: 14 }}>
-                          <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>1. Warna Akar Serabut</div>
-                          <PilihOpsi options={WARNA_AKAR_OPTIONS} value={d.warnaAkar} onChange={val => updateVarian(varian, "warnaAkar", val)} color="#795548" cols={2} />
-                        </div>
-
-                        <div style={{ marginBottom: showKualitas || showKesegaran || showNetting ? 18 : 6 }}>
-                          <div style={{ fontSize: 12, color: "#555", marginBottom: 8, fontWeight: 600 }}>2. Volume Akar</div>
-                          <PilihOpsi options={VOLUME_AKAR_OPTIONS} value={d.volumeAkar} onChange={val => updateVarian(varian, "volumeAkar", val)} color="#795548" cols={3} />
-                        </div>
-
-                        {/* KUALITAS BUAH — Simetri & Cabang (HST 33 & 38) */}
-                        {showSimetri && (
-                          <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14 }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: "#AD1457", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🍈 Aspek Kualitas Buah</div>
-                            <div style={{ fontSize: 10, color: color.textSoft, marginBottom: 12 }}>Per baris (± 198 tanaman) per varian</div>
-                            <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>1. Simetri Buah</div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                              {SIMETRI_BUAH_OPTIONS.map((opt, idx) => {
-                                const active = d.simetriBuah === opt;
-                                return (
-                                  <button key={idx} onClick={() => updateVarian(varian, "simetriBuah", opt)}
-                                    style={{ padding: "10px", textAlign: "center", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#AD1457" : color.border}`, background: active ? "#FCE4EC" : color.card, color: active ? "#AD1457" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4 }}>
-                                    <div style={{ fontSize: 16, marginBottom: 4 }}>{active ? "●" : "○"}</div>
-                                    {opt}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                            <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600, marginTop: 14 }}>2. Cabang Buah</div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                              {CABANG_BUAH_OPTIONS.map((opt, idx) => {
-                                const active = d.cabangBuah === opt;
-                                return (
-                                  <button key={idx} onClick={() => updateVarian(varian, "cabangBuah", opt)}
-                                    style={{ padding: "10px", textAlign: "center", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#AD1457" : color.border}`, background: active ? "#FCE4EC" : color.card, color: active ? "#AD1457" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4 }}>
-                                    <div style={{ fontSize: 16, marginBottom: 4 }}>{active ? "●" : "○"}</div>
-                                    {opt}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* POLINASI (HST 18) */}
-                        {showPolinasi && (
-                          <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginTop: showKualitas ? 14 : 0 }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: color.info, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🌸 Aspek Penilaian Keberhasilan Polinasi</div>
-                            <div style={{ fontSize: 10, color: color.textSoft, marginBottom: 12 }}>Ambil sampel setelah 10 tanaman depan dan 10 tanaman belakang, hindari tanaman yang terpengaruh variabel luar</div>
-                            <div style={{ marginBottom: 12, padding: "9px 12px", background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 8, fontSize: 11, color: "#7a6000", lineHeight: 1.5 }}>
-                              ⚠️ Umur 18 HST belum selesai dilakukan polinasi, untuk itu penilaian keberhasilan cabang polinasi belum dapat dilakukan.
-                            </div>
-                            <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>1. Buah Bajang</div>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
-                              {BUAH_BAJANG_OPTIONS.map((opt, idx) => {
-                                const active = d.buahBajang === opt;
-                                return (
-                                  <button key={idx} onClick={() => updateVarian(varian, "buahBajang", opt)}
-                                    style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? color.info : color.border}`, background: active ? color.infoBg : color.card, color: active ? color.info : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4, display: "flex", alignItems: "center", gap: 8 }}>
-                                    <span style={{ flexShrink: 0 }}>{active ? "●" : "○"}</span><span>{opt}</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                            <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>2. Panjang Tunas Air</div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
-                              {PANJANG_TUNAS_AIR_OPTIONS.map((opt, idx) => {
-                                const active = d.panjangTunasAir === opt;
-                                return (
-                                  <button key={idx} onClick={() => updateVarian(varian, "panjangTunasAir", opt)}
-                                    style={{ padding: "10px 6px", textAlign: "center", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? color.info : color.border}`, background: active ? color.infoBg : color.card, color: active ? color.info : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4 }}>
-                                    <div style={{ fontSize: 16, marginBottom: 4 }}>{active ? "●" : "○"}</div>{opt}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* NETTING BUAH (HST 45 & 54) */}
-                        {showNetting && (
-                          <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginTop: 14 }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: "#AD1457", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🍈 Kualitas Buah Tambahan</div>
-                            <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>{selectedHST === 54 ? "Netting Buah (Crack Basah)" : "Netting Buah"}</div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
-                              {(selectedHST === 54 ? NETTING_BUAH_54_OPTIONS : NETTING_BUAH_45_OPTIONS).map((opt, idx) => {
-                                const active = d.nettingBuah === opt;
-                                return (
-                                  <button key={idx} onClick={() => updateVarian(varian, "nettingBuah", opt)}
-                                    style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#AD1457" : color.border}`, background: active ? "#FCE4EC" : color.card, color: active ? "#AD1457" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 8 }}>
-                                    <span style={{ flexShrink: 0, marginTop: 1 }}>{active ? "●" : "○"}</span><span>{opt}</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* NETTING 50% (HST 54) / NETTING BUAH CRACK (HST 45) — sama-sama pakai field netting50 */}
-                        {showNetting50Field && (
-                          <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginTop: 14 }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: color.purple700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🍈 {showNettingCrack45 ? "Kualitas Buah Tambahan" : "Netting 50%"}</div>
-                            <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>{showNettingCrack45 ? "Netting Buah (Crack Basah)" : "Pencapaian Netting 50%"}</div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
-                              {(showNettingCrack45 ? NETTING_BUAH_54_OPTIONS : NETTING_50_54_OPTIONS).map((opt, idx) => {
-                                const active = d.netting50 === opt;
-                                return (
-                                  <button key={idx} onClick={() => updateVarian(varian, "netting50", opt)}
-                                    style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? color.purple700 : color.border}`, background: active ? color.purpleBg : color.card, color: active ? color.purple700 : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 8 }}>
-                                    <span style={{ flexShrink: 0, marginTop: 1 }}>{active ? "●" : "○"}</span><span>{opt}</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* NET/BERCAK HITAM (HST 54) */}
-                        {showNetBercakHitam && (
-                          <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 14, marginTop: 14 }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: "#BF360C", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🍈 Kualitas Buah Tambahan</div>
-                            <div style={{ fontSize: 12, color: "#555", marginBottom: 10, fontWeight: 600 }}>Pendataan Buah Net/Bercak Hitam</div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
-                              {NET_BERCAK_HITAM_54_OPTIONS.map((opt, idx) => {
-                                const active = d.netBercakHitam === opt;
-                                return (
-                                  <button key={idx} onClick={() => updateVarian(varian, "netBercakHitam", opt)}
-                                    style={{ padding: "10px 14px", textAlign: "left", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${active ? "#BF360C" : color.border}`, background: active ? "#FBE9E7" : color.card, color: active ? "#BF360C" : "#555", fontSize: 12, fontWeight: active ? 700 : 400, lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 8 }}>
-                                    <span style={{ flexShrink: 0, marginTop: 1 }}>{active ? "●" : "○"}</span><span>{opt}</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                        </>}
-
-                      </div>
-                    )}
+              {aspek.note && <FieldAlert tone="info">{aspek.note}</FieldAlert>}
+              {aspek.items.map(it => (
+                <div key={it.key} className="fh-card fh-card-body">
+                  <div>
+                    <span className="fh-card-title">{it.label}</span>
+                    {it.hint && <p className="fh-hint">{it.hint}</p>}
                   </div>
-                );
-              })}
-            </div>
+                  <OptionList
+                    name={it.label}
+                    columns={it.columns || 1}
+                    value={d[it.key] || ""}
+                    onChange={val => updateVarian(activeKey, it.key, val)}
+                    options={it.options.map(o => typeof o === "string" ? { value: o, label: o } : o)}
+                  />
+                </div>
+              ))}
+            </section>
+          ))}
 
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, color: "#388e3c", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
-                👤 Nama Operator <span style={{ color: color.danger }}>*</span>
-              </label>
-              <input type="text" value={operator} onChange={e => setOperator(e.target.value)} placeholder="Tulis nama lengkap..."
-                style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: color.card, border: `1.5px solid ${operator.trim() ? color.brand400 : color.border}`, borderRadius: 10, color: color.text, fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
-            </div>
+          {activeKey && nextVarian && (
+            <button type="button" className="fh-btn fh-btn-secondary" onClick={() => goToVarian(nextVarian)}>
+              Varian berikut: {nextVarian}
+            </button>
+          )}
 
-            <FotoSelfie
-              fotoFile={selfieFile} fotoPreview={selfiePreview}
-              onChange={(file, preview) => { setSelfieFile(file); setSelfiePreview(preview); setSelfieUrl(""); }}
+          <section className="fh-section">
+            <PhotoBox
+              label="Selfie operator"
+              hint={isOnline ? "Opsional, disimpan ke Drive" : "Opsional, upload otomatis saat online"}
+              preview={selfiePreview}
+              capture="user"
+              onChange={(file, url) => { setSelfieFile(file); setSelfiePreview(url); setSelfieUrl(""); }}
               onClear={() => { setSelfieFile(null); setSelfiePreview(null); setSelfieUrl(""); }}
-              isOffline={!isOnline} darkMode={false}
             />
+          </section>
 
-            {/* KETERANGAN — opsional, satu untuk seluruh checkpoint (dikirim sama ke semua varian) */}
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, color: "#388e3c", letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
-                📝 Keterangan <span style={{ fontWeight: 400, color: color.textGhost, textTransform: "none", letterSpacing: 0 }}>(opsional)</span>
-              </label>
-              <textarea value={keterangan} onChange={e => setKeterangan(e.target.value)}
-                placeholder="Catatan tambahan (boleh dikosongkan)" rows={2}
-                style={{ width: "100%", marginTop: 8, padding: "11px 14px", background: color.card, border: `1.5px solid ${keterangan.trim() ? color.brand400 : color.border}`, borderRadius: 10, color: color.text, fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit", resize: "vertical" }} />
+          <label className="fh-section">
+            <div className="fh-section-head">
+              <span className="fh-label">Keterangan</span>
+              <span className="fh-meta">opsional · untuk semua varian</span>
             </div>
-
-            {!allFilled && varianList.length > 0 && (
-              <div style={{ fontSize: 12, color: color.warning, background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
-                ⚠️ {varianList.length - filledCount} varian belum lengkap — tap varian untuk mengisi
-              </div>
-            )}
-            {submitError && (
-              <div style={{ fontSize: 12, color: color.dangerDeep, background: color.dangerBg, border: `1px solid ${color.dangerBorder}`, borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>⚠️ {submitError}</div>
-            )}
-          </div>
-        )}
-
-        {/* ══ STEP 3 — Sukses ══ */}
-        {step === 3 && (
-          <div style={{ textAlign: "center", paddingTop: 32 }}>
-            <div style={{ fontSize: 60, marginBottom: 12 }}>{isDemoMode ? "🧪" : savedOffline ? "💾" : "✅"}</div>
-            <div style={{ fontSize: 21, fontWeight: 800, color: isDemoMode ? "#f57f17" : savedOffline ? color.info : color.brand700, marginBottom: 6 }}>
-              {isDemoMode ? "Demo Selesai!" : savedOffline ? "Tersimpan Lokal!" : "Data Tersimpan!"}
-            </div>
-            <div style={{ fontSize: 13, color: color.textSoft, marginBottom: 20 }}>
-              {isDemoMode ? "Data tidak dikirim (mode demo)" : savedOffline ? "Otomatis terkirim ke Google Sheets saat online." : `${varianList.length} varian berhasil dikirim ke Google Sheets`}
-            </div>
-            <div style={{ background: savedOffline ? color.infoBg : color.brandBg, border: `1px solid ${savedOffline ? color.infoBorder : color.brand300}`, borderRadius: 14, padding: 16, textAlign: "left", marginBottom: 20 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: color.text }}>{selectedGH} · P{ghInfo?.periode} · {hstAktual} HST</div>
-              <div style={{ fontSize: 13, color: color.textMuted, marginTop: 2 }}>Operator: {operator}</div>
-              <div style={{ fontSize: 13, color: color.textMuted, marginTop: 2 }}>{varianList.length} varian · {todayISO}</div>
-            </div>
-            {onDone ? (
-              <button onClick={onDone} style={{ width: "100%", padding: 15, background: color.brandBg, border: `2px solid ${color.brand400}`, borderRadius: 12, color: color.brand700, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-                ← Kembali ke Home
-              </button>
-            ) : (
-              <button onClick={resetForm} style={{ width: "100%", padding: 15, background: color.brandBg, border: `2px solid ${color.brand400}`, borderRadius: 12, color: color.brand700, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-                + Input GH Berikutnya
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Bottom Nav */}
-      {step < 3 && (
-        <div style={{ padding: "12px 16px 24px", borderTop: `1px solid ${color.border}`, background: color.card, position: "sticky", bottom: 0, display: "flex", gap: 10 }}>
-          {step > 1 && !onDone && (
-            <button onClick={() => { setStep(s => s - 1); setSubmitError(null); }}
-              style={{ flex: 1, padding: 13, background: color.bg, border: `1px solid ${color.border}`, borderRadius: 12, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>← Kembali</button>
-          )}
-          {step === 1 && (
-            <button onClick={() => setStep(2)} disabled={!selectedGH}
-              style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: selectedGH ? `linear-gradient(135deg,${color.brand900},${color.brand700})` : color.border, color: selectedGH ? color.card : color.textGhost, fontSize: 15, fontWeight: 700, cursor: selectedGH ? "pointer" : "not-allowed" }}>
-              Lanjut Input →
-            </button>
-          )}
-          {step === 2 && (
-            <button onClick={() => setConfirmOpen(true)} disabled={!canSubmit || submitting}
-              style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: canSubmit && !submitting ? (!isOnline ? `linear-gradient(135deg,${color.info},#1976D2)` : `linear-gradient(135deg,${color.brand900},${color.brand700})`) : color.border, color: canSubmit && !submitting ? color.card : color.textGhost, fontSize: 15, fontWeight: 700, cursor: canSubmit && !submitting ? "pointer" : "not-allowed" }}>
-              {submitting ? "⏳ Menyimpan..." : !isOnline && canSubmit ? "💾 Simpan Offline" : `Submit ${varianList.length} Varian ✓`}
-            </button>
-          )}
-        </div>
+            <textarea className="fh-textarea" rows={2} value={keterangan} onChange={e => setKeterangan(e.target.value)} placeholder="Catatan tambahan" />
+          </label>
+        </>
       )}
 
-      <ConfirmSubmitModal
-        open={confirmOpen}
-        onCancel={() => setConfirmOpen(false)}
-        onConfirm={() => { setConfirmOpen(false); handleSubmit(); }}
-        color="#43A047" isOffline={!isOnline} isDemoMode={isDemoMode}
-        summary={[
-          { label: "Tanggal",  value: todayISO },
-          { label: "GH",       value: selectedGH },
-          { label: "Varian",   value: `${varianList.length} varian` },
-          { label: "Operator", value: operator },
-        ]}
-      />
+      {/* ══ STEP 3 — Rekap ══ */}
+      {step === 3 && (
+        <>
+          <label className="fh-section">
+            <span className="fh-label">Operator</span>
+            <input className={`fh-input${operator.trim() ? "" : " is-error"}`} value={operator} onChange={e => setOperator(e.target.value)} placeholder="Nama operator" />
+            <p className="fh-hint">Terisi dari akun login. Ubah bila yang mengisi orang lain.</p>
+          </label>
 
-      <style>{`
-        input[type=number]::-webkit-outer-spin-button,
-        input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-      `}</style>
-    </div>
+          <ReviewTable
+            title="Rekap"
+            info={[
+              ["Tanggal", formatTanggal()],
+              ["GH", selectedGH],
+              ["Periode", ghInfo?.periode || "-"],
+              ["HST aktual", hstAktual ?? "-"],
+              ["Checkpoint", selectedHST ? `HST ${selectedHST}` : "-"],
+              ["Selfie", selfiePreview ? "Ada" : "Tidak ada"],
+              ...(keterangan.trim() ? [["Keterangan", keterangan.trim()]] : []),
+            ]}
+          />
+
+          {varianList.map(v => (
+            <ReviewTable
+              key={v}
+              title={v}
+              info={allItems.map(it => {
+                const val = (varianData[v] || {})[it.key];
+                const opt = it.options.find(o => (typeof o === "string" ? o : o.value) === val);
+                return [it.label, it.skor && opt ? `Skor ${val}` : (val || "-")];
+              })}
+            />
+          ))}
+
+          {submitError && <FieldAlert tone="danger">{submitError}</FieldAlert>}
+        </>
+      )}
+
+      {/* ══ STEP 4 — Sukses ══ */}
+      {step === 4 && (
+        <SuccessState
+          offline={savedOffline}
+          title={isDemoMode ? "Demo selesai" : savedOffline ? "Tersimpan di perangkat" : `Vigor ${selectedGH} terkirim`}
+          description={isDemoMode
+            ? "Data tidak dikirim (mode demo)."
+            : savedOffline
+              ? "Terkirim otomatis ke sheet saat online."
+              : `${varianList.length} varian masuk ke sheet.`}
+          summary={[
+            ["GH", selectedGH],
+            ["HST aktual", hstAktual ?? "-"],
+            ["Checkpoint", selectedHST ? `HST ${selectedHST}` : "-"],
+            ["Varian", varianList.length],
+            ["Operator", operator],
+          ]}
+        />
+      )}
+
+      <Dialog
+        open={showWarning}
+        title="GH sudah diisi hari ini"
+        onClose={() => { setShowWarning(false); setPendingGH(""); }}
+        actions={
+          <div className="fh-btn-row">
+            <button type="button" className="fh-btn fh-btn-secondary" onClick={() => { setShowWarning(false); setPendingGH(""); }}>Batal</button>
+            <button type="button" className="fh-btn fh-btn-primary" onClick={() => { doSelectGH(pendingGH); setStep(2); }}>Isi ulang</button>
+          </div>
+        }
+      >
+        {pendingGH} sudah dikirim hari ini. Isi ulang akan menambah baris baru di sheet, data lama tidak terhapus.
+      </Dialog>
+    </FormShell>
   );
 }

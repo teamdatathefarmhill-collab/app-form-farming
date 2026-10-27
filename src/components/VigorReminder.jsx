@@ -10,7 +10,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useGHData } from "../hooks/useGHData";
 import { idbGetAll, idbDelete, gasFetch, gasPost } from "../utils/idb";
 import { isVigorGH, dueCheckpoint } from "../lib/vigorDue";
-import { color } from "../styles/tokens";
+import { Icon } from "./form";
 
 const SCRIPT_URL = import.meta.env.VITE_GAS_VIGOR_URL;
 const DB_NAME    = "VigorOfflineDB";
@@ -98,7 +98,7 @@ export default function VigorReminder({ onOpenVigor, popup = false }) {
         else { fail++; lastErr = json.error || ""; }
       } catch (e) { fail++; lastErr = e.message || ""; }
     }
-    setSyncMsg(fail ? `Terkirim ${ok}, gagal ${fail}${lastErr ? ` — ${lastErr}` : ""}` : `✓ ${ok} antrean terkirim`);
+    setSyncMsg(fail ? `Terkirim ${ok}, gagal ${fail}${lastErr ? ` — ${lastErr}` : ""}. Coba kirim lagi saat sinyal stabil.` : `${ok} antrean terkirim.`);
     setSyncing(false);
     refreshAll();
   };
@@ -107,55 +107,49 @@ export default function VigorReminder({ onOpenVigor, popup = false }) {
   if (popup && dismissed) return null;
 
   const card = (
-    <div style={{ margin: popup ? 0 : "10px 12px", width: popup ? "100%" : undefined, maxWidth: popup ? 420 : undefined, maxHeight: popup ? "80vh" : undefined, overflowY: popup ? "auto" : undefined, borderRadius: 14, background: color.card, border: `1.5px solid ${color.warningBorder}`, overflow: "hidden", fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
-      <div style={{ padding: "10px 14px", background: color.warningBg, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-        <div style={{ fontSize: 13, fontWeight: 800, color: color.warning }}>🔔 Pengingat Vigor</div>
-        <button onClick={refreshAll} disabled={checking}
-          style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, border: `1px solid ${color.warningBorder}`, background: color.card, color: color.warning, cursor: "pointer" }}>
-          {checking ? "⏳" : "↻ Cek ulang"}
-        </button>
-        {popup && (
-          <button onClick={() => setDismissed(true)} aria-label="Tutup"
-            style={{ fontSize: 16, fontWeight: 700, lineHeight: 1, padding: "2px 8px", borderRadius: 20, border: "none", background: "transparent", color: color.warning, cursor: "pointer" }}>✕</button>
-        )}
+    <div className="fh-card" style={{ margin: popup ? 0 : "10px 12px", width: popup ? "100%" : undefined, maxWidth: popup ? 420 : undefined, maxHeight: popup ? "80vh" : undefined, overflowY: popup ? "auto" : "hidden", fontFamily: "var(--font-sans)", color: "var(--ink-900)", textAlign: "left" }}>
+      <div className="fh-card-head" style={{ background: "var(--melon-50)" }}>
+        <span className="fh-card-title"><Icon name="TriangleAlert" size={18} /> Pengingat Vigor</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <button type="button" className="fh-btn fh-btn-secondary fh-btn-sm" onClick={refreshAll} disabled={checking}>
+            {checking ? "Mengecek…" : "Cek ulang"}
+          </button>
+          {popup && (
+            <button type="button" className="fh-icon-btn" style={{ border: "none", background: "transparent" }} onClick={() => setDismissed(true)} aria-label="Tutup">
+              <Icon name="X" />
+            </button>
+          )}
+        </span>
       </div>
 
       {pending.length > 0 && (
-        <div style={{ padding: "10px 14px", borderTop: `1px solid ${color.warningBorder}55` }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: color.infoDark, marginBottom: 6 }}>
-            📤 {pending.length} isian tersimpan di HP, belum terkirim ke server
-          </div>
+        <div className="fh-card-body" style={{ borderBottom: "1px solid var(--border-default)" }}>
+          <span className="fh-label">{pending.length} isian tersimpan di HP, belum terkirim ke server</span>
           {pending.map(r => (
-            <div key={r.id} style={{ fontSize: 12, color: "#555", padding: "2px 0" }}>
-              {r.gh} · {r.tanggal || "-"} · {r.payloads?.length || 0} varian
-            </div>
+            <span key={r.id} className="fh-hint">{r.gh} · {r.tanggal || "-"} · {r.payloads?.length || 0} varian</span>
           ))}
-          <button onClick={syncNow} disabled={syncing || !navigator.onLine}
-            style={{ marginTop: 8, width: "100%", padding: "9px", borderRadius: 10, border: "none", background: navigator.onLine ? color.info : "#bbb", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-            {syncing ? "⏳ Mengirim..." : navigator.onLine ? "Kirim sekarang" : "Offline — tunggu sinyal"}
+          <button type="button" className="fh-btn fh-btn-primary" onClick={syncNow} disabled={syncing || !navigator.onLine}>
+            {syncing ? "Mengirim…" : navigator.onLine ? "Kirim sekarang" : "Offline, tunggu sinyal"}
           </button>
-          {syncMsg && <div style={{ marginTop: 6, fontSize: 11, color: "#555" }}>{syncMsg}</div>}
+          {syncMsg && <span className="fh-hint">{syncMsg}</span>}
         </div>
       )}
 
       {belumDiisi.length > 0 && (
-        <div style={{ padding: "10px 14px", borderTop: `1px solid ${color.warningBorder}55` }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: color.warning, marginBottom: 6 }}>
-            ⚠️ Belum ada datanya di sheet
-          </div>
+        <div className="fh-card-body">
+          <span className="fh-label">Checkpoint due, belum ada datanya di sheet</span>
           {belumDiisi.map(g => (
-            <button key={g.gh} onClick={() => { onOpenVigor?.(g.gh); if (popup) setDismissed(true); }}
-              style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", marginBottom: 6, borderRadius: 10, border: `1px solid ${color.border}`, background: "#fafafa", cursor: "pointer", textAlign: "left" }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: color.text }}>{g.gh}</span>
-              <span style={{ fontSize: 11, color: color.warning, fontWeight: 700 }}>HST {g.hst} · checkpoint {g.cp} ›</span>
+            <button key={g.gh} type="button" className="fh-gh-item" onClick={() => { onOpenVigor?.(g.gh); if (popup) setDismissed(true); }}>
+              <span className="fh-gh-main"><span className="fh-gh-name">{g.gh}</span></span>
+              <span className="fh-badge fh-badge-due">HST {g.hst} · checkpoint {g.cp}</span>
             </button>
           ))}
         </div>
       )}
 
       {checkError && (
-        <div style={{ padding: "8px 14px", fontSize: 11, color: color.dangerDeep, background: color.dangerBg }}>
-          Gagal cek status ke sheet — daftar GH belum diisi mungkin belum lengkap. Ketuk "Cek ulang".
+        <div className="fh-card-body">
+          <p className="fh-error-text">Status ke sheet belum bisa dicek, jadi daftar GH di atas mungkin belum lengkap. Ketuk Cek ulang.</p>
         </div>
       )}
     </div>
@@ -163,8 +157,7 @@ export default function VigorReminder({ onOpenVigor, popup = false }) {
 
   if (!popup) return card;
   return (
-    <div onClick={(e) => { if (e.target === e.currentTarget) setDismissed(true); }}
-      style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+    <div className="fh-root fh-overlay" onClick={(e) => { if (e.target === e.currentTarget) setDismissed(true); }} style={{ zIndex: 300 }}>
       {card}
     </div>
   );
