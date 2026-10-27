@@ -13,3 +13,5 @@ export { default as SegmentTabs } from "./SegmentTabs";
 export { default as Stepper } from "./Stepper";
 export { default as GoodNotGood } from "./GoodNotGood";
 export { default as PhotoBox } from "./PhotoBox";
+export { default as Switch } from "./Switch";
+export { default as NumberField } from "./NumberField";

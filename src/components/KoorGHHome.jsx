@@ -142,7 +142,8 @@ export default function KoorGHHome({ user, logout }) {
     }
 
     const ActiveForm = menuDef.component;
-    return <ActiveForm initialGH={activeTask.gh} onDone={() => setActiveTask(null)} />;
+    // fh-embed: form tampil tanpa header & bottom bar app → footer form menempel di bawah layar
+    return <div className="fh-embed"><ActiveForm initialGH={activeTask.gh} onDone={() => setActiveTask(null)} /></div>;
   }
 
   // ── Home: Profil + Kegiatan Harian ─────────────────────────────────────────

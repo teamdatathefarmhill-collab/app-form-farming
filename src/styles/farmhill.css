@@ -61,13 +61,18 @@
   --shadow-footer: 0 -1px 0 var(--border-default), 0 -4px 12px rgba(31, 42, 34, 0.06);
 }
 
+/* Form yang ditampilkan tanpa header/bottom bar app (Home Koor GH) */
+.fh-embed { --fh-top: 0px; --fh-nav: 0px; }
+
 /* ─── Reset lokal ─── */
 .fh-root {
-  /* penuhi layar di bawah header app (48px) supaya halaman pendek tidak menyisakan latar gelap */
-  min-height: calc(100vh - 48px);
-  /* tutup paddingBottom 64px container App supaya latar cream sampai ke bottom bar */
-  margin-bottom: -64px;
-  padding-bottom: 64px;
+  /* penuhi layar di bawah header app supaya halaman pendek tidak menyisakan latar gelap.
+     --fh-top / --fh-nav = tinggi header & bottom bar app; 0 bila form ditampilkan
+     sendiri (mis. dari Home Koor GH, lihat .fh-embed) */
+  min-height: calc(100vh - var(--fh-top, 48px));
+  /* tutup paddingBottom container App supaya latar cream sampai ke bottom bar */
+  margin-bottom: calc(-1 * var(--fh-nav, 64px));
+  padding-bottom: var(--fh-nav, 64px);
   background: var(--cream-100);
   color: var(--ink-900);
   font-family: var(--font-sans);
@@ -107,11 +112,11 @@
 
 /* footer menempel di atas bottom bar app (tinggi ±64px).
    Pakai fixed, bukan sticky: body punya overflow-y sehingga sticky tidak jalan. */
-.fh-root.has-footer { padding-bottom: calc(64px + 76px); }
+.fh-root.has-footer { padding-bottom: calc(var(--fh-nav, 64px) + 76px); }
 .fh-footer {
   position: fixed;
   left: 0; right: 0;
-  bottom: 64px;
+  bottom: var(--fh-nav, 64px);
   z-index: 50;
   background: var(--surface);
   box-shadow: var(--shadow-footer);
@@ -520,3 +525,22 @@
 
 /* ─── Kartu pilihan kegiatan ─── */
 .fh-option-desc { display: block; font-size: 13px; color: var(--ink-500); font-weight: 400; margin-top: 2px; }
+
+/* ─── Switch ─── */
+.fh-switch-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; background: var(--surface);
+  border: 1px solid var(--border-default); border-radius: var(--radius-card);
+}
+.fh-switch-text { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fh-switch {
+  width: 48px; height: 28px; flex-shrink: 0; padding: 3px;
+  border-radius: 999px; border: none; cursor: pointer;
+  background: var(--border-strong); display: flex; align-items: center;
+}
+.fh-switch span { width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+.fh-switch.is-on { background: var(--leaf-600); justify-content: flex-end; }
+
+/* ─── Tabel rekap lebar (parameter × varian) ─── */
+.fh-scroll-x { overflow-x: auto; }
+.fh-scroll-x .fh-table th, .fh-scroll-x .fh-table td { white-space: nowrap; }

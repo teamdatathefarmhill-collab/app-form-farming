@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useDraft } from "../hooks/useDraft";
 import { useAuth } from "../hooks/useAuth";
-import ConfirmSubmitModal from "../components/ConfirmSubmitModal";
 import { useGHBlockedList } from "../hooks/useGHBlockedList";
 import { gasFetch, gasPost } from "../utils/idb";
-import { color } from "../styles/tokens";
+import { FormShell, FieldAlert, SuccessState, GHPicker, ReviewTable, OptionList, SegmentTabs, Switch, NumberField } from "../components/form";
+import { formatTanggal } from "../lib/format";
 
 const SCRIPT_URL = import.meta.env.VITE_GAS_PENYIRAMAN_URL;
 
@@ -68,8 +68,8 @@ const isRndRefGH = (gh) => RND_REF_GH_LIST.includes((gh || "").toUpperCase().tri
 
 // Batas deteksi typo: ~2x dari nilai maksimal wajar masing-masing field
 const TYPO_LIMITS = {
-  ph:  { max: 12,  label: "pH (maks wajar ~6)",      hint: "Contoh: tulis 6.0 bukan 60" },
-  ec:  { max: 8,   label: "EC (maks wajar ~4 mS/cm)", hint: "Contoh: tulis 3.2 bukan 32" },
+  ph:  { max: 12,  label: "pH (maks wajar ~6)",      hint: "batas wajar ≤ 12. Contoh: tulis 6,0 bukan 60" },
+  ec:  { max: 8,   label: "EC (maks wajar ~4 mS/cm)", hint: "batas wajar ≤ 8 mS/cm. Contoh: tulis 3,2 bukan 32" },
 };
 
 function getVarianErrors(d) {
@@ -100,14 +100,14 @@ function getDbErrors(dbData) {
   return errors;
 }
 
+// todayISO dikirim ke sheet (format dd/mm/yyyy) — jangan diubah
 const todayISO   = new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
-const todayLabel = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
-function hstColor(hst) {
-  if (hst === null || hst === undefined) return { bg: color.bg, text: color.textGhost, border: color.border };
-  if (hst <= 21) return { bg: color.brandBg, text: color.brand700, border: color.brand300 };
-  if (hst <= 40) return { bg: "#fff8e1", text: "#f57f17", border: "#ffe082" };
-  return             { bg: "#fbe9e7", text: "#bf360c", border: "#ffab91" };
+// Badge HST: muda netral, menengah kuning, tua oranye
+function hstTone(hst) {
+  if (hst <= 21) return "neutral";
+  if (hst <= 40) return "warning";
+  return "due";
 }
 
 function initVarianData() {
@@ -118,39 +118,13 @@ function initDbData() {
   return { ecTandon: "", ecBucket: "", phTandon: "", phBucket: "", doTandon: "", doBucket: "", suhu: "", rh: "", volNutrisi: "" };
 }
 
-function Field({ label, value, onChange, placeholder, satuan, type = "number", error }) {
-  const filled = value !== "";
-  const hasError = !!error;
-  return (
-    <div style={{ marginBottom: 6 }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: hasError ? color.dangerDeep : "#0277bd", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 3 }}>
-        {label} {satuan && <span style={{ fontWeight: 400, color: color.textGhost, textTransform: "none" }}>({satuan})</span>}
-      </div>
-      <input
-        type={type} inputMode={type === "number" ? "decimal" : "text"} value={value}
-        onChange={e => onChange(e.target.value)} placeholder={placeholder || "0"}
-        style={{
-          width: "100%", height: 38, padding: "0 10px",
-          border: `1.5px solid ${hasError ? color.danger : filled ? color.brand400 : color.border}`,
-          borderRadius: 8, fontSize: 13, fontWeight: 600,
-          color: hasError ? color.dangerDeep : filled ? color.brand700 : "#bbb", outline: "none",
-          background: hasError ? color.dangerBg : color.card, boxSizing: "border-box", fontFamily: "inherit",
-        }}
-      />
-      {hasError && <div style={{ fontSize: 10, color: color.dangerDeep, marginTop: 2 }}>⚠ {error}</div>}
-    </div>
-  );
+// Jumlah field wajib per varian yang sudah terisi → dipakai untuk hitungan di tab varian
+function countVarianFilled(d, multi) {
+  const base = ["ecIn", "ecOut", "phIn", "phOut", "volume", "volNutrisi"].filter(k => d[k] !== "").length;
+  if (multi) return base + d.suhuArr.filter(x => x !== "").length + d.rhArr.filter(x => x !== "").length;
+  return base + (d.suhu !== "" ? 1 : 0) + (d.rh !== "" ? 1 : 0);
 }
-
-function RekapRow({ label, value, satuan }) {
-  if (value === "" || value === undefined || value === null) return null;
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #f0f0f0" }}>
-      <span style={{ fontSize: 12, color: color.textMuted }}>{label}</span>
-      <span style={{ fontSize: 12, fontWeight: 700, color: color.brand700 }}>{value}{satuan ? ` ${satuan}` : ""}</span>
-    </div>
-  );
-}
+const varianFieldTotal = (multi) => (multi ? 14 : 8);
 
 // initialGH/onDone — opsional, dipakai oleh Home Koor GH untuk auto-pilih GH
 // dari jadwal harian. Tidak mempengaruhi cara form ini dipakai biasa (tanpa props).
@@ -168,12 +142,14 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
   const [step, setStep]         = useState(draftTipeValid ? (_draft?.step || 1) : 1);
   const [tipe, setTipe]         = useState(draftTipeValid ? _draft.tipe : "");
   const [gh, setGh]             = useState(draftTipeValid ? (_draft?.gh || "") : "");
-  const [operator, setOperator]     = useState(_draft?.operator || "");
+  // Operator otomatis dari akun login; bisa diubah di langkah rekap
+  const [operator, setOperator]     = useState(_draft?.operator || user?.nama || "");
   const [submitting, setSubmitting] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [submitProgress, setSubmitProgress] = useState({ done: 0, total: 0 });
+  const [, setSubmitProgress] = useState({ done: 0, total: 0 });
   const [submitError, setSubmitError] = useState(null);
-  const [isOnline] = useState(navigator.onLine);
+  const [activeVarian, setActiveVarian] = useState("");
+  // Salin isian varian pertama ke varian lain (dulu auto-fill tersembunyi 400ms)
+  const [salinVarian, setSalinVarian] = useState(true);
 
   const stepRef = useRef(step);
   stepRef.current = step;
@@ -188,6 +164,11 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
   const [dbData, setDbData]         = useState(_draft?.dbData || initDbData());
 
   const loadRefRef = useRef(null);
+
+  // useAuth membaca sessionStorage setelah render pertama → isi operator begitu nama tersedia
+  useEffect(() => {
+    if (user?.nama) setOperator(prev => prev || user.nama);
+  }, [user?.nama]);
 
   useEffect(() => {
     const loadRef = () => {
@@ -245,6 +226,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
     setVarianData(init);
     setNutrisi(refSource[g]?.nutrisi || "");
     setDbData(initDbData());
+    setActiveVarian("");
   };
 
   // ── Auto-pilih tipe+GH dari jadwal harian (Home Koor GH) — tidak mengubah alur normal ──
@@ -266,100 +248,58 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialGH, loadingRef, tipe, refData, refDataRnd]);
 
-  const updateVarian  = (v, key, val) => setVarianData(prev => ({ ...prev, [v]: { ...prev[v], [key]: val } }));
-  const updateSuhuArr = (v, idx, val) => setVarianData(prev => { const a = [...(prev[v]?.suhuArr||["","","",""])]; a[idx]=val; return { ...prev, [v]: { ...prev[v], suhuArr: a } }; });
-  const updateRhArr   = (v, idx, val) => setVarianData(prev => { const a = [...(prev[v]?.rhArr  ||["","","",""])]; a[idx]=val; return { ...prev, [v]: { ...prev[v], rhArr:   a } }; });
-  const updateDb      = (key, val)    => setDbData(prev => ({ ...prev, [key]: val }));
+  const updateDb = (key, val) => setDbData(prev => ({ ...prev, [key]: val }));
 
-  // Auto-fill: varian pertama sebar ke semua varian lain setelah berhenti ketik 400ms
-  // Varian lain bebas diedit sendiri tanpa mempengaruhi siapapun
+  // Salin dari varian pertama ke varian lain saat Switch "Salin ke varian lain" aktif.
+  // Varian lain tetap bebas diedit sendiri tanpa mempengaruhi varian lain.
   const autoFillFields = ["ecIn", "ecOut", "phIn", "phOut", "volume", "volNutrisi", "suhu", "rh"];
-  const autoFillTimer = useRef({});
+  const salinAktif = (v) => salinVarian && varianList.length > 1 && v === varianList[0];
 
   const handleVarianChange = (v, key, val) => {
-    // Selalu update varian yang sedang diisi dulu (langsung, tanpa delay)
-    updateVarian(v, key, val);
-
-    if (v === varianList[0] && autoFillFields.includes(key)) {
-      // Debounce — sebar ke varian lain setelah 400ms berhenti ketik
-      clearTimeout(autoFillTimer.current[key]);
-      autoFillTimer.current[key] = setTimeout(() => {
-        setVarianData(prev => {
-          const next = { ...prev };
-          varianList.slice(1).forEach(other => {
-            next[other] = { ...(prev[other] || initVarianData()), [key]: prev[varianList[0]]?.[key] ?? val };
-          });
-          return next;
+    setVarianData(prev => {
+      const next = { ...prev, [v]: { ...(prev[v] || initVarianData()), [key]: val } };
+      if (salinAktif(v) && autoFillFields.includes(key)) {
+        varianList.slice(1).forEach(other => {
+          next[other] = { ...(prev[other] || initVarianData()), [key]: val };
         });
-      }, 400);
-    }
+      }
+      return next;
+    });
   };
 
-  const handleSuhuArrChange = (v, idx, val) => {
-    updateSuhuArr(v, idx, val);
-    if (v === varianList[0]) {
-      const timerKey = `suhu_${idx}`;
-      clearTimeout(autoFillTimer.current[timerKey]);
-      autoFillTimer.current[timerKey] = setTimeout(() => {
-        setVarianData(prev => {
-          const next = { ...prev };
-          const latestVal = (prev[varianList[0]]?.suhuArr || ["","","",""])[idx];
-          varianList.slice(1).forEach(other => {
-            const arrO = [...(prev[other]?.suhuArr || ["","","",""])];
-            arrO[idx] = latestVal;
-            next[other] = { ...(prev[other] || initVarianData()), suhuArr: arrO };
-          });
-          return next;
-        });
-      }, 400);
-    }
-  };
-
-  const handleRhArrChange = (v, idx, val) => {
-    updateRhArr(v, idx, val);
-    if (v === varianList[0]) {
-      const timerKey = `rh_${idx}`;
-      clearTimeout(autoFillTimer.current[timerKey]);
-      autoFillTimer.current[timerKey] = setTimeout(() => {
-        setVarianData(prev => {
-          const next = { ...prev };
-          const latestVal = (prev[varianList[0]]?.rhArr || ["","","",""])[idx];
-          varianList.slice(1).forEach(other => {
-            const arrO = [...(prev[other]?.rhArr || ["","","",""])];
-            arrO[idx] = latestVal;
-            next[other] = { ...(prev[other] || initVarianData()), rhArr: arrO };
-          });
-          return next;
-        });
-      }, 400);
-    }
+  // arrKey: "suhuArr" | "rhArr" — isian per alat (Sawahan 3/4)
+  const handleArrChange = (v, arrKey, idx, val) => {
+    setVarianData(prev => {
+      const setIdx = (d) => {
+        const a = [...((d || initVarianData())[arrKey] || ["","","",""])];
+        a[idx] = val;
+        return { ...(d || initVarianData()), [arrKey]: a };
+      };
+      const next = { ...prev, [v]: setIdx(prev[v]) };
+      if (salinAktif(v)) varianList.slice(1).forEach(other => { next[other] = setIdx(prev[other]); });
+      return next;
+    });
   };
 
   const resetForm = () => {
     clearDraft();
-    setStep(1); setTipe(""); setGh(""); setSubmitError(null); setOperator("");
+    setStep(1); setTipe(""); setGh(""); setSubmitError(null); setOperator(user?.nama || "");
     setVarianData({}); setSubmitProgress({ done: 0, total: 0 }); setNutrisi("");
-    setDbData(initDbData());
+    setDbData(initDbData()); setActiveVarian("");
   };
 
-  const canNext = () => {
-    if (step === 1) return tipe !== "" && gh !== "";
-    if (step === 2) {
-      if (operator.trim().length < 2) return false;
-      if (hasValidationError) return false;
-      const varianOk = varianList.every(v => {
-        const d = varianData[v];
-        if (!d) return false;
-        const base = d.ecIn !== "" && d.ecOut !== "" && d.phIn !== "" && d.phOut !== "" && d.volume !== "" && d.volNutrisi !== "";
-        if (multiSuhuRH) return base && d.suhuArr.every(x => x !== "") && d.rhArr.every(x => x !== "");
-        return base && d.suhu !== "" && d.rh !== "";
-      });
-      const dbOk = isDB ? Object.values(dbData).every(v => v !== "") : true;
-      return varianOk && dbOk;
-    }
-    if (step === 3) return true;
-    return true;
+  // ── Validasi langkah 2 (sama dengan versi lama, minus operator yang pindah ke rekap) ──
+  const varianLengkap = (v) => {
+    const d = varianData[v];
+    if (!d) return false;
+    const base = d.ecIn !== "" && d.ecOut !== "" && d.phIn !== "" && d.phOut !== "" && d.volume !== "" && d.volNutrisi !== "";
+    if (multiSuhuRH) return base && d.suhuArr.every(x => x !== "") && d.rhArr.every(x => x !== "");
+    return base && d.suhu !== "" && d.rh !== "";
   };
+  const varianBelum = varianList.filter(v => !varianLengkap(v)).length;
+  const dbOk        = isDB ? Object.values(dbData).every(v => v !== "") : true;
+  const canStep2    = !hasValidationError && varianBelum === 0 && dbOk;
+  const canSubmit   = operator.trim().length >= 2 && !submitting;
 
   const buildPayloads = () => {
     const client_timestamp = new Date().toISOString();
@@ -407,425 +347,311 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
       setSubmitProgress({ done: payloads.length, total: payloads.length });
       clearDraft(); setStep(4);
     } catch (err) {
-      setSubmitError(`Gagal mengirim data. ${err.message}`);
+      setSubmitError(`Data belum terkirim (${err.message}). Cek sinyal lalu tekan Kirim lagi.`);
     } finally {
       setSubmitting(false);
     }
   };
 
+  // ── Varian aktif (default varian pertama) ──
+  const activeKey  = varianList.includes(activeVarian) ? activeVarian : (varianList[0] || "");
+  const activeIdx  = varianList.indexOf(activeKey);
+  const nextVarian = varianList[activeIdx + 1];
+  const goToVarian = (v) => { setActiveVarian(v); window.scrollTo(0, 0); };
+  const d    = varianData[activeKey] || initVarianData();
+  const errs = allVarianErrors[activeKey] || {};
+  const fmt  = (x) => String(x).replace(".", ",");
+
+  // ── Header ──
+  const title = step === 2 || step === 3 ? `Penyiraman · ${gh}` : "Penyiraman";
+  const ghMeta = [tipe, hst !== null && `${hst} HST`].filter(Boolean).join(" · ");
+  const subtitle = step === 1
+    ? `${formatTanggal()} · Langkah 1 dari 3`
+    : step === 4
+      ? formatTanggal()
+      : `${ghMeta} · Langkah ${step} dari 3`;
+  const onBack = step === 2 ? (onDone || (() => setStep(1)))
+    : step === 3 ? () => { setStep(2); setSubmitError(null); }
+    : step === 1 ? onDone
+    : undefined;
+
+  // ── Footer ──
+  const kirimLabel = `Kirim ${varianList.length} varian${isDB ? " + DB" : ""}`;
+  let footer = null;
+  if (step === 2) {
+    let label = "Lihat rekap";
+    if (hasValidationError) label = "Periksa nilai yang ditandai merah";
+    else if (varianBelum > 0) label = `Lengkapi isian ${varianBelum} varian`;
+    else if (!dbOk) label = "Lengkapi data Dutch Bucket";
+    footer = <button type="button" className="fh-btn fh-btn-primary" disabled={!canStep2} onClick={() => setStep(3)}>{label}</button>;
+  } else if (step === 3) {
+    footer = (
+      <div className="fh-btn-row">
+        <button type="button" className="fh-btn fh-btn-secondary" onClick={() => { setStep(2); setSubmitError(null); }}>Kembali</button>
+        <button type="button" className="fh-btn fh-btn-primary" disabled={!canSubmit} onClick={handleSubmit}>
+          {submitting ? "Mengirim…" : kirimLabel}
+        </button>
+      </div>
+    );
+  } else if (step === 4) {
+    footer = onDone
+      ? <button type="button" className="fh-btn fh-btn-secondary" onClick={onDone}>Kembali ke Home</button>
+      : <button type="button" className="fh-btn fh-btn-secondary" onClick={resetForm}>Isi GH lain</button>;
+  }
+
+  const ghAktifTipe = (t) => (GH_PER_TIPE[t] || []).filter(g => (isRndRefGH(g) ? refDataRnd : refData)[g]);
+
   return (
-    <div style={{ minHeight: "100vh", background: color.bg, fontFamily: "'DM Sans','Segoe UI',sans-serif" }}>
+    <FormShell title={title} subtitle={subtitle} steps={step < 4 ? 3 : 0} step={step} onBack={onBack} footer={footer}>
 
-      {/* Header */}
-      <div style={{ background: "#0277bd", color: color.card, padding: "14px 16px 10px", position: "sticky", top: 0, zIndex: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            {onDone && (
-              <button onClick={onDone} style={{ background: "none", border: "none", padding: 0, marginBottom: 6, color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                ← Kembali ke Home
-              </button>
-            )}
-            <div style={{ fontSize: 10, opacity: 0.75, letterSpacing: 1.5, textTransform: "uppercase" }}>Form Penyiraman</div>
-            <div style={{ fontSize: 13, opacity: 0.65, marginTop: 1 }}>{todayLabel}</div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: isOnline ? color.brand300 : color.dangerBorder }} />
-            <span style={{ fontSize: 10, opacity: 0.6 }}>{user?.nama}</span>
-          </div>
-        </div>
-        {step < 4 && (
-          <div style={{ display: "flex", gap: 4, marginTop: 10 }}>
-            {[1,2,3].map(s => (
-              <div key={s} style={{ flex: 1, height: 3, borderRadius: 2, background: s <= step ? "#81d4fa" : "rgba(255,255,255,0.2)", transition: "background 0.3s" }} />
-            ))}
-          </div>
-        )}
-      </div>
+      {/* ══ STEP 1 — Tipe & GH ══ */}
+      {step === 1 && (
+        <>
+          <section className="fh-section">
+            <span className="fh-label">Tipe irigasi</span>
+            <OptionList
+              name="Tipe irigasi"
+              columns={2}
+              value={tipe}
+              onChange={(t) => { setTipe(t); setGh(""); setVarianData({}); }}
+              options={TIPE_LIST.map(t => ({ value: t, label: t, meta: loadingRef && !refFromCache ? undefined : `${ghAktifTipe(t).length} GH aktif` }))}
+            />
+          </section>
 
-      <div style={{ padding: 16 }}>
+          {refError && (
+            <FieldAlert
+              tone="danger"
+              action={{ label: loadingRef ? "Memuat…" : "Coba lagi", onClick: () => loadRefRef.current?.() }}
+            >
+              {refError}{refFromCache ? " Menampilkan data tersimpan terakhir, mungkin belum terbaru." : " Daftar greenhouse tidak bisa dimuat."}
+            </FieldAlert>
+          )}
 
-        {/* ══ STEP 1 ══ */}
-        {step === 1 && (
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 18, color: "#0277bd", marginBottom: 4 }}>Pilih Tipe & Greenhouse</div>
-            <div style={{ fontSize: 12, color: color.textSoft, marginBottom: 16 }}>Pilih tipe sistem irigasi terlebih dahulu</div>
-
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#0277bd", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Tipe GH</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {TIPE_LIST.map(t => (
-                  <button key={t} onClick={() => { setTipe(t); setGh(""); setVarianData({}); }}
-                    style={{ padding: "12px 16px", borderRadius: 12, cursor: "pointer", textAlign: "left", border: tipe === t ? "2px solid #0277bd" : `1.5px solid ${color.border}`, background: tipe === t ? "#e1f5fe" : color.card, color: tipe === t ? "#0277bd" : color.text, fontSize: 14, fontWeight: tipe === t ? 700 : 500, display: "flex", alignItems: "center", justifyContent: "space-between", transition: "all 0.2s" }}>
-                    <span>{t}</span>
-                    {tipe === t && <span>✓</span>}
-                  </button>
-                ))}
+          {tipe && (
+            <section className="fh-section">
+              <div className="fh-section-head">
+                <span className="fh-label">Pilih GH</span>
+                {loadingRef && <span className="fh-meta">memuat…</span>}
               </div>
-            </div>
-
-            {tipe && (
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#0277bd", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
-                  Nama Greenhouse
-                  {loadingRef && <span style={{ fontSize: 10, fontWeight: 400, color: color.textGhost, marginLeft: 8 }}>memuat...</span>}
-                </div>
-                {refError && (
-                  <div style={{ marginBottom: 10, background: color.dangerBg, border: `1px solid ${color.dangerBorder}`, borderRadius: 10, padding: "10px 12px", fontSize: 12, color: color.dangerDeep }}>
-                    ⚠ {refError}{refFromCache ? " Menampilkan data tersimpan terakhir (mungkin belum terbaru)." : " Daftar greenhouse tidak bisa dimuat."}
-                    <div>
-                      <button onClick={() => loadRefRef.current?.()} disabled={loadingRef}
-                        style={{ marginTop: 8, padding: "6px 14px", borderRadius: 8, border: `1px solid ${color.danger}`, background: color.card, color: color.dangerDeep, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                        {loadingRef ? "Memuat..." : "Coba lagi"}
-                      </button>
-                    </div>
-                  </div>
-                )}
-                {!refError && !loadingRef && (GH_PER_TIPE[tipe] || []).every(g => !refSource[g]) && (
-                  <div style={{ marginBottom: 10, fontSize: 12, color: color.textSoft }}>Tidak ada greenhouse aktif untuk tipe ini.</div>
-                )}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  {(GH_PER_TIPE[tipe] || []).filter(g => refSource[g]).map(g => {
-                    const info = refSource[g];
-                    const hst  = info?.hst ?? null;
-                    const c    = hstColor(hst);
-                    const sel  = gh === g;
-                    // Menu Penyiraman tetap membuka GH Shutdown/Restart — badge ini hanya info, bukan penghalang
-                    const blockedInfo = blockedMap[g.trim().toUpperCase()];
-                    return (
-                      <button key={g} onClick={() => handleSelectGH(g)}
-                        style={{ padding: "10px 8px", borderRadius: 10, cursor: "pointer", textAlign: "center", border: sel ? "2px solid #0277bd" : `1px solid ${color.border}`, background: sel ? "#e1f5fe" : color.card, color: sel ? "#0277bd" : color.text, fontSize: 13, fontWeight: sel ? 700 : 500, transition: "all 0.2s" }}>
-                        <div>{g}</div>
-                        {info?.periode && <div style={{ fontSize: 10, color: color.textGhost, marginTop: 2 }}>P{info.periode}</div>}
-                        {hst !== null && (
-                          <div style={{ marginTop: 4, background: c.bg, border: `1px solid ${c.border}`, borderRadius: 6, padding: "2px 6px", display: "inline-block" }}>
-                            <span style={{ fontSize: 12, fontWeight: 800, color: c.text }}>{hst}</span>
-                            <span style={{ fontSize: 9, color: c.text, marginLeft: 2 }}>HST</span>
-                          </div>
-                        )}
-                        {blockedInfo && (
-                          <div style={{ marginTop: 4, fontSize: 9, color: color.dangerDeep, background: color.dangerBg, border: `1px solid ${color.dangerBorder}`, borderRadius: 6, padding: "1px 5px", display: "inline-block" }}>
-                            ⚠ {blockedInfo.aksi}
-                          </div>
-                        )}
-                        {sel && <div style={{ fontSize: 11, marginTop: 3 }}>✓</div>}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {gh && varianList.length > 0 && (
-                  <div style={{ marginTop: 14, background: color.brandBg, border: `1px solid ${color.brand300}`, borderRadius: 10, padding: "10px 14px" }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: color.brand700, marginBottom: 6 }}>🌱 Varian yang akan diisi ({varianList.length})</div>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {varianList.map(v => (
-                        <span key={v} style={{ fontSize: 12, background: color.card, border: `1px solid ${color.brand300}`, borderRadius: 20, padding: "3px 10px", color: color.brand700, fontWeight: 600 }}>{v}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {gh && isDB && (
-                  <div style={{ marginTop: 10, background: "#fff3e0", border: "1px solid #ffcc80", borderRadius: 10, padding: "8px 14px" }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#e65100" }}>💧 GH ini juga punya instalasi Dutch Bucket — nanti isi field Tandon/Bucket tambahan</div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ══ STEP 2 ══ */}
-        {step === 2 && (
-          <div>
-            {/* Nama Operator — di paling atas step 2 */}
-            <div style={{ background: color.card, borderRadius: 12, border: `1.5px solid ${operator.trim().length >= 2 ? color.brand300 : color.border}`, padding: 14, marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#0277bd", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>👤 Nama Operator</div>
-              <input
-                type="text"
-                value={operator}
-                onChange={e => setOperator(e.target.value)}
-                placeholder="Tulis nama lengkap operator..."
-                style={{
-                  width: "100%", padding: "11px 14px",
-                  border: `1.5px solid ${operator.trim().length >= 2 ? color.brand400 : color.border}`,
-                  borderRadius: 10, fontSize: 14, fontWeight: 600,
-                  color: operator.trim().length >= 2 ? color.brand700 : "#bbb",
-                  outline: "none", background: color.card,
-                  boxSizing: "border-box", fontFamily: "inherit",
-                }}
+              <GHPicker
+                loading={loadingRef && ghAktifTipe(tipe).length === 0}
+                selected={gh}
+                onSelect={(g) => { handleSelectGH(g); setStep(2); }}
+                emptyText="Tidak ada greenhouse aktif untuk tipe ini."
+                items={ghAktifTipe(tipe).map(g => {
+                  const info = (isRndRefGH(g) ? refDataRnd : refData)[g];
+                  const h = info?.hst ?? null;
+                  // Menu Penyiraman tetap membuka GH Shutdown/Restart — badge ini hanya info, bukan penghalang
+                  const blockedInfo = blockedMap[g.trim().toUpperCase()];
+                  const badges = [];
+                  if (blockedInfo) badges.push({ label: blockedInfo.aksi, tone: "danger" });
+                  if (isDbGH(g)) badges.push({ label: "+ Dutch Bucket", tone: "neutral" });
+                  if (h !== null) badges.push({ label: `${h} HST`, tone: hstTone(h) });
+                  return {
+                    gh: g,
+                    meta: [info?.periode && `P${info.periode}`, info?.varian?.length && `${info.varian.length} varian`].filter(Boolean).join(" · "),
+                    badges,
+                    sortValue: h,
+                  };
+                })}
               />
-              {operator.trim().length > 0 && operator.trim().length < 2 && (
-                <div style={{ fontSize: 11, color: color.warning, marginTop: 4 }}>Nama minimal 2 karakter</div>
-              )}
-            </div>
-
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
-              <div style={{ background: "#e1f5fe", border: "1px solid #81d4fa", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#0277bd", fontWeight: 700 }}>{gh}</div>
-              <div style={{ background: color.bg, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: color.textMuted }}>{tipe}</div>
-              {refSource[gh]?.hst != null && (() => { const c = hstColor(refSource[gh].hst); return (
-                <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 20, padding: "3px 12px", fontSize: 12, color: c.text, fontWeight: 700 }}>{refSource[gh].hst} HST</div>
-              ); })()}
-            </div>
-
-            {/* Nutrisi — isian bebas (opsional), auto-fill dari isian sebelumnya untuk GH ini */}
-            <div style={{ background: color.card, borderRadius: 12, border: `1.5px solid ${nutrisi ? color.brand300 : color.border}`, padding: 14, marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#0277bd", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
-                🧪 Nutrisi <span style={{ fontWeight: 400, color: color.textGhost, textTransform: "none" }}>(opsional)</span>
-              </div>
-              <input
-                type="text"
-                value={nutrisi}
-                onChange={e => setNutrisi(e.target.value)}
-                placeholder="Tulis nutrisi yang digunakan..."
-                style={{
-                  width: "100%", height: 42, padding: "0 12px",
-                  border: `1.5px solid ${nutrisi ? color.brand400 : color.border}`,
-                  borderRadius: 10, fontSize: 14, fontWeight: 600,
-                  color: nutrisi ? color.brand700 : "#bbb", outline: "none",
-                  background: color.card, boxSizing: "border-box", fontFamily: "inherit",
-                }}
-              />
-            </div>
-
-            {/* Dutch Bucket — instalasi tambahan di samping Drip (mis. TOHUDAN 18) */}
-            {isDB && (
-              <div style={{ background: color.card, borderRadius: 12, border: `1.5px solid ${color.border}`, padding: 14, marginBottom: 14 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#e65100", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>
-                  💧 Data Tandon & Bucket (Dutch Bucket)
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  <Field label="EC Tandon"  value={dbData.ecTandon}  onChange={v => updateDb("ecTandon",  v)} satuan="mS/cm" error={dbErrors.ecTandon} />
-                  <Field label="EC Bucket"  value={dbData.ecBucket}  onChange={v => updateDb("ecBucket",  v)} satuan="mS/cm" error={dbErrors.ecBucket} />
-                  <Field label="pH Tandon"  value={dbData.phTandon}  onChange={v => updateDb("phTandon",  v)} error={dbErrors.phTandon} />
-                  <Field label="pH Bucket"  value={dbData.phBucket}  onChange={v => updateDb("phBucket",  v)} error={dbErrors.phBucket} />
-                  <Field label="DO Tandon"  value={dbData.doTandon}  onChange={v => updateDb("doTandon",  v)} satuan="mg/L" />
-                  <Field label="DO Bucket"  value={dbData.doBucket}  onChange={v => updateDb("doBucket",  v)} satuan="mg/L" />
-                  <Field label="Suhu"       value={dbData.suhu}      onChange={v => updateDb("suhu",      v)} satuan="°C" />
-                  <Field label="RH"         value={dbData.rh}        onChange={v => updateDb("rh",        v)} satuan="%" />
-                </div>
-                <Field label="Volume Nutrisi" value={dbData.volNutrisi} onChange={v => updateDb("volNutrisi", v)} satuan="L" />
-              </div>
-            )}
-
-            {/* Multi varian (Drip) */}
-            {varianList.length > 0 && (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              {varianList.map(v => {
-              const d    = varianData[v] || initVarianData();
-              const errs = allVarianErrors[v] || {};
-              const hasErr = Object.keys(errs).length > 0;
-              const filled = d.ecIn && d.ecOut && d.phIn && d.phOut && d.volume && d.volNutrisi &&
-                         (multiSuhuRH ? (d.suhuArr.every(x=>x!=="") && d.rhArr.every(x=>x!=="")) : (d.suhu && d.rh));
-              const ok = filled && !hasErr;
-              return (
-                <div key={v} style={{ background: color.card, borderRadius: 12, border: `1.5px solid ${hasErr ? color.dangerBorder : ok ? color.brand300 : color.border}`, overflow: "hidden" }}>
-                  <div style={{ background: hasErr ? color.dangerBg : ok ? "#f1f8e9" : "#fafafa", padding: "8px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: hasErr ? color.dangerDeep : ok ? color.brand700 : "#0277bd" }}>🌱 {v}</span>
-                      {v === varianList[0] && varianList.length > 1 && (
-                        <span style={{ fontSize: 9, color: "#0277bd", background: "#e1f5fe", border: "1px solid #81d4fa", borderRadius: 20, padding: "1px 6px", marginLeft: 6 }}>auto-fill</span>
-                      )}
-                    </div>
-                    {hasErr
-                      ? <span style={{ fontSize: 9, color: color.dangerDeep, background: color.dangerBg, border: `1px solid ${color.dangerBorder}`, borderRadius: 20, padding: "2px 6px" }}>⚠ Di luar standar</span>
-                      : ok ? <span style={{ fontSize: 11 }}>✅</span>
-                      : <span style={{ fontSize: 9, color: color.warning, background: color.warningBg, border: `1px solid ${color.warningBorder}`, borderRadius: 20, padding: "2px 6px" }}>Belum</span>}
-                  </div>
-                  <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
-                    <Field label="EC In"        value={d.ecIn}       onChange={val => handleVarianChange(v,"ecIn",val)}       satuan="mS/cm" error={errs.ecIn} />
-                    <Field label="EC Out"       value={d.ecOut}      onChange={val => handleVarianChange(v,"ecOut",val)}       satuan="mS/cm" error={errs.ecOut} />
-                    <Field label="pH In"        value={d.phIn}       onChange={val => handleVarianChange(v,"phIn",val)}        error={errs.phIn} />
-                    <Field label="pH Out"       value={d.phOut}      onChange={val => handleVarianChange(v,"phOut",val)}       error={errs.phOut} />
-                    <Field label="Volume"       value={d.volume}     onChange={val => handleVarianChange(v,"volume",val)}      satuan="ml/tan" />
-                    <Field label="Vol.Nutrisi"  value={d.volNutrisi} onChange={val => handleVarianChange(v,"volNutrisi",val)}  satuan="L" />
-                    {!multiSuhuRH && (
-                      <>
-                        <Field label="Suhu" value={d.suhu} onChange={val => handleVarianChange(v,"suhu",val)} satuan="°C" />
-                        <Field label="RH"   value={d.rh}   onChange={val => handleVarianChange(v,"rh",val)}   satuan="%" />
-                      </>
-                    )}
-                    {multiSuhuRH && (
-                      <div>
-                        <div style={{ fontSize: 9, fontWeight: 700, color: "#0277bd", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🌡️ Suhu & RH (4 Alat)</div>
-                        {[0,1,2,3].map(idx => (
-                          <div key={idx} style={{ background: "#f9fbe7", border: "1px solid #dce775", borderRadius: 6, padding: "6px 8px", marginBottom: 4 }}>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: "#558b2f", marginBottom: 4 }}>Alat {idx+1}</div>
-                            <Field label="Suhu" value={d.suhuArr[idx]} onChange={val => handleSuhuArrChange(v,idx,val)} satuan="°C" />
-                            <Field label="RH"   value={d.rhArr[idx]}   onChange={val => handleRhArrChange(v,idx,val)}   satuan="%" />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-            </div>
-            )}
-          </div>
-        )}
-
-        {/* ══ STEP 3 — Rekap ══ */}
-        {step === 3 && (
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 18, color: "#0277bd", marginBottom: 4 }}>Cek Data Sebelum Submit</div>
-            <div style={{ fontSize: 12, color: color.textSoft, marginBottom: 16 }}>Pastikan semua data sudah benar</div>
-
-            <div style={{ background: color.card, borderRadius: 14, padding: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#0277bd", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>📋 Informasi Umum</div>
-              <RekapRow label="Tanggal"  value={todayISO} />
-              <RekapRow label="Operator" value={operator || user?.nama} />
-              <RekapRow label="Tipe GH"  value={tipe} />
-              <RekapRow label="GH"       value={gh} />
-              <RekapRow label="Nutrisi"  value={nutrisi} />
-              {varianList.length > 0 && <RekapRow label="Jumlah Varian" value={`${varianList.length} varian`} />}
-            </div>
-
-            {varianList.map(v => {
-              const d = varianData[v] || initVarianData();
-              return (
-                <div key={v} style={{ background: color.card, borderRadius: 14, padding: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 10 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: color.brand700, marginBottom: 8 }}>🌱 {v}</div>
-                  <RekapRow label="EC In"          value={d.ecIn||"0"}        satuan="mS/cm" />
-                  <RekapRow label="EC Out"         value={d.ecOut||"0"}       satuan="mS/cm" />
-                  <RekapRow label="pH In"          value={d.phIn||"0"} />
-                  <RekapRow label="pH Out"         value={d.phOut||"0"} />
-                  <RekapRow label="Volume"         value={d.volume||"0"}      satuan="ml/tanaman" />
-                  <RekapRow label="Volume Nutrisi" value={d.volNutrisi||"0"}  satuan="L" />
-                  {multiSuhuRH ? (
-                    <>
-                      <RekapRow label="Suhu (4 alat)" value={d.suhuArr.map(x=>x||"0").join(", ")} satuan="°C" />
-                      <RekapRow label="RH (4 alat)"   value={d.rhArr.map(x=>x||"0").join(", ")}   satuan="%" />
-                    </>
-                  ) : (
-                    <>
-                      <RekapRow label="Suhu" value={d.suhu||"0"} satuan="°C" />
-                      <RekapRow label="RH"   value={d.rh||"0"}   satuan="%" />
-                    </>
-                  )}
-                </div>
-              );
-            })}
-
-            {isDB && (
-              <div style={{ background: color.card, borderRadius: 14, padding: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: 10 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#e65100", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
-                  💧 Data Tandon & Bucket (Dutch Bucket)
-                </div>
-                <RekapRow label="EC Tandon"      value={dbData.ecTandon}   satuan="mS/cm" />
-                <RekapRow label="EC Bucket"      value={dbData.ecBucket}   satuan="mS/cm" />
-                <RekapRow label="pH Tandon"      value={dbData.phTandon} />
-                <RekapRow label="pH Bucket"      value={dbData.phBucket} />
-                <RekapRow label="DO Tandon"      value={dbData.doTandon}   satuan="mg/L" />
-                <RekapRow label="DO Bucket"      value={dbData.doBucket}   satuan="mg/L" />
-                <RekapRow label="Suhu"           value={dbData.suhu}       satuan="°C" />
-                <RekapRow label="RH"             value={dbData.rh}         satuan="%" />
-                <RekapRow label="Volume Nutrisi" value={dbData.volNutrisi} satuan="L" />
-              </div>
-            )}
-
-
-
-            {submitting && (
-              <div style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 12, color: color.textMuted, marginBottom: 6 }}>Mengirim {submitProgress.total} varian sekaligus...</div>
-                <div style={{ background: color.border, borderRadius: 4, height: 6, overflow: "hidden" }}>
-                  <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#0277bd,#0288d1)", width: "100%", animation: "pulse-bar 1.2s ease-in-out infinite" }} />
-                </div>
-              </div>
-            )}
-            {submitError && (
-              <div style={{ fontSize: 12, color: color.dangerDeep, background: color.dangerBg, border: `1px solid ${color.dangerBorder}`, borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>⚠️ {submitError}</div>
-            )}
-          </div>
-        )}
-
-        {/* ══ STEP 4 — Sukses ══ */}
-        {step === 4 && (
-          <div style={{ textAlign: "center", paddingTop: 32 }}>
-            <div style={{ fontSize: 60, marginBottom: 12 }}>✅</div>
-            <div style={{ fontSize: 21, fontWeight: 800, color: "#0277bd", marginBottom: 6 }}>Data Tersimpan!</div>
-            <div style={{ fontSize: 13, color: color.textSoft, marginBottom: 20 }}>
-              {varianList.length} varian{isDB ? " + Data Dutch Bucket" : ""} berhasil dikirim ke Google Sheets
-            </div>
-            <div style={{ background: "#e1f5fe", border: "1px solid #81d4fa", borderRadius: 14, padding: 16, textAlign: "left", marginBottom: 20 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#0277bd" }}>{gh} · {tipe}</div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-                {varianList.map(v => (
-                  <span key={v} style={{ fontSize: 11, background: color.brandBg, border: `1px solid ${color.brand300}`, borderRadius: 20, padding: "2px 10px", color: color.brand700, fontWeight: 600 }}>🌱 {v}</span>
-                ))}
-                {isDB && (
-                  <span style={{ fontSize: 11, background: "#fff3e0", border: "1px solid #ffcc80", borderRadius: 20, padding: "2px 10px", color: "#e65100", fontWeight: 600 }}>💧 Dutch Bucket</span>
-                )}
-              </div>
-              <div style={{ fontSize: 13, color: color.textMuted, marginTop: 8 }}>Operator: {operator || user?.nama} · {todayISO}</div>
-            </div>
-            {onDone ? (
-              <button onClick={onDone} style={{ width: "100%", padding: 15, background: "#e1f5fe", border: "2px solid #81d4fa", borderRadius: 12, color: "#0277bd", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-                ← Kembali ke Home
-              </button>
-            ) : (
-              <button onClick={resetForm} style={{ width: "100%", padding: 15, background: "#e1f5fe", border: "2px solid #81d4fa", borderRadius: 12, color: "#0277bd", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-                + Input Penyiraman Berikutnya
-              </button>
-            )}
-          </div>
-        )}
-
-      </div>
-
-      {/* Bottom Nav */}
-      {step < 4 && (
-        <div style={{ padding: "12px 16px 24px", borderTop: `1px solid ${color.border}`, background: color.card, position: "sticky", bottom: 0, display: "flex", gap: 10 }}>
-          {step > 1 && !onDone && (
-            <button onClick={() => { setStep(s => s - 1); setSubmitError(null); }}
-              style={{ flex: 1, padding: 13, background: color.bg, border: `1px solid ${color.border}`, borderRadius: 12, color: "#555", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-              ← Kembali
-            </button>
+            </section>
           )}
-          {step < 3 && (
-            <div style={{ flex: 2, display: "flex", flexDirection: "column", gap: 6 }}>
-              {step === 2 && hasValidationError && (
-                <div style={{ fontSize: 11, color: color.dangerDeep, background: color.dangerBg, border: `1px solid ${color.dangerBorder}`, borderRadius: 8, padding: "6px 10px", textAlign: "center" }}>
-                  ⚠ Terdeteksi nilai tidak wajar (kemungkinan typo) — periksa field merah
-                </div>
-              )}
-              <button onClick={() => setStep(s => s + 1)} disabled={!canNext()}
-                style={{ width: "100%", padding: 13, border: "none", borderRadius: 12, background: canNext() ? "linear-gradient(135deg,#0277bd,#0288d1)" : color.border, color: canNext() ? color.card : color.textGhost, fontSize: 15, fontWeight: 700, cursor: canNext() ? "pointer" : "not-allowed" }}>
-                {step === 1 ? "Lanjut Input →" : "Lihat Rekap →"}
-              </button>
-            </div>
-          )}
-          {step === 3 && (
-            <button onClick={() => setConfirmOpen(true)} disabled={submitting}
-              style={{ flex: 2, padding: 13, border: "none", borderRadius: 12, background: submitting ? color.border : "linear-gradient(135deg,#0277bd,#0288d1)", color: submitting ? color.textGhost : color.card, fontSize: 15, fontWeight: 700, cursor: submitting ? "not-allowed" : "pointer" }}>
-              {submitting ? `⏳ Mengirim...` : `Submit ${varianList.length} Varian${isDB ? " + DB" : ""} ✓`}
-            </button>
-          )}
-        </div>
+        </>
       )}
 
-      <ConfirmSubmitModal
-        open={confirmOpen}
-        onCancel={() => setConfirmOpen(false)}
-        onConfirm={() => { setConfirmOpen(false); handleSubmit(); }}
-        color="#0277bd"
-        isOffline={!isOnline}
-        summary={[
-          { label: "Tanggal",  value: todayISO },
-          { label: "GH",       value: gh },
-          { label: "Tipe",     value: tipe },
-          { label: "Nutrisi",  value: nutrisi },
-          { label: "Varian",   value: `${varianList.length} varian${isDB ? " + Dutch Bucket" : ""}` },
-          { label: "Operator", value: operator || user?.nama || "" },
-        ]}
-      />
+      {/* ══ STEP 2 — Isian ══ */}
+      {step === 2 && (
+        <>
+          <label className="fh-section">
+            <div className="fh-section-head">
+              <span className="fh-label">Nutrisi</span>
+              <span className="fh-meta">opsional · terisi dari isian terakhir</span>
+            </div>
+            <input className="fh-input" value={nutrisi} onChange={e => setNutrisi(e.target.value)} placeholder="Nutrisi yang digunakan" />
+          </label>
 
-      <style>{`
-        input[type=number]::-webkit-outer-spin-button,
-        input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-        @keyframes pulse-bar { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-      `}</style>
-    </div>
+          {isDB && (
+            <section className="fh-section">
+              <span className="fh-overline">Dutch Bucket · tandon & bucket</span>
+              <div className="fh-card fh-card-body" style={{ gap: 12 }}>
+                <div className="fh-grid-2" style={{ gap: 10 }}>
+                  <NumberField label="EC tandon" unit="mS/cm" value={dbData.ecTandon} onChange={v => updateDb("ecTandon", v)} error={dbErrors.ecTandon} />
+                  <NumberField label="EC bucket" unit="mS/cm" value={dbData.ecBucket} onChange={v => updateDb("ecBucket", v)} error={dbErrors.ecBucket} />
+                  <NumberField label="pH tandon" value={dbData.phTandon} onChange={v => updateDb("phTandon", v)} error={dbErrors.phTandon} />
+                  <NumberField label="pH bucket" value={dbData.phBucket} onChange={v => updateDb("phBucket", v)} error={dbErrors.phBucket} />
+                  <NumberField label="DO tandon" unit="mg/L" value={dbData.doTandon} onChange={v => updateDb("doTandon", v)} />
+                  <NumberField label="DO bucket" unit="mg/L" value={dbData.doBucket} onChange={v => updateDb("doBucket", v)} />
+                  <NumberField label="Suhu" unit="°C" value={dbData.suhu} onChange={v => updateDb("suhu", v)} />
+                  <NumberField label="RH" unit="%" value={dbData.rh} onChange={v => updateDb("rh", v)} />
+                </div>
+                <NumberField label="Volume nutrisi" unit="L" value={dbData.volNutrisi} onChange={v => updateDb("volNutrisi", v)} />
+              </div>
+            </section>
+          )}
+
+          <section className="fh-section">
+            <div className="fh-section-head">
+              <span className="fh-label">Isian per varian</span>
+              <span className="fh-meta">{varianList.length - varianBelum}/{varianList.length} varian lengkap</span>
+            </div>
+            {varianList.length > 1 && (
+              <SegmentTabs
+                label="Varian"
+                value={activeKey}
+                onChange={setActiveVarian}
+                tabs={varianList.map(v => ({
+                  key: v,
+                  label: v,
+                  count: `${countVarianFilled(varianData[v] || initVarianData(), multiSuhuRH)}/${varianFieldTotal(multiSuhuRH)}`,
+                }))}
+              />
+            )}
+            {varianList.length > 1 && activeIdx === 0 && (
+              <Switch
+                checked={salinVarian}
+                onChange={setSalinVarian}
+                label="Salin ke varian lain"
+                hint={`Isian ${varianList[0]} ikut mengisi ${varianList.length - 1} varian lain. Varian lain tetap bisa diubah.`}
+              />
+            )}
+          </section>
+
+          {activeKey && (
+            <>
+              <section className="fh-section">
+                <span className="fh-overline">Nutrisi masuk / keluar</span>
+                <div className="fh-grid-2" style={{ gap: 10 }}>
+                  <NumberField label="EC in" unit="mS/cm" value={d.ecIn} onChange={val => handleVarianChange(activeKey, "ecIn", val)} error={errs.ecIn} />
+                  <NumberField label="EC out" unit="mS/cm" value={d.ecOut} onChange={val => handleVarianChange(activeKey, "ecOut", val)} error={errs.ecOut} />
+                  <NumberField label="pH in" value={d.phIn} onChange={val => handleVarianChange(activeKey, "phIn", val)} error={errs.phIn} />
+                  <NumberField label="pH out" value={d.phOut} onChange={val => handleVarianChange(activeKey, "phOut", val)} error={errs.phOut} />
+                </div>
+              </section>
+
+              <section className="fh-section">
+                <span className="fh-overline">Volume</span>
+                <div className="fh-grid-2" style={{ gap: 10 }}>
+                  <NumberField label="Per tanaman" unit="ml" value={d.volume} onChange={val => handleVarianChange(activeKey, "volume", val)} />
+                  <NumberField label="Nutrisi" unit="L" value={d.volNutrisi} onChange={val => handleVarianChange(activeKey, "volNutrisi", val)} />
+                </div>
+              </section>
+
+              <section className="fh-section">
+                <span className="fh-overline">{multiSuhuRH ? "Iklim · 4 alat" : "Iklim"}</span>
+                {!multiSuhuRH ? (
+                  <div className="fh-grid-2" style={{ gap: 10 }}>
+                    <NumberField label="Suhu" unit="°C" value={d.suhu} onChange={val => handleVarianChange(activeKey, "suhu", val)} />
+                    <NumberField label="RH" unit="%" value={d.rh} onChange={val => handleVarianChange(activeKey, "rh", val)} />
+                  </div>
+                ) : (
+                  <div className="fh-card fh-card-body" style={{ gap: 12 }}>
+                    {[0, 1, 2, 3].map(idx => (
+                      <div key={idx} className="fh-section" style={{ gap: 6 }}>
+                        <span className="fh-label">Alat {idx + 1}</span>
+                        <div className="fh-grid-2" style={{ gap: 10 }}>
+                          <NumberField label="Suhu" unit="°C" value={d.suhuArr[idx]} onChange={val => handleArrChange(activeKey, "suhuArr", idx, val)} />
+                          <NumberField label="RH" unit="%" value={d.rhArr[idx]} onChange={val => handleArrChange(activeKey, "rhArr", idx, val)} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              {nextVarian && (
+                <button type="button" className="fh-btn fh-btn-secondary" onClick={() => goToVarian(nextVarian)}>
+                  Varian berikut: {nextVarian}
+                </button>
+              )}
+            </>
+          )}
+        </>
+      )}
+
+      {/* ══ STEP 3 — Rekap ══ */}
+      {step === 3 && (
+        <>
+          <label className="fh-section">
+            <span className="fh-label">Operator</span>
+            <input className={`fh-input${operator.trim().length >= 2 ? "" : " is-error"}`} value={operator} onChange={e => setOperator(e.target.value)} placeholder="Nama operator" />
+            <p className="fh-hint">Terisi dari akun login. Ubah bila yang mengisi orang lain.</p>
+          </label>
+
+          <ReviewTable
+            title="Rekap"
+            info={[
+              ["Tanggal", formatTanggal()],
+              ["Tipe", tipe],
+              ["GH", gh],
+              ["HST", hst ?? "-"],
+              ...(nutrisi ? [["Nutrisi", nutrisi]] : []),
+            ]}
+          />
+
+          <div className="fh-card fh-scroll-x">
+            <div className="fh-card-head"><span className="fh-overline">Parameter × varian</span></div>
+            <table className="fh-table">
+              <thead>
+                <tr>
+                  <th>Parameter</th>
+                  {varianList.map(v => <th key={v} className="is-num">{v}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ["EC in (mS/cm)", (x) => x.ecIn || "0"],
+                  ["EC out (mS/cm)", (x) => x.ecOut || "0"],
+                  ["pH in", (x) => x.phIn || "0"],
+                  ["pH out", (x) => x.phOut || "0"],
+                  ["Volume (ml/tan)", (x) => x.volume || "0"],
+                  ["Nutrisi (L)", (x) => x.volNutrisi || "0"],
+                  ...(multiSuhuRH
+                    ? [["Suhu 4 alat (°C)", (x) => x.suhuArr.map(y => y || "0").join(" · ")], ["RH 4 alat (%)", (x) => x.rhArr.map(y => y || "0").join(" · ")]]
+                    : [["Suhu (°C)", (x) => x.suhu || "0"], ["RH (%)", (x) => x.rh || "0"]]),
+                ].map(([label, get]) => (
+                  <tr key={label}>
+                    <td>{label}</td>
+                    {varianList.map(v => <td key={v} className="is-num fh-num">{fmt(get(varianData[v] || initVarianData()))}</td>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {isDB && (
+            <ReviewTable
+              title="Dutch Bucket"
+              info={[
+                ["EC tandon", `${fmt(dbData.ecTandon)} mS/cm`],
+                ["EC bucket", `${fmt(dbData.ecBucket)} mS/cm`],
+                ["pH tandon", fmt(dbData.phTandon)],
+                ["pH bucket", fmt(dbData.phBucket)],
+                ["DO tandon", `${fmt(dbData.doTandon)} mg/L`],
+                ["DO bucket", `${fmt(dbData.doBucket)} mg/L`],
+                ["Suhu", `${fmt(dbData.suhu)} °C`],
+                ["RH", `${fmt(dbData.rh)} %`],
+                ["Volume nutrisi", `${fmt(dbData.volNutrisi)} L`],
+              ]}
+            />
+          )}
+
+          {submitError && <FieldAlert tone="danger">{submitError}</FieldAlert>}
+        </>
+      )}
+
+      {/* ══ STEP 4 — Sukses ══ */}
+      {step === 4 && (
+        <SuccessState
+          title={`Penyiraman ${gh} terkirim`}
+          description={`${varianList.length} varian${isDB ? " + data Dutch Bucket" : ""} masuk ke sheet.`}
+          summary={[
+            ["GH", `${gh} · ${tipe}`],
+            ["Varian", varianList.join(", ") + (isDB ? ", Dutch Bucket" : "")],
+            ["Operator", operator || user?.nama || "-"],
+          ]}
+        />
+      )}
+    </FormShell>
   );
 }
