@@ -549,7 +549,10 @@ export default function PemetaanGH() {
                       )}
                       {!row.isSulaman && !isManual && `Baris ${barisDisplayLabel(row.baris)}`}
                     </span>
-                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <button type="button" className="fh-btn fh-btn-secondary fh-btn-sm" onClick={() => addEntry(rowIdx)} aria-label={`Tambah varian di baris ${row.baris || "baru"}`}>
+                        <Icon name="Plus" size={16} /> Varian
+                      </button>
                       <span className="fh-num">{fmtNum(subtotal)}</span>
                       {isManual && (
                         <button type="button" className="fh-icon-btn is-danger" onClick={() => removeManualBaris(rowIdx)} aria-label="Hapus baris">
@@ -586,9 +589,6 @@ export default function PemetaanGH() {
                         </button>
                       </div>
                     ))}
-                    <button type="button" className="fh-link-btn" onClick={() => addEntry(rowIdx)}>
-                      <Icon name="Plus" size={18} /> Tambah varian
-                    </button>
                   </div>
                 </div>
               );

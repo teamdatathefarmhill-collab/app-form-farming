@@ -175,7 +175,7 @@ export default function App() {
     ? accessibleHPT
     : lainnya.flatMap(e => (e.group ? e.group : [e]));
 
-  const topOffset = isOnline ? 48 : 76;
+  const topOffset = isOnline ? 45 : 73;
 
   return (
     <div style={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", position: "relative" }}>

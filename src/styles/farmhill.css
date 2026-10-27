@@ -55,8 +55,9 @@
   --radius-card:  6px;
 
   /* ukuran sentuh */
-  --touch: 48px;
-  --touch-min: 44px;
+  /* kepadatan HP: tinggi kontrol utama 44px, kontrol rapat (stepper, tab, chip) 40px */
+  --touch: 44px;
+  --touch-min: 40px;
 
   --shadow-footer: 0 -1px 0 var(--border-default), 0 -4px 12px rgba(31, 42, 34, 0.06);
 }
@@ -600,3 +601,38 @@
 .fh-menu-item svg { color: var(--ink-500); flex-shrink: 0; }
 .fh-menu-item.is-active { border-color: var(--leaf-600); box-shadow: inset 0 0 0 1px var(--leaf-600); background: var(--leaf-50); font-weight: 600; }
 .fh-menu-item.is-active svg { color: var(--leaf-700); }
+
+/* ─── Kepadatan HP (layar ~360px): lebih banyak isi per layar tanpa mengecilkan teks ─── */
+.fh-header { padding: 8px 12px; gap: 10px; }
+.fh-content { padding: 12px; gap: 14px; }
+.fh-section { gap: 6px; }
+.fh-root.has-footer { padding-bottom: calc(var(--fh-nav, 64px) + 64px); }
+.fh-footer { padding: 8px 12px; }
+.fh-option { min-height: 48px; padding: 6px 12px; }
+.fh-options.is-grid .fh-option { min-height: 68px; padding: 8px 4px; }
+.fh-gh-item { min-height: 48px; padding: 6px 12px; }
+.fh-group-head { min-height: 48px; }
+.fh-menu-item { min-height: 48px; }
+.fh-card-head { padding: 8px 12px; }
+.fh-card-body { padding: 10px 12px; gap: 6px; }
+.fh-check-item { padding: 10px 12px; gap: 8px; }
+.fh-count-row { padding: 4px 12px; gap: 8px; }
+.fh-count-row .fh-stepper { width: 144px; }
+.fh-count-row.is-sub { padding-left: 24px; }
+.fh-stepper { gap: 3px; }
+.fh-stepper-btn { width: 40px; height: 40px; }
+.fh-stepper .fh-input { height: 40px; min-height: 40px; }
+.fh-count-row.is-sub .fh-stepper-btn, .fh-count-row.is-sub .fh-input { height: 36px; min-height: 36px; }
+.fh-count-row.is-sub .fh-stepper-btn { width: 36px; }
+.fh-entry-table .fh-table td { padding: 4px; }
+.fh-entry-cell .fh-input { font-size: 16px; }
+.fh-table td { padding: 8px; }
+.fh-table th { padding: 6px 8px; }
+.fh-summary-row { padding: 9px 12px; }
+.fh-field-card { padding: 8px; gap: 6px; }
+.fh-link-btn { min-height: 40px; }
+.fh-appbar-row { height: 44px; }
+.fh-appbar-btn { width: 34px; height: 34px; }
+.fh-tabbar-btn { font-size: 12px; padding: 6px 0 4px; }
+.fh-tabbar-btn span { padding: 0; }
+.fh-slot { min-height: var(--touch); }
