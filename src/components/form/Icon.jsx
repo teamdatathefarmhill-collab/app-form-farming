@@ -4,6 +4,7 @@ import {
   Plus, X, Search, Copy, ChevronDown, ChevronUp, Upload,
   Scale, Droplets, Sprout, ClipboardCheck, ClipboardList, SprayCan, ShieldCheck, Bug, Map,
   Minus, Download, Camera, Paintbrush, Flame, PenLine,
+  LogOut, Ellipsis, Siren, RefreshCw, Lock,
 } from "lucide-react";
 
 // Daftar ikon yang dipakai — import eksplisit supaya bundle hanya membawa ikon ini.
@@ -14,6 +15,7 @@ const ICONS = {
   Plus, X, Search, Copy, ChevronDown, ChevronUp, Upload,
   Scale, Droplets, Sprout, ClipboardCheck, ClipboardList, SprayCan, ShieldCheck, Bug, Map,
   Minus, Download, Camera, Paintbrush, Flame, PenLine,
+  LogOut, Ellipsis, Siren, RefreshCw, Lock,
 };
 
 // Satu pintu untuk ikon Lucide — nama pakai PascalCase Lucide ("CloudSun", "ArrowLeft").

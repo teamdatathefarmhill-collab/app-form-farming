@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Sanitasi     from "./pages/Sanitasi";
 import HPT          from "./pages/HPT";
 import Gramasi      from "./pages/Gramasi";
@@ -46,16 +46,16 @@ const STANDALONE_TABS = [
   { key: "pemetaan", label: "Pemetaan", icon: "Map", color: "#1b5e20", component: PemetaanGH },
 ];
 
-const HPT_COLOR = "#FF7043";
+// Bottom bar maksimal 5 tab; lebih dari itu → 4 tab + "Lainnya" (PRD 6.0)
+const MAX_TABS = 5;
 
 export default function App() {
   const { user, login, logout, isLoggedIn } = useAuth();
   const [activeTab, setActiveTab]     = useState(null);
-  const [hptOpen, setHptOpen]         = useState(false);
+  const [sheet, setSheet]             = useState(null); // null | "hpt" | "lainnya"
   const [sopMenuKey, setSopMenuKey]   = useState(null);
   const [isOnline, setIsOnline]       = useState(navigator.onLine);
   const [showUpdateNotif, setShowUpdateNotif] = useState(false);
-  const hptRef                        = useRef(null);
 
   useEffect(() => {
     const on  = () => setIsOnline(true);
@@ -68,22 +68,11 @@ export default function App() {
   // Tampilkan SOP saat tab berganti, hanya jika belum pernah dibaca
   function switchTab(key) {
     setActiveTab(key);
-    setHptOpen(false);
+    setSheet(null);
     if (!isMenuSeen(key)) {
       setSopMenuKey(key);
     }
   }
-
-  // Tutup dropdown HPT saat klik di luar
-  useEffect(() => {
-    const handler = (e) => {
-      if (hptRef.current && !hptRef.current.contains(e.target)) {
-        setHptOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
 
   // Tampilkan SOP untuk tab awal saat pertama login
   useEffect(() => {
@@ -148,85 +137,79 @@ export default function App() {
 
   if (totalAccess === 0) {
     return (
-      <div style={{
-        minHeight: "100vh", background: "#0a1a0f",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        flexDirection: "column", gap: 16, padding: "2rem",
-        fontFamily: "'Segoe UI', system-ui, sans-serif",
-      }}>
-        <span style={{ fontSize: 40 }}>🔒</span>
-        <p style={{ color: "rgba(255,255,255,0.6)", textAlign: "center", fontSize: 14 }}>
-          Akun <strong style={{ color: "#fff" }}>{user.nama}</strong> belum memiliki akses modul apapun.
+      <div className="fh-root" style={{ display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 14, padding: 32, margin: 0, minHeight: "100vh", textAlign: "center" }}>
+        <Icon name="Lock" size={32} />
+        <p style={{ margin: 0, fontSize: 15, color: "var(--ink-700)" }}>
+          Akun <strong>{user.nama}</strong> belum memiliki akses modul apapun.
           <br />Hubungi admin untuk pengaturan akses.
         </p>
-        <button onClick={logout} style={{ padding: "10px 24px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.2)", background: "transparent", color: "rgba(255,255,255,0.6)", fontSize: 13, cursor: "pointer" }}>
-          Logout
-        </button>
+        <button type="button" className="fh-btn fh-btn-secondary" style={{ width: "auto", padding: "0 24px" }} onClick={logout}>Logout</button>
       </div>
     );
   }
 
   // Halaman placeholder untuk menu yang belum ada form
   const PlaceholderPage = ({ label }) => (
-    <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12, padding: 32 }}>
-      <span style={{ fontSize: 48 }}>🚧</span>
-      <div style={{ fontSize: 16, fontWeight: 700, color: "#333" }}>Form {label}</div>
-      <div style={{ fontSize: 13, color: "#888", textAlign: "center" }}>Sedang dalam pengembangan</div>
+    <div className="fh-root" style={{ display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 8, padding: 32 }}>
+      <div className="fh-card-title">Form {label}</div>
+      <p className="fh-hint">Sedang dalam pengembangan.</p>
     </div>
   );
+
+  // ── Tab bottom bar: grup HPT (bila ada akses) lalu menu standalone, urutan tetap ──
+  const hptEntry = hasHPTAccess
+    ? (accessibleHPT.length === 1
+        ? { ...accessibleHPT[0] }
+        : { key: "__hpt", label: "HPT", icon: "Bug", group: accessibleHPT })
+    : null;
+  const entries   = [...(hptEntry ? [hptEntry] : []), ...accessibleStandalone];
+  const overflow  = entries.length > MAX_TABS;
+  const visible   = overflow ? entries.slice(0, MAX_TABS - 1) : entries;
+  const lainnya   = overflow ? entries.slice(MAX_TABS - 1) : [];
+  const isEntryActive = (e) => (e.group ? isHPTActive : resolvedTab === e.key);
+  const lainnyaActive = lainnya.some(isEntryActive);
+  const openEntry = (e) => (e.group ? setSheet("hpt") : switchTab(e.key));
+
+  // Isi sheet: submenu HPT, atau sisa menu (submenu HPT dibuka rata bila grup HPT ada di "Lainnya")
+  const sheetItems = sheet === "hpt"
+    ? accessibleHPT
+    : lainnya.flatMap(e => (e.group ? e.group : [e]));
+
+  const topOffset = isOnline ? 48 : 76;
 
   return (
     <div style={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", position: "relative" }}>
 
-      {/* Offline banner */}
-      {!isOnline && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, zIndex: 200,
-          background: "linear-gradient(135deg, #1565C0, #1976D2)",
-          padding: "6px 16px",
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-          fontSize: 12, color: "#fff", fontWeight: 600,
-        }}>
-          <span>📵</span>
-          <span>Offline — isian tersimpan lokal & dikirim saat online kembali</span>
-        </div>
-      )}
-
-      {/* Header */}
-      <div style={{
-        position: "fixed", top: isOnline ? 0 : 30, left: 0, right: 0, zIndex: 101,
-        background: "rgba(10,20,15,0.97)",
-        borderBottom: "1px solid rgba(255,255,255,0.07)",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "8px 16px",
-        backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-        transition: "top 0.2s",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 28, height: 28, borderRadius: 8, background: "linear-gradient(135deg, #2d7a4a, #4aaa6e)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🌿</div>
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#fff", lineHeight: 1.2 }}>{user.nama}</div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", lineHeight: 1.2 }}>ID {user.id}</div>
+      {/* ── Header app — putih tipis (PRD 6.0) ── */}
+      <header className="fh-appbar">
+        <div className="fh-appbar-row">
+          <div className="fh-appbar-logo"><Icon name="Sprout" size={18} /></div>
+          <div className="fh-appbar-user">
+            <div className="fh-appbar-name">{user.nama}</div>
+            <div className="fh-appbar-id">ID {user.id}</div>
+          </div>
+          <div className="fh-appbar-actions">
+            {/* Tombol "i" — panduan menu aktif */}
+            {resolvedTab && <InfoButton menuKey={resolvedTab} />}
+            {/* Tombol WA — laporan kesalahan input */}
+            <WAButton />
+            {/* Tombol Emergency — shutdown/restart GH karena kondisi tidak baik.
+                Sengaja dibatasi hanya untuk operator "Sugma" (belum untuk semua operator). */}
+            {user?.nama?.trim().toLowerCase() === "sugma" && <EmergencyGHButton />}
+            <button type="button" className="fh-appbar-btn" onClick={logout} aria-label="Logout" title="Logout">
+              <Icon name="LogOut" size={18} />
+            </button>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {/* Tombol "i" — panduan menu aktif */}
-          {resolvedTab && (
-            <InfoButton menuKey={resolvedTab} />
-          )}
-          {/* Tombol WA — laporan kesalahan input */}
-          <WAButton />
-          {/* Tombol Emergency — shutdown/restart GH karena kondisi tidak baik.
-              Sengaja dibatasi hanya untuk operator "Sugma" (belum untuk semua operator). */}
-          {user?.nama?.trim().toLowerCase() === "sugma" && <EmergencyGHButton />}
-          <button onClick={logout} style={{ padding: "5px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.15)", background: "transparent", color: "rgba(255,255,255,0.45)", fontSize: 11, cursor: "pointer" }}>
-            Logout
-          </button>
-        </div>
-      </div>
+        {!isOnline && (
+          <div className="fh-appbar-offline">
+            <Icon name="CloudOff" size={16} /> Offline. Isian tersimpan di HP dan terkirim saat online.
+          </div>
+        )}
+      </header>
 
       {/* Halaman aktif */}
-      <div style={{ flex: 1, paddingTop: 48, paddingBottom: 64, width: "100%" }}>
+      <div style={{ flex: 1, paddingTop: topOffset, paddingBottom: 64, width: "100%", "--fh-top": `${topOffset}px` }}>
         {/* Pengingat Vigor — popup yang muncul setelah menu Vigor dibuka (bukan banner di atas menu lain) */}
         {resolvedTab === "vigor" && accessibleStandalone.some(t => t.key === "vigor") && (
           <VigorReminder popup />
@@ -237,122 +220,67 @@ export default function App() {
         }
       </div>
 
-      {/* Bottom Tab Navigation */}
-      <div style={{
-        position: "fixed", bottom: 0, left: 0, right: 0, width: "100%",
-        background: "rgba(10,20,15,0.97)",
-        borderTop: "1px solid rgba(255,255,255,0.1)",
-        display: "flex", zIndex: 100,
-        backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-      }}>
-
-        {/* HPT Dropdown (jika ada akses) */}
-        {hasHPTAccess && (
-          <div ref={hptRef} style={{ flex: 1, position: "relative" }}>
-
-            {/* Dropdown menu — muncul ke atas */}
-            {hptOpen && (
-              <div style={{
-                position: "absolute", bottom: "100%", left: 0, right: 0, minWidth: 200,
-                background: "rgba(10,20,15,0.98)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderBottom: "none",
-                borderRadius: "12px 12px 0 0",
-                overflow: "hidden",
-              }}>
-                {accessibleHPT.map(item => {
-                  const isActive = resolvedTab === item.key;
-                  return (
-                    <button key={item.key} onClick={() => switchTab(item.key)}
-                      style={{
-                        width: "100%", padding: "12px 16px",
-                        background: isActive ? "rgba(255,112,67,0.15)" : "transparent",
-                        border: "none", borderBottom: "1px solid rgba(255,255,255,0.06)",
-                        color: isActive ? HPT_COLOR : "rgba(255,255,255,0.7)",
-                        fontSize: 13, fontWeight: isActive ? 700 : 500,
-                        cursor: "pointer", textAlign: "left",
-                        display: "flex", alignItems: "center", gap: 10,
-                      }}>
-                      <Icon name={item.icon} size={18} />
-                      <span>{item.label}</span>
-                      {isActive && <span style={{ marginLeft: "auto", fontSize: 11, color: HPT_COLOR }}>●</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* HPT Tab Button */}
-            <button onClick={() => {
-                if (accessibleHPT.length === 1) {
-                  switchTab(accessibleHPT[0].key);
-                } else {
-                  setHptOpen(o => !o);
-                }
-              }}
-              style={{
-                width: "100%", padding: "10px 4px 14px",
-                background: "transparent", border: "none", cursor: "pointer",
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-                borderTop: isHPTActive ? `2px solid ${HPT_COLOR}` : "2px solid transparent",
-              }}>
-              <span style={{ color: isHPTActive ? "#fff" : "rgba(255,255,255,0.55)", display: "flex" }}><Icon name={accessibleHPT.length === 1 ? accessibleHPT[0].icon : "Bug"} size={22} /></span>
-              <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                <span style={{ fontSize: 10, fontWeight: isHPTActive ? 700 : 500, color: isHPTActive ? HPT_COLOR : "rgba(255,255,255,0.35)", letterSpacing: 0.5, whiteSpace: "nowrap" }}>
-                  {accessibleHPT.length === 1 ? accessibleHPT[0].label : "HPT"}
-                </span>
-                {accessibleHPT.length > 1 && (
-                  <span style={{ fontSize: 8, color: isHPTActive ? HPT_COLOR : "rgba(255,255,255,0.35)", transition: "transform 0.2s", display: "inline-block", transform: hptOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▲</span>
-                )}
-              </div>
-            </button>
-          </div>
-        )}
-
-        {/* Standalone tabs */}
-        {accessibleStandalone.map((tab) => {
-          const isActive = resolvedTab === tab.key;
+      {/* ── Bottom bar — putih, maks 5 tab (PRD 6.0) ── */}
+      <nav className="fh-tabbar" aria-label="Menu">
+        {visible.map(e => {
+          const active = isEntryActive(e);
           return (
-            <button key={tab.key} onClick={() => switchTab(tab.key)}
-              style={{
-                flex: 1, minWidth: 60, padding: "10px 4px 14px",
-                background: "transparent", border: "none", cursor: "pointer",
-                display: "flex", flexDirection: "column", alignItems: "center",
-                gap: 4, transition: "all 0.2s",
-                borderTop: isActive ? `2px solid ${tab.color}` : "2px solid transparent",
-              }}>
-              <span style={{ color: isActive ? "#fff" : "rgba(255,255,255,0.55)", display: "flex" }}><Icon name={tab.icon} size={22} /></span>
-              <span style={{ fontSize: 10, fontWeight: isActive ? 700 : 500, color: isActive ? tab.color : "rgba(255,255,255,0.35)", letterSpacing: 0.5, whiteSpace: "nowrap" }}>
-                {tab.label}
-              </span>
+            <button key={e.key} type="button" className={`fh-tabbar-btn${active ? " is-active" : ""}`}
+              aria-current={active ? "page" : undefined} onClick={() => openEntry(e)}>
+              <Icon name={e.icon} size={20} />
+              <span>{e.label}</span>
             </button>
           );
         })}
-      </div>
+        {overflow && (
+          <button type="button" className={`fh-tabbar-btn${lainnyaActive ? " is-active" : ""}`} onClick={() => setSheet("lainnya")}>
+            <Icon name="Ellipsis" size={20} />
+            <span>Lainnya</span>
+          </button>
+        )}
+      </nav>
+
+      {/* ── Sheet pilihan menu: grup HPT / Lainnya ── */}
+      {sheet && (
+        <div className="fh-root fh-overlay is-sheet" onClick={(e) => { if (e.target === e.currentTarget) setSheet(null); }}>
+          <div className="fh-sheet" role="dialog" aria-modal="true" aria-label={sheet === "hpt" ? "Menu HPT" : "Menu lainnya"}>
+            <div className="fh-sheet-head">
+              <h2 className="fh-dialog-title" style={{ flex: 1, margin: 0, alignSelf: "center" }}>{sheet === "hpt" ? "Menu HPT" : "Menu lainnya"}</h2>
+              <button type="button" className="fh-icon-btn" onClick={() => setSheet(null)} aria-label="Tutup"><Icon name="X" /></button>
+            </div>
+            <div className="fh-sheet-body" style={{ gap: 6, paddingBottom: 24 }}>
+              {sheetItems.map(item => (
+                <button key={item.key} type="button" className={`fh-menu-item${resolvedTab === item.key ? " is-active" : ""}`} onClick={() => switchTab(item.key)}>
+                  <Icon name={item.icon} size={20} />
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Update Notification Modal */}
       {showUpdateNotif && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <div style={{ background: "#fff", borderRadius: 20, padding: 24, maxWidth: 360, width: "100%", boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}>
-            <div style={{ textAlign: "center", marginBottom: 16 }}>
-              <div style={{ fontSize: 40, marginBottom: 8 }}>🔔</div>
-              <div style={{ fontSize: 17, fontWeight: 800, color: "#1b5e20", marginBottom: 4 }}>Ada Pembaruan Aplikasi!</div>
-              <div style={{ fontSize: 12, color: "#aaa" }}>Ada perubahan sejak terakhir kamu buka</div>
+        <div className="fh-root fh-overlay" style={{ zIndex: 300 }}>
+          <div className="fh-dialog" role="dialog" aria-modal="true" aria-label="Ada pembaruan aplikasi">
+            <h2 className="fh-dialog-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Icon name="RefreshCw" size={20} /> Ada pembaruan aplikasi
+            </h2>
+            <p className="fh-dialog-body" style={{ margin: 0 }}>Ada perubahan sejak terakhir kamu buka. Aplikasi akan dimuat ulang untuk menerapkannya.</p>
+            <p className="fh-hint" style={{ margin: 0 }}>Bila setelah dimuat ulang tidak ada perubahan, hubungi tim lewat tombol WhatsApp di kanan atas.</p>
+            <div className="fh-dialog-actions">
+              <button
+                type="button"
+                className="fh-btn fh-btn-primary"
+                onClick={() => {
+                  localStorage.setItem(APP_VERSION_KEY, BUILD_ID);
+                  window.location.reload();
+                }}
+              >
+                Muat ulang sekarang
+              </button>
             </div>
-            <div style={{ background: "#fff3e0", border: "1px solid #ffb74d", borderRadius: 10, padding: "10px 14px", marginBottom: 12, fontSize: 12, color: "#e65100", lineHeight: 1.5 }}>
-              ⚠️ Aplikasi akan <strong>reload otomatis</strong> untuk menerapkan perubahan terbaru.
-            </div>
-            <div style={{ background: "#f5f5f5", borderRadius: 10, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#666", lineHeight: 1.6 }}>
-              Jika setelah reload tidak ada perubahan, hubungi team melalui icon <strong>WhatsApp 💬</strong> di pojok kanan atas.
-            </div>
-            <button
-              onClick={() => {
-                localStorage.setItem(APP_VERSION_KEY, BUILD_ID);
-                window.location.reload();
-              }}
-              style={{ width: "100%", padding: 13, border: "none", borderRadius: 12, background: "linear-gradient(135deg,#1b5e20,#2e7d32)", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-              Reload Sekarang 🔄
-            </button>
           </div>
         </div>
       )}
@@ -376,7 +304,7 @@ export default function App() {
 
       <style>{`
         * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; background: #0a1a0f; width: 100%; overflow-x: hidden; }
+        html, body { margin: 0; padding: 0; background: var(--cream-100); width: 100%; overflow-x: hidden; }
       `}</style>
     </div>
   );

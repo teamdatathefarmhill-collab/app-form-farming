@@ -5,6 +5,7 @@
 // Taruh di: src/components/EmergencyGHButton.jsx
 
 import { useState } from "react";
+import { Icon } from "./form";
 import { createPortal } from "react-dom";
 import { useGHData } from "../hooks/useGHData";
 import { useGHEmergency } from "../hooks/useGHEmergency";
@@ -82,15 +83,10 @@ export default function EmergencyGHButton() {
       <button
         onClick={openModal}
         title="Emergency — Shutdown / Restart GH"
-        style={{
-          width: 30, height: 30, borderRadius: 8,
-          border: "1px solid rgba(229,57,53,0.4)",
-          background: "rgba(229,57,53,0.15)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          cursor: "pointer", padding: 0, flexShrink: 0, fontSize: 15,
-        }}
+        aria-label="Emergency — Shutdown / Restart GH"
+        className="fh-appbar-btn is-danger"
       >
-        🚨
+        <Icon name="Siren" size={18} />
       </button>
 
       {open && createPortal(

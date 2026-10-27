@@ -544,3 +544,59 @@
 /* ─── Tabel rekap lebar (parameter × varian) ─── */
 .fh-scroll-x { overflow-x: auto; }
 .fh-scroll-x .fh-table th, .fh-scroll-x .fh-table td { white-space: nowrap; }
+
+/* ─── Header app (PRD 6.0) ─── */
+.fh-appbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 101;
+  background: var(--surface); border-bottom: 1px solid var(--border-default);
+  font-family: var(--font-sans); color: var(--ink-900); text-align: left;
+}
+.fh-appbar button, .fh-tabbar button { font-family: inherit; }
+.fh-appbar-row { height: 48px; padding: 0 12px; display: flex; align-items: center; gap: 10px; }
+.fh-appbar-logo {
+  width: 32px; height: 32px; border-radius: var(--radius-card); flex-shrink: 0;
+  background: var(--leaf-600); color: #fff; display: flex; align-items: center; justify-content: center;
+}
+.fh-appbar-user { flex: 1; min-width: 0; line-height: 1.2; }
+.fh-appbar-name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fh-appbar-id { font-size: 12px; color: var(--ink-500); }
+.fh-appbar-actions { display: flex; align-items: center; gap: 6px; }
+.fh-appbar-btn {
+  width: 36px; height: 36px; padding: 0; flex-shrink: 0; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--surface); color: var(--ink-700);
+  border: 1px solid var(--border-default); border-radius: var(--radius-input);
+}
+.fh-appbar-btn.is-danger { color: var(--status-danger-fg); border-color: var(--status-danger-border); }
+.fh-appbar-offline {
+  height: 28px; display: flex; align-items: center; justify-content: center; gap: 6px;
+  background: var(--status-info-bg); border-top: 1px solid var(--status-info-border);
+  color: var(--status-info-fg); font-size: 13px;
+}
+
+/* ─── Bottom bar (PRD 6.0) ─── */
+.fh-tabbar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; height: 64px;
+  display: flex; background: var(--surface); border-top: 1px solid var(--border-default);
+  font-family: var(--font-sans);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.fh-tabbar-btn {
+  flex: 1; min-width: 0; padding: 8px 2px 6px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  background: none; border: none; border-top: 2px solid transparent;
+  color: var(--ink-500); font-size: 13px; line-height: 1.15;
+}
+.fh-tabbar-btn span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px; }
+.fh-tabbar-btn.is-active { color: var(--leaf-700); font-weight: 600; border-top-color: var(--melon-400); }
+
+/* ─── Daftar menu di sheet (Lainnya / HPT) ─── */
+.fh-menu-item {
+  width: 100%; min-height: 52px; padding: 0 14px;
+  display: flex; align-items: center; gap: 12px;
+  background: var(--surface); border: 1px solid var(--border-default); border-radius: var(--radius-card);
+  color: var(--ink-900); font-size: 15px; text-align: left; cursor: pointer;
+}
+.fh-menu-item svg { color: var(--ink-500); flex-shrink: 0; }
+.fh-menu-item.is-active { border-color: var(--leaf-600); box-shadow: inset 0 0 0 1px var(--leaf-600); background: var(--leaf-50); font-weight: 600; }
+.fh-menu-item.is-active svg { color: var(--leaf-700); }
