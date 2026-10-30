@@ -4,7 +4,7 @@ import { useAuth } from "../hooks/useAuth";
 import { idbAdd, idbGetAll, idbDelete, idbCount, gasPost } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
-import { FormShell, FieldAlert, SuccessState, GHPicker, ReviewTable, OptionList, SegmentTabs, PhotoBox, Dialog } from "../components/form";
+import { FormShell, FieldAlert, SuccessState, GHPicker, ReviewTable, OptionList, SegmentTabs, PhotoBox, Dialog, OperatorField } from "../components/form";
 import { formatTanggal } from "../lib/format";
 import { HST_CHECKPOINTS, HST_NEAR_RANGE, TIPE_GH } from "../lib/vigorDue";
 
@@ -761,11 +761,7 @@ export default function Vigor({ initialGH, onDone } = {}) {
       {/* ══ STEP 3 — Rekap ══ */}
       {step === 3 && (
         <>
-          <label className="fh-section">
-            <span className="fh-label">Operator</span>
-            <input className={`fh-input${operator.trim() ? "" : " is-error"}`} value={operator} onChange={e => setOperator(e.target.value)} placeholder="Nama operator" />
-            <p className="fh-hint">Terisi dari akun login. Ubah bila yang mengisi orang lain.</p>
-          </label>
+          <OperatorField user={user} value={operator} onChange={setOperator} minLength={1} />
 
           <ReviewTable
             title="Rekap"

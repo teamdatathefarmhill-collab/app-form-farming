@@ -3,7 +3,7 @@ import { useDraft } from "../hooks/useDraft";
 import { useAuth } from "../hooks/useAuth";
 import { useGHBlockedList } from "../hooks/useGHBlockedList";
 import { gasFetch, gasPost } from "../utils/idb";
-import { FormShell, FieldAlert, SuccessState, GHPicker, ReviewTable, OptionList, SegmentTabs, Switch, NumberField } from "../components/form";
+import { FormShell, FieldAlert, SuccessState, GHPicker, ReviewTable, OptionList, SegmentTabs, Switch, NumberField, OperatorField } from "../components/form";
 import { formatTanggal } from "../lib/format";
 
 const SCRIPT_URL = import.meta.env.VITE_GAS_PENYIRAMAN_URL;
@@ -572,11 +572,7 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
       {/* ══ STEP 3 — Rekap ══ */}
       {step === 3 && (
         <>
-          <label className="fh-section">
-            <span className="fh-label">Operator</span>
-            <input className={`fh-input${operator.trim().length >= 2 ? "" : " is-error"}`} value={operator} onChange={e => setOperator(e.target.value)} placeholder="Nama operator" />
-            <p className="fh-hint">Terisi dari akun login. Ubah bila yang mengisi orang lain.</p>
-          </label>
+          <OperatorField user={user} value={operator} onChange={setOperator} minLength={2} />
 
           <ReviewTable
             title="Rekap"

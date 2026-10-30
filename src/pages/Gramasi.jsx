@@ -4,7 +4,7 @@ import { useAuth } from "../hooks/useAuth";
 import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch, gasPost } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
-import { FormShell, FieldAlert, SuccessState, GHPicker, ReviewTable, EntryTable, Dialog } from "../components/form";
+import { FormShell, FieldAlert, SuccessState, GHPicker, ReviewTable, EntryTable, Dialog, OperatorField } from "../components/form";
 import { formatTanggal } from "../lib/format";
 
 const DB_NAME = "GramasiOfflineDB";
@@ -561,16 +561,7 @@ export default function Gramasi() {
       {/* ══ STEP 3 — Rekap ══ */}
       {step === 3 && (
         <>
-          <label className="fh-section">
-            <span className="fh-label">Operator</span>
-            <input
-              className={`fh-input${operator.trim() ? "" : " is-error"}`}
-              value={operator}
-              onChange={e => setOperator(e.target.value)}
-              placeholder="Nama operator"
-            />
-            <p className="fh-hint">Terisi dari akun login. Ubah bila yang mengisi orang lain.</p>
-          </label>
+          <OperatorField user={user} value={operator} onChange={setOperator} minLength={1} />
 
           {totalWarnings > 0 && (
             <FieldAlert tone="warning">{totalWarnings} nilai beda jauh dari pengukuran sebelumnya. Pastikan sudah benar.</FieldAlert>

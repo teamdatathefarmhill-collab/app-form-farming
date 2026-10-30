@@ -4,7 +4,7 @@ import { useAuth } from "../hooks/useAuth";
 import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
-import { FormShell, FieldAlert, SuccessState, GHPicker, ReviewTable, Dialog, SegmentTabs, Stepper } from "../components/form";
+import { FormShell, FieldAlert, SuccessState, GHPicker, ReviewTable, Dialog, SegmentTabs, Stepper, OperatorField } from "../components/form";
 import { formatTanggal } from "../lib/format";
 
 const DB_NAME = "HPTOfflineDB";
@@ -612,16 +612,7 @@ export default function HPT() {
       {/* ══ STEP 3 — Rekap ══ */}
       {step === 3 && (
         <>
-          <label className="fh-section">
-            <span className="fh-label">Operator</span>
-            <input
-              className={`fh-input${operator.trim().length >= 2 ? "" : " is-error"}`}
-              value={operator}
-              onChange={e => setOperator(e.target.value)}
-              placeholder="Nama operator"
-            />
-            <p className="fh-hint">Terisi dari akun login. Ubah bila yang mengisi orang lain.</p>
-          </label>
+          <OperatorField user={user} value={operator} onChange={setOperator} minLength={2} />
 
           <ReviewTable
             title="Rekap"

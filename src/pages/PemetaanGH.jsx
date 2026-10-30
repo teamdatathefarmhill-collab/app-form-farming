@@ -4,7 +4,7 @@ import { useAuth } from "../hooks/useAuth";
 import { idbAdd, idbGetAll, idbDelete, idbCount, gasFetch, gasPost } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList } from "../hooks/useGHBlockedList";
-import { FormShell, FieldAlert, SuccessState, OptionList, GHPicker, ReviewTable, Icon } from "../components/form";
+import { FormShell, FieldAlert, SuccessState, OptionList, GHPicker, ReviewTable, Icon, OperatorField } from "../components/form";
 import { formatTanggal, formatAngka, formatSelisih } from "../lib/format";
 
 const DB_NAME    = "PemetaanOfflineDB";
@@ -714,16 +714,7 @@ export default function PemetaanGH() {
       {/* ══ STEP 3 — Rekap ══ */}
       {step === 3 && (
         <>
-          <label className="fh-section">
-            <span className="fh-label">Operator</span>
-            <input
-              className={`fh-input${operator.trim() ? "" : " is-error"}`}
-              value={operator}
-              onChange={(e) => setOperator(e.target.value)}
-              placeholder="Nama operator"
-            />
-            <p className="fh-hint">Terisi dari akun login. Ubah bila yang mengisi orang lain.</p>
-          </label>
+          <OperatorField user={user} value={operator} onChange={setOperator} minLength={1} />
 
           <ReviewTable
             title="Rekap"

@@ -4,7 +4,7 @@ import { useAuth } from "../hooks/useAuth";
 import { idbAdd, idbGetAll, idbDelete, idbCount, gasPost } from "../utils/idb";
 import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
-import { FormShell, FieldAlert, SuccessState, GHPicker, ReviewTable, Dialog, Icon } from "../components/form";
+import { FormShell, FieldAlert, SuccessState, GHPicker, ReviewTable, Dialog, Icon, OperatorField } from "../components/form";
 import { formatTanggal } from "../lib/format";
 
 const DB_NAME    = "PenyemprotanOfflineDB";
@@ -70,7 +70,7 @@ const WAKTU_PERIODE_LIST = ["Pagi","Siang","Sore"];
 const STERILISASI_LIST = ["Steril Ke-1","Steril Ke-2","Steril Ke-3","Steril Ke-4","Steril","Tidak ada"];
 
 // ─── Oles GSB ─────────────────────────────────────────────────────────────────
-const PESTISIDA_GSB   = ["Spring","Copcide","Ridomil","Dhitane","Kupraxot","Nordox","Daconil"];
+const PESTISIDA_GSB   = ["Spring","Copcide","Ridomil"];
 const KONSENTRASI_GSB = ["50 g/L","100 g/L"];
 
 // ─── Peruntukan Gas (shared) ──────────────────────────────────────────────────
@@ -687,11 +687,7 @@ export default function Penyemprotan() {
       {/* ══ REKAP ══════════════════════════════════════════════════════════════ */}
       {step === "rekap" && (
         <>
-          <label className="fh-section">
-            <span className="fh-label">Operator</span>
-            <input className={`fh-input${operator.trim() ? "" : " is-error"}`} value={operator} onChange={e => setOperator(e.target.value)} placeholder="Nama operator" />
-            <p className="fh-hint">Terisi dari akun login. Ubah bila yang mengisi orang lain.</p>
-          </label>
+          <OperatorField user={user} value={operator} onChange={setOperator} minLength={1} />
 
           <ReviewTable title="Umum" info={[
             ["Tanggal", formatTanggal()],

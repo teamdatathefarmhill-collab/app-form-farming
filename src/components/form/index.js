@@ -15,3 +15,4 @@ export { default as GoodNotGood } from "./GoodNotGood";
 export { default as PhotoBox } from "./PhotoBox";
 export { default as Switch } from "./Switch";
 export { default as NumberField } from "./NumberField";
+export { default as OperatorField } from "./OperatorField";
