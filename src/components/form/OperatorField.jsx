@@ -1,5 +1,5 @@
 // Isian "Operator" di langkah rekap. Akun biasa: input teks (terisi dari akun login).
-// Akun role KOOR_GH: dropdown daftar Koor GH + opsi "Tulis sendiri…" untuk nama lain.
+// Akun role KOOR_GH atau bernama "Koor GH": dropdown daftar Koor GH + opsi "Tulis sendiri…" untuk nama lain.
 import { useState, useEffect } from "react";
 
 export const KOOR_GH_LIST = [
@@ -16,7 +16,7 @@ export const KOOR_GH_LIST = [
 const TULIS_SENDIRI = "__tulis_sendiri__";
 
 export default function OperatorField({ user, value, onChange, minLength = 1 }) {
-  const isKoor = user?.role?.trim().toUpperCase() === "KOOR_GH";
+  const isKoor = user?.role?.trim().toUpperCase() === "KOOR_GH" || /^koor\s*gh$/i.test(user?.nama?.trim() || "");
   const [manual, setManual] = useState(false);
   const invalid = value.trim().length < minLength;
 
