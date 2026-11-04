@@ -70,7 +70,7 @@ const WAKTU_PERIODE_LIST = ["Pagi","Siang","Sore"];
 const STERILISASI_LIST = ["Steril Ke-1","Steril Ke-2","Steril Ke-3","Steril Ke-4","Steril","Tidak ada"];
 
 // ─── Oles GSB ─────────────────────────────────────────────────────────────────
-const PESTISIDA_GSB   = ["Spring","Copcide","Ridomil"];
+const PESTISIDA_GSB   = ["Spring","Copcide","Ridomil","Deconil"];
 const KONSENTRASI_GSB = ["50 g/L","100 g/L"];
 
 // ─── Peruntukan Gas (shared) ──────────────────────────────────────────────────
