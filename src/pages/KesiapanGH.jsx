@@ -452,6 +452,17 @@ export default function KesiapanGH() {
       setSubmittedToday(prev => [...new Set([...prev, submittedKey])]);
       clearDraft(); setSavedOffline(false); setStep(4);
     } catch (err) {
+      // Gagal jaringan (TypeError) → simpan ke antrean offline agar data tidak hilang.
+      if (err instanceof TypeError) {
+        try {
+          await idbAdd(DB_NAME, { key: submittedKey, payload });
+          await refreshPendingCount();
+          markSubmittedLocal(submittedKey);
+          setSubmittedToday(prev => [...new Set([...prev, submittedKey])]);
+          clearDraft(); setSavedOffline(true); setStep(4);
+          return;
+        } catch { /* gagal simpan lokal → tampilkan error di bawah */ }
+      }
       setSubmitError(`Data belum terkirim (${err.message}). Cek sinyal lalu tekan Kirim lagi.`);
     } finally {
       setSubmitting(false);

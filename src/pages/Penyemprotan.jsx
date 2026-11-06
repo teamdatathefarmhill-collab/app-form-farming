@@ -416,7 +416,17 @@ export default function Penyemprotan() {
     try {
       const res = await gasPost(SCRIPT_URL, payload);
       if (!res?.success) { setSubmitError(`Ditolak server: ${res?.error || "alasan tidak diketahui"}. Periksa isian lalu kirim lagi.`); setSyncing(false); return; }
-    } catch { setSubmitError("Data belum terkirim karena koneksi terputus. Cek sinyal lalu tekan Kirim lagi."); setSyncing(false); return; }
+    } catch (e) {
+      // Gagal jaringan (TypeError) → simpan ke antrean offline agar data tidak hilang.
+      if (e instanceof TypeError) {
+        try {
+          await idbAdd(DB_NAME, { tanggal:todayISO, gh:selectedGH, createdAt:Date.now(), payload, sessionKey });
+          await refreshPendingCount(); setSavedOffline(true);
+          navigateTo("sukses"); setSyncing(false); return;
+        } catch { /* gagal simpan lokal → tampilkan error di bawah */ }
+      }
+      setSubmitError("Data belum terkirim karena koneksi terputus. Cek sinyal lalu tekan Kirim lagi."); setSyncing(false); return;
+    }
     navigateTo("sukses"); setSyncing(false);
   };
 

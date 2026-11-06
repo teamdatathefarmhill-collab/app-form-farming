@@ -357,6 +357,18 @@ export default function HPT() {
         throw new Error(result?.message || "Gagal menyimpan");
       }
     } catch (e) {
+      // Gagal jaringan (TypeError) → simpan ke antrean offline agar data tidak hilang.
+      if (e instanceof TypeError) {
+        try {
+          await idbAdd(DB_NAME, { gh: selectedGH, tanggal: todayISO, createdAt: Date.now(), payload });
+          await refreshPendingCount();
+          markSubmitted(selectedGH);
+          clearDraft(); setSubmittedToday(getSubmittedToday());
+          setSavedOffline(true);
+          setStep(4);
+          return;
+        } catch { /* gagal simpan lokal → tampilkan error di bawah */ }
+      }
       setSubmitError(`Data belum terkirim (${e.message || "koneksi terputus"}). Cek sinyal lalu tekan Kirim lagi.`);
     } finally {
       setSyncing(false);

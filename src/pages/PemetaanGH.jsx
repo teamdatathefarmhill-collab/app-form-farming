@@ -417,7 +417,18 @@ export default function PemetaanGH() {
       await gasPost(SCRIPT_URL, payload);
       clearDraft();
       setStep(4);
-    } catch {
+    } catch (e) {
+      // Gagal jaringan (TypeError) → simpan ke antrean offline agar data tidak hilang.
+      if (e instanceof TypeError) {
+        try {
+          await idbAdd(DB_NAME, { gh: selectedGH, tanggal: todayISO, createdAt: Date.now(), payload });
+          await refreshPendingCount();
+          clearDraft();
+          setSavedOffline(true);
+          setStep(4);
+          return;
+        } catch { /* gagal simpan lokal → tampilkan error di bawah */ }
+      }
       setSubmitError("Data belum terkirim karena koneksi terputus. Cek sinyal lalu tekan Kirim lagi.");
     } finally {
       setSyncing(false);

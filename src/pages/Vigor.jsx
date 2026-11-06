@@ -556,6 +556,18 @@ export default function Vigor({ initialGH, onDone } = {}) {
       markSubmitted(selectedGH); setSubmittedToday(getSubmittedToday());
       clearDraft(); setStep(4);
     } catch (e) {
+      // Gagal jaringan (fetch tidak tersambung) → simpan ke antrean offline supaya
+      // data tidak hilang; akan terkirim otomatis saat sinyal kembali.
+      // Hanya TypeError: timeout/balasan non-JSON bisa berarti data sudah masuk (hindari dobel).
+      if (e instanceof TypeError) {
+        try {
+          await idbAdd(DB_NAME, { gh: selectedGH, tanggal: todayISO, createdAt: Date.now(), payloads });
+          await refreshPendingCount();
+          markSubmitted(selectedGH); setSubmittedToday(getSubmittedToday());
+          clearDraft(); setSavedOffline(true); setStep(4);
+          return;
+        } catch { /* gagal simpan lokal → tampilkan error di bawah */ }
+      }
       setSubmitError(`Data belum terkirim (${e.message || "koneksi terputus"}). Cek sinyal lalu tekan Kirim lagi.`);
     } finally { setSubmitting(false); }
   };

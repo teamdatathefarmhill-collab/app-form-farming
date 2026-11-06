@@ -560,7 +560,35 @@ export default function Sanitasi() {
     try {
       await gasPost(SCRIPT_URL, { ...payload, fotoUrl: resolvedFotoUrl || "", selfieUrl: resolvedSelfieUrl || "" });
       setSyncProgress({ done: 1, total: 1 });
-    } catch {
+    } catch (e) {
+      // Gagal jaringan (TypeError) → simpan ke antrean offline (termasuk foto) agar data tidak hilang.
+      if (e instanceof TypeError) {
+        try {
+          let fotoBase64 = null, fotoMimeType = null, fotoFileName = null;
+          if (fotoFile) {
+            await new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onload = (ev) => {
+                fotoBase64 = ev.target.result.split(",")[1];
+                fotoMimeType = fotoFile.type || "image/jpeg";
+                fotoFileName = `sanitasi_${selectedGH}_${todayISO.replace(/\//g, "-")}_${Date.now()}.jpg`;
+                resolve();
+              };
+              reader.onerror = () => resolve();
+              reader.readAsDataURL(fotoFile);
+            });
+          }
+          await idbAdd(DB_NAME, {
+            tanggal: todayISO, gh: selectedGH, createdAt: Date.now(),
+            payload, fotoBase64, fotoMimeType, fotoFileName, sessionKey,
+          });
+          await refreshPendingCount();
+          setSavedOffline(true);
+          setStep(4);
+          setSyncing(false);
+          return;
+        } catch { /* gagal simpan lokal → tampilkan error di bawah */ }
+      }
       setSubmitError("Data belum terkirim karena koneksi terputus. Cek sinyal lalu tekan Kirim lagi.");
       setSyncing(false);
       return;
