@@ -16,7 +16,7 @@
 const SHEET_PENYIRAMAN = "Form Penyiraman";
 const NUTRISI_SCAN_ROWS = 1500;
 const REF_CACHE_KEY     = "getREF_v1";
-const REF_CACHE_TTL     = 180; // detik
+const REF_CACHE_TTL     = 30; // detik — singkat supaya GH yang baru tanam cepat muncul
 const SS_REF_ID        = "1tIJzuTBXcM7Wks03pgsyVicJUCtDs9Ak0N89K9GlKe4"; // Spreadsheet REF
 
 // GH tertentu (mis. TOHUDAN 18) kirim isian Drip per varian SEKALIGUS 1 baris Dutch Bucket

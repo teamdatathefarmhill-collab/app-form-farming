@@ -431,7 +431,9 @@ export default function Penyiraman({ initialGH, onDone } = {}) {
             <section className="fh-section">
               <div className="fh-section-head">
                 <span className="fh-label">Pilih GH</span>
-                {loadingRef && <span className="fh-meta">memuat…</span>}
+                {loadingRef
+                  ? <span className="fh-meta">memuat…</span>
+                  : <button type="button" className="fh-btn fh-btn-secondary" onClick={() => loadRefRef.current?.()}>Muat ulang daftar GH</button>}
               </div>
               <GHPicker
                 loading={loadingRef && ghAktifTipe(tipe).length === 0}
