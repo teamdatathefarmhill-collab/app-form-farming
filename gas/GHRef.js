@@ -225,15 +225,15 @@ function formatJam(val) {
 // ============================================================
 // getGHData — baca REF sheet, kembalikan data GH terstruktur
 // ============================================================
-// Cache 3 menit — getGHData baca 2 sheet penuh lewat openById, mahal kalau dipanggil
-// tiap halaman dibuka. Data REF jarang berubah dalam hitungan menit.
+// Cache 30 detik — getGHData baca 2 sheet penuh lewat openById, mahal kalau dipanggil
+// tiap halaman dibuka. Dipendekkan dari 3 menit supaya GH yang baru tanam cepat muncul.
 function getGHDataCached() {
   const cache = CacheService.getScriptCache();
   const hit   = cache.get("getGH_v1");
   if (hit) return JSON.parse(hit);
   const res = getGHData();
   if (res.success) {
-    try { cache.put("getGH_v1", JSON.stringify(res), 180); } catch (e) { /* >100KB, lewati cache */ }
+    try { cache.put("getGH_v1", JSON.stringify(res), 30); } catch (e) { /* >100KB, lewati cache */ }
   }
   return res;
 }
