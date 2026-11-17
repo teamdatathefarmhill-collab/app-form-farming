@@ -143,6 +143,24 @@ function getSemaiRef() {
     return '';
   };
 
+  // GH+periode yang sudah pernah dipetakan (sheet output "Data", kolom B:GH, C:Periode).
+  // Dipakai supaya GH yang kolom Tanam-nya sudah terisi (mis. diisi di hari pemetaan)
+  // tapi belum dipetakan tetap muncul — bukan langsung dianggap selesai.
+  const normPer = function (p) { return String(p || '').trim().replace(',', '.'); };
+  const sudahDipetakan = {};
+  const sheetOut = SpreadsheetApp.openById(SS_OUTPUT_ID).getSheetByName(SHEET_DATA);
+  if (sheetOut && sheetOut.getLastRow() > 1) {
+    sheetOut.getRange(2, 2, sheetOut.getLastRow() - 1, 2).getValues().forEach(function (x) {
+      sudahDipetakan[String(x[0]).trim().toUpperCase() + '|' + normPer(x[1])] = true;
+    });
+  }
+  const BATAS_HARI_TANAM = 3; // Tanam terisi maks N hari lalu + belum dipetakan → masih aktif
+  const toDate = function (v) {
+    if (v instanceof Date && !isNaN(v)) return v;
+    if (typeof v === 'string' && v.trim()) { const d = new Date(v.trim()); if (!isNaN(d)) return d; }
+    return null;
+  };
+
   const semai = {};
 
   for (let r = headerRowIdx + 1; r < rows.length; r++) {
@@ -158,7 +176,14 @@ function getSemaiRef() {
     const populasi = colPopulasi >= 0 ? Number(row[colPopulasi]) || 0 : 0;
 
     if (!ghTujuan || !ghSemai) continue;
-    if (tglTanam) continue; // sudah tanam → tidak aktif lagi
+    if (tglTanam) {
+      // Sudah tanam → tidak aktif lagi, KECUALI baru tanam (<= BATAS_HARI_TANAM hari)
+      // dan GH+periode ini belum pernah dipetakan.
+      const dTanam = toDate(tglTanam);
+      const umurHari = dTanam ? (Date.now() - dTanam.getTime()) / 86400000 : Infinity;
+      const dipetakan = sudahDipetakan[ghTujuan.toUpperCase() + '|' + normPer(periode)];
+      if (dipetakan || umurHari > BATAS_HARI_TANAM) continue;
+    }
 
     if (!semai[ghTujuan]) {
       semai[ghTujuan] = {
