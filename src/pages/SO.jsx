@@ -7,6 +7,7 @@ import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 import { useSOHistory, hasCompletedCheckpoint } from "../hooks/useSOHistory";
 import { FormShell, FieldAlert, SuccessState, GHPicker, ReviewTable, EntryTable, Dialog, Icon, OperatorField } from "../components/form";
 import { formatTanggal, formatAngka } from "../lib/format";
+import { hstMaksGH } from "../lib/hstLimit";
 
 const DB_NAME    = "SOOfflineDB";
 const SCRIPT_URL = import.meta.env.VITE_GAS_SO_URL;
@@ -125,8 +126,8 @@ function isSODeadlineAlert(hst) {
          hst === SO_CHECKPOINT_2 - 1 || hst === SO_CHECKPOINT_2;
 }
 
-function isSOAktif(hst) {
-  return hst !== null && hst >= 1 && hst < 65;
+function isSOAktif(hst, gh) {
+  return hst !== null && hst >= 1 && hst <= hstMaksGH(gh, 64);
 }
 
 const LS_KEY_PREFIX = "so_submitted_";
@@ -243,7 +244,7 @@ export default function SO() {
         const info = ghData[name];
         if (!info) return false;
         const hst = hitungHST(info.tanam);
-        return isSOAktif(hst);
+        return isSOAktif(hst, name);
       })
       .map(name => {
         const info = ghData[name];

@@ -6,6 +6,7 @@ import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 import { FormShell, FieldAlert, SuccessState, GHPicker, ReviewTable, SegmentTabs, Stepper, PhotoBox, OperatorField } from "../components/form";
 import { formatTanggal, formatAngka } from "../lib/format";
+import { hstMaksGH } from "../lib/hstLimit";
 
 const DB_NAME = "SanitasiOfflineDB";
 
@@ -346,9 +347,9 @@ export default function Sanitasi() {
     tanam: info.tanam,
   }));
 
-  const ghAktif = Object.entries(ghData).filter(([, info]) => {
+  const ghAktif = Object.entries(ghData).filter(([gh, info]) => {
     if (!info.tanam) return true;
-    return hitungHST(info.tanam) <= HST_MAKS;
+    return hitungHST(info.tanam) <= hstMaksGH(gh, HST_MAKS);
   });
 
   const handleSelectGH = (gh) => {

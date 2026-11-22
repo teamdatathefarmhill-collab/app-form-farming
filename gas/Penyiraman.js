@@ -143,7 +143,9 @@ function ghMapToData(ghMap) {
       hst = Math.floor((todayMidnight - tanamMidnight) / 86400000);
     }
 
-    if (hst !== null && hst >= 70) continue;
+    // Batas standar 70 HST; override sementara: TOHUDAN 13 sampai 75 HST (panen mundur)
+    const batasHst = String(gh).toUpperCase().trim() === "TOHUDAN 13" ? 76 : 70;
+    if (hst !== null && hst >= batasHst) continue;
 
     data[gh] = {
       periode: entry.maxPeriode,

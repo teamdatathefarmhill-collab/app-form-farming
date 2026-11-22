@@ -9,6 +9,7 @@ import { Icon } from "./form";
 import { createPortal } from "react-dom";
 import { useGHData } from "../hooks/useGHData";
 import { useGHEmergency } from "../hooks/useGHEmergency";
+import { hstMaksGH } from "../lib/hstLimit";
 
 const AKSI_OPTIONS = [
   { value: "Shutdown", label: "Shutdown", icon: "⏻", color: "#e53935" },
@@ -43,7 +44,7 @@ export default function EmergencyGHButton() {
     .filter((name) => {
       const tanam = ghData[name]?.tanam;
       if (!tanam) return false;
-      return hitungHST(tanam) <= HST_MAKS;
+      return hitungHST(tanam) <= hstMaksGH(name, HST_MAKS);
     })
     .sort();
 

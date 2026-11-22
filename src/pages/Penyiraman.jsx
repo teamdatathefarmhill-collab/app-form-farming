@@ -5,6 +5,7 @@ import { useGHBlockedList } from "../hooks/useGHBlockedList";
 import { gasFetch, gasPost } from "../utils/idb";
 import { FormShell, FieldAlert, SuccessState, GHPicker, ReviewTable, OptionList, SegmentTabs, Switch, NumberField, OperatorField } from "../components/form";
 import { formatTanggal } from "../lib/format";
+import { hstMaksGH } from "../lib/hstLimit";
 
 const SCRIPT_URL = import.meta.env.VITE_GAS_PENYIRAMAN_URL;
 
@@ -46,7 +47,7 @@ function readRefCache() {
           const [y, m, d] = v.tanam.split("-").map(Number);
           hst = Math.floor((now - new Date(y, m - 1, d)) / 86400000);
         }
-        if (hst !== null && hst !== undefined && hst >= 70) continue;
+        if (hst !== null && hst !== undefined && hst >= Math.max(70, hstMaksGH(g, 0) + 1)) continue;
         out[g] = { ...v, hst };
       }
       return out;

@@ -6,6 +6,7 @@ import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 import { FormShell, FieldAlert, SuccessState, GHPicker, ReviewTable, Dialog, SegmentTabs, Stepper, OperatorField } from "../components/form";
 import { formatTanggal } from "../lib/format";
+import { hstMaksGH } from "../lib/hstLimit";
 
 const DB_NAME = "HPTOfflineDB";
 
@@ -234,9 +235,9 @@ export default function HPT() {
   }, [refreshPendingCount]);
 
   const HST_MAKS = 65;
-  const ghAktif    = Object.entries(produksiData).filter(([, info]) => {
+  const ghAktif    = Object.entries(produksiData).filter(([gh, info]) => {
     if (!info.tanam) return true;
-    return hitungHST(info.tanam) <= HST_MAKS;
+    return hitungHST(info.tanam) <= hstMaksGH(gh, HST_MAKS);
   });
   const semaiAktif = Object.entries(semaiData).filter(([, info]) => info.status === "SEDANG_SEMAI");
 

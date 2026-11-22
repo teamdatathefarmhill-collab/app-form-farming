@@ -6,6 +6,7 @@ import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 import { FormShell, FieldAlert, SuccessState, GHPicker, ReviewTable, OptionList, SegmentTabs, PhotoBox, Dialog, OperatorField } from "../components/form";
 import { formatTanggal } from "../lib/format";
+import { hstMaksGH } from "../lib/hstLimit";
 import { HST_CHECKPOINTS, HST_NEAR_RANGE, TIPE_GH } from "../lib/vigorDue";
 
 const DB_NAME    = "VigorOfflineDB";
@@ -301,10 +302,10 @@ export default function Vigor({ initialGH, onDone } = {}) {
   // ── Auto-sync saat kembali online ──
   useEffect(() => { if (isOnline) syncPending(); }, [isOnline]);
 
-  const ghAktif = Object.entries(ghData).filter(([, info]) => {
+  const ghAktif = Object.entries(ghData).filter(([gh, info]) => {
     if (!info.tanam) return true;
     const hst = hitungHST(info.tanam);
-    return hst >= HST_MIN && hst <= HST_MAX;
+    return hst >= HST_MIN && hst <= hstMaksGH(gh, HST_MAX);
   });
 
   const handleSelectGH = (gh) => {

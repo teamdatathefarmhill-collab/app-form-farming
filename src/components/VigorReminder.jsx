@@ -11,6 +11,7 @@ import { useGHData } from "../hooks/useGHData";
 import { idbGetAll, idbDelete, gasFetch, gasPost } from "../utils/idb";
 import { isVigorGH, dueCheckpoint } from "../lib/vigorDue";
 import { Icon } from "./form";
+import { hstMaksGH } from "../lib/hstLimit";
 
 const SCRIPT_URL = import.meta.env.VITE_GAS_VIGOR_URL;
 const DB_NAME    = "VigorOfflineDB";
@@ -73,7 +74,7 @@ export default function VigorReminder({ onOpenVigor, popup = false }) {
       .filter(([gh]) => isVigorGH(gh))
       .map(([gh, info]) => {
         const hst = hitungHST(info.tanam);
-        if (hst === null || hst < 1 || hst > HST_MAX) return null;
+        if (hst === null || hst < 1 || hst > hstMaksGH(gh, HST_MAX)) return null;
         const cp = dueCheckpoint(hst);
         if (cp === null) return null;
         if (done.has(doneKey(gh, info.periode, cp))) return null;

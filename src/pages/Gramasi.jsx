@@ -6,6 +6,7 @@ import { useGHData } from "../hooks/useGHData";
 import { useGHBlockedList, warnIfGHBlocked } from "../hooks/useGHBlockedList";
 import { FormShell, FieldAlert, SuccessState, GHPicker, ReviewTable, EntryTable, Dialog, OperatorField } from "../components/form";
 import { formatTanggal } from "../lib/format";
+import { hstMaksGH } from "../lib/hstLimit";
 
 const DB_NAME = "GramasiOfflineDB";
 
@@ -248,10 +249,10 @@ export default function Gramasi() {
     setIsSyncingPending(false);
   }, [refreshPendingCount]);
 
-  const ghAktif = Object.entries(ghData).filter(([, info]) => {
+  const ghAktif = Object.entries(ghData).filter(([gh, info]) => {
     if (!info.tanam) return true;
     const hst = hitungHST(info.tanam);
-    return hst >= HST_MIN && hst <= HST_MAX;
+    return hst >= HST_MIN && hst <= hstMaksGH(gh, HST_MAX);
   });
 
   const handleSelectGH = (gh) => {
