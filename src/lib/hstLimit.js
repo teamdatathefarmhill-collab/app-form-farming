@@ -4,8 +4,8 @@
 // dari tanggal tanam baru sehingga otomatis kembali kecil — override ini tidak
 // perlu diubah. Hapus entri kalau sudah tidak diperlukan.
 const HST_MAKS_OVERRIDE = {
-  "TOHUDAN 13": 75,
-  "TOHUDAN 4": 75,
+  "TOHUDAN 13": Infinity,
+  "TOHUDAN 4": Infinity,
 };
 
 // Batas HST efektif untuk sebuah GH: nilai terbesar antara batas standar menu
