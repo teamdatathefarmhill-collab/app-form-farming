@@ -19,7 +19,7 @@ const AKSI_OPTIONS = [
 // GH dianggap masih aktif produksi kalau HST <= HST_MAKS — konvensi yang sama
 // dipakai di Sanitasi/HPT/SO agar GH yang sudah tidak bermitra (data lama,
 // tidak ada tanam baru) tidak ikut muncul di daftar.
-const HST_MAKS = 65;
+const HST_MAKS = Infinity; // tanpa batas — GH tampil sampai ada tanam baru
 
 function hitungHST(tgl) {
   const [y, m, d] = tgl.split("-").map(Number);

@@ -27,7 +27,7 @@ function loadSemaiCache() {
     return parsed.data;
   } catch { return null; }
 }
-const HST_MAKS = 65;
+const HST_MAKS = Infinity; // tanpa batas — GH tampil sampai ada tanam baru
 
 const TIPE_GH = [
   {

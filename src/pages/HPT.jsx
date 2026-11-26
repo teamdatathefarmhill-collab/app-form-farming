@@ -234,7 +234,7 @@ export default function HPT() {
     setIsSyncingPending(false);
   }, [refreshPendingCount]);
 
-  const HST_MAKS = 65;
+  const HST_MAKS = Infinity; // tanpa batas — GH tampil sampai ada tanam baru
   const ghAktif    = Object.entries(produksiData).filter(([gh, info]) => {
     if (!info.tanam) return true;
     return hitungHST(info.tanam) <= hstMaksGH(gh, HST_MAKS);
